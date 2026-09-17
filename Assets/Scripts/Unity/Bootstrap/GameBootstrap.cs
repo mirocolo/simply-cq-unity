@@ -6,8 +6,8 @@ using UnityEngine;
 namespace SimplyCQ.Unity
 {
     /// <summary>
-    /// M0+M1 的组装器：读数据 -> 建 World -> 建视图 -> 跑固定 tick 逻辑循环。
-    /// 场景里只需要一个挂着它的 GameObject（菜单 SimplyCQ > 搭建 M1 场景 会自动建好）。
+    /// 组装器：读数据 -> 建 World -> 建视图 -> 跑固定 tick 逻辑循环 -> 画 HUD。
+    /// 场景里只需要一个挂着它的 GameObject（菜单 SimplyCQ > 一键开始 会自动准备好）。
     /// </summary>
     public sealed class GameBootstrap : MonoBehaviour
     {
@@ -25,9 +25,13 @@ namespace SimplyCQ.Unity
         private Projection _projection;
         private TileViewPool _tilePool;
         private EntityViewRegistry _entityViews;
+        private FloatingTextOverlay _floatingText;
         private CameraRig _cameraRig;
         private PlayerInputSource _input;
         private Camera _camera;
+
+        private GUIStyle _hudStyle;
+        private GUIStyle _debugStyle;
 
         private readonly List<Intent> _intents = new List<Intent>();
         private float _accumulator;
@@ -37,6 +41,10 @@ namespace SimplyCQ.Unity
         private int _ticksThisSecond;
         private int _ticksPerSecondDisplay;
         private int _tickRate;
+
+        // 攻击是「按下的那一瞬间」，必须先按帧 latch 住，等 tick 再消费
+        private bool _attackQueued;
+        private Dir _attackDir;
 
         public World World { get { return _simulation != null ? _simulation.World : null; } }
 
@@ -50,7 +58,7 @@ namespace SimplyCQ.Unity
             _tickRate = balance.tickPerSecond;
             _tickDuration = 1f / _tickRate;
 
-            _simulation = new Simulation(_database.Map, (uint)balance.worldSeed, _database.CreateMonster);
+            _simulation = new Simulation(_database.Map, (uint)balance.worldSeed, _database.CreateMonster, _database.Tuning);
 
             Entity player = _database.CreatePlayer();
             player.Pos = _database.Map.Spawn;
@@ -88,6 +96,8 @@ namespace SimplyCQ.Unity
             _entityViews = new EntityViewRegistry(entityRoot, _projection, _simulation.World,
                 balance.characterWidthPx, balance.characterHeightPx, balance.pixelsPerUnit, _tickRate);
 
+            _floatingText = new FloatingTextOverlay(_entityViews, _camera, _simulation.World);
+
             _cameraRig = new CameraRig(_camera, _entityViews.GetTransform(player.Id),
                 _projection.MapWorldRect(_database.Map.Width, _database.Map.Height), balance.cameraSmoothTime);
 
@@ -95,10 +105,12 @@ namespace SimplyCQ.Unity
 
             if (LogDataSummary)
             {
+                CombatTuning t = _database.Tuning;
                 Debug.Log(string.Format(
-                    "[SimplyCQ] 地图「{0}」{1}x{2}  怪物种类 {3}  刷怪区 {4}  传送点 {5}  tick {6}Hz",
+                    "[SimplyCQ] 地图「{0}」{1}x{2}  怪物 {3} 种  刷怪区 {4}  tick {5}Hz  攻击间隔 {6} tick  升级曲线 {7}*Lv^{8}",
                     _database.Map.Name, _database.Map.Width, _database.Map.Height,
-                    _database.MonsterKindCount, _database.Map.Spawners.Count, _database.Map.Portals.Count, _tickRate));
+                    _database.MonsterKindCount, _database.Map.Spawners.Count, _tickRate,
+                    t.PlayerAttackInterval, t.ExpCurveBase, t.ExpCurvePow));
             }
         }
 
@@ -109,6 +121,15 @@ namespace SimplyCQ.Unity
             float dt = Time.deltaTime;
             float instantFps = 1f / Mathf.Max(dt, 1e-4f);
             _fps = _fps <= 0f ? instantFps : Mathf.Lerp(_fps, instantFps, 0.1f);
+
+            // 输入按帧采样：GetKeyDown 只在一帧为真，塞进 10Hz 的 tick 循环里大部分都会被丢掉
+            Entity player = _simulation.World.Player;
+            Dir attackDir;
+            if (player != null && _input.TryReadAttack(player.Facing, out attackDir))
+            {
+                _attackQueued = true;
+                _attackDir = attackDir;
+            }
 
             _accumulator += dt;
             float maxBacklog = _tickDuration * 5f;
@@ -124,6 +145,7 @@ namespace SimplyCQ.Unity
             }
 
             _entityViews.Tick(dt);
+            _floatingText.Tick(dt);
 
             _secondTimer += dt;
             if (_secondTimer >= 1f)
@@ -137,11 +159,24 @@ namespace SimplyCQ.Unity
         private void StepOnce()
         {
             Entity player = _simulation.World.Player;
-            if (player == null) return;
-
             _intents.Clear();
-            Dir dir;
-            if (_input.TryReadMove(out dir)) _intents.Add(Intent.Move(player.Id, dir));
+
+            if (player != null && player.IsAlive)
+            {
+                Dir moveDir;
+                if (_input.TryReadMove(out moveDir)) _intents.Add(Intent.Move(player.Id, moveDir));
+
+                if (_attackQueued)
+                {
+                    _attackQueued = false;
+                    _intents.Add(Intent.Attack(player.Id, _attackDir));
+                }
+            }
+            else
+            {
+                _attackQueued = false;
+            }
+
             _simulation.Step(_intents);
         }
 
@@ -158,27 +193,83 @@ namespace SimplyCQ.Unity
 
         private void OnGUI()
         {
-            if (!ShowDebugOverlay || _simulation == null) return;
+            if (_simulation == null) return;
+
+            if (_hudStyle == null)
+            {
+                _hudStyle = new GUIStyle(GUI.skin.label);
+                _hudStyle.fontSize = 14;
+                _hudStyle.normal.textColor = Color.white;
+
+                _debugStyle = new GUIStyle(GUI.skin.label);
+                _debugStyle.fontSize = 14;
+                _debugStyle.normal.textColor = new Color(0.85f, 0.90f, 0.95f);
+            }
 
             World world = _simulation.World;
-            GUIStyle style = new GUIStyle(GUI.skin.label);
-            style.fontSize = 14;
-            style.normal.textColor = Color.white;
 
-            string line1 = string.Format("tick {0}   逻辑 {1}/s   FPS {2:0}   实体 {3}（视图 {4}）  可见格 {5}  池 {6}",
-                world.Tick, _ticksPerSecondDisplay, _fps, world.EntityCount,
-                _entityViews.ViewCount, _tilePool.VisibleCount, _tilePool.PooledCount);
+            if (ShowDebugOverlay)
+            {
+                string line1 = string.Format("tick {0}   逻辑 {1}/s   FPS {2:0}   实体 {3}（视图 {4}）  可见格 {5}  地面物 {6}",
+                    world.Tick, _ticksPerSecondDisplay, _fps, world.EntityCount,
+                    _entityViews.ViewCount, _tilePool.VisibleCount, world.GroundItemCount);
 
-            string line2 = world.Player != null
-                ? string.Format("玩家 {0}  HP {1}/{2}  朝向 {3}  位置 {4}",
-                    world.Player.Name, world.Player.Hp, world.Player.MaxHp, world.Player.Facing, world.Player.Pos)
-                : "玩家 -";
+                string line2 = world.Player != null
+                    ? string.Format("玩家 {0}  朝向 {1}  位置 {2}  飘字 {3}",
+                        world.Player.Name, world.Player.Facing, world.Player.Pos, _floatingText.Count)
+                    : "玩家 -";
 
-            const string line3 = "WASD / 方向键 走路（M1 只有走路 + 怪物 AI，战斗在 M2）";
+                const string line3 = "WASD / 方向键 走路 · 空格 / J / 鼠标左键 攻击（M2 战斗）";
 
-            GUI.Label(new Rect(10f, 8f, 1000f, 22f), line1, style);
-            GUI.Label(new Rect(10f, 28f, 1000f, 22f), line2, style);
-            GUI.Label(new Rect(10f, 48f, 1000f, 22f), line3, style);
+                GUI.Label(new Rect(10f, 8f, 1000f, 22f), line1, _debugStyle);
+                GUI.Label(new Rect(10f, 28f, 1000f, 22f), line2, _debugStyle);
+                GUI.Label(new Rect(10f, 48f, 1000f, 22f), line3, _debugStyle);
+            }
+
+            DrawHud(world);
+            _floatingText.Draw();
+        }
+
+        private void DrawHud(World world)
+        {
+            Entity p = world.Player;
+            if (p == null) return;
+
+            const float x = 10f;
+            const float w = 240f;
+            const float h = 18f;
+            float y = 78f;
+
+            DrawBar(x, y, w, h,
+                p.MaxHp > 0 ? p.Hp / (float)p.MaxHp : 0f,
+                new Color(0.16f, 0.05f, 0.05f, 0.85f),
+                new Color(0.80f, 0.19f, 0.16f, 0.95f),
+                "HP " + p.Hp + " / " + p.MaxHp);
+
+            y += h + 4f;
+            DrawBar(x, y, w, h,
+                p.ExpToNextLevel > 0 ? p.Exp / (float)p.ExpToNextLevel : 0f,
+                new Color(0.05f, 0.10f, 0.16f, 0.85f),
+                new Color(0.25f, 0.55f, 0.90f, 0.95f),
+                "EXP " + p.Exp + " / " + p.ExpToNextLevel);
+
+            y += h + 6f;
+            string status = "Lv." + p.Level + "    金币 " + p.Gold + "    攻 " + p.MinDc + "-" + p.MaxDc + "    防 " + p.Ac;
+            if (!p.IsAlive) status += "    （死亡，等待复活…）";
+            GUI.Label(new Rect(x, y, 520f, 20f), status, _hudStyle);
+        }
+
+        private void DrawBar(float x, float y, float w, float h, float percent, Color back, Color fill, string text)
+        {
+            float pct = Mathf.Clamp01(percent);
+
+            GUI.color = back;
+            GUI.DrawTexture(new Rect(x, y, w, h), Texture2D.whiteTexture);
+            GUI.color = fill;
+            GUI.DrawTexture(new Rect(x, y, w * pct, h), Texture2D.whiteTexture);
+            GUI.color = Color.white;
+
+            GUI.Label(new Rect(x + 6f, y, w, h), text, _hudStyle);
         }
     }
 }

@@ -18,14 +18,17 @@ namespace SimplyCQ.Unity
             public SpriteRenderer Renderer;
             public Vector3 Target;
             public Dir RenderedDir;
+            public bool SpriteDirty = true;
         }
 
         private readonly Dictionary<int, View> _views = new Dictionary<int, View>();
+        private readonly Dictionary<int, float> _hitFlash = new Dictionary<int, float>();
         private readonly Transform _root;
         private readonly Projection _projection;
         private readonly World _world;
         private readonly int _charWidthPx;
         private readonly int _charHeightPx;
+        private readonly int _itemSizePx;
         private readonly float _ppu;
         private readonly float _tickRate;
 
@@ -37,6 +40,7 @@ namespace SimplyCQ.Unity
             _world = world;
             _charWidthPx = charWidthPx;
             _charHeightPx = charHeightPx;
+            _itemSizePx = Mathf.Max(8, charWidthPx / 2);
             _ppu = ppu;
             _tickRate = Mathf.Max(1f, tickRate);
 
@@ -44,11 +48,14 @@ namespace SimplyCQ.Unity
             world.Events.Subscribe<EntityRemoved>(OnRemoved);
             world.Events.Subscribe<EntityMoved>(OnMoved);
             world.Events.Subscribe<EntityTeleported>(OnTeleported);
+            world.Events.Subscribe<DamageDealt>(OnDamaged);
 
             // 视图层很可能晚于实体出生（启动顺序、存档读取、换地图），
             // 所以不能只依赖 EntitySpawned —— 构造完先跟 World 对齐一次。
             SyncExistingEntities();
         }
+
+        public int ViewCount { get { return _views.Count; } }
 
         /// <summary>给 World 里已经存在、但还没有视图的实体补上视图。</summary>
         public void SyncExistingEntities()
@@ -58,8 +65,6 @@ namespace SimplyCQ.Unity
                 if (!_views.ContainsKey(e.Id.Value)) CreateView(e);
             }
         }
-
-        public int ViewCount { get { return _views.Count; } }
 
         public Transform GetTransform(ActorId id)
         {
@@ -80,14 +85,63 @@ namespace SimplyCQ.Unity
                 float unitsPerSecond = tilesPerSecond * _projection.TileW;
                 v.Transform.position = Vector3.MoveTowards(v.Transform.position, v.Target, unitsPerSecond * dt);
 
-                v.Renderer.sortingOrder = _projection.SortOrderFor(v.Transform.position.y);
+                v.Renderer.sortingOrder = _projection.SortOrderFor(v.Transform.position.y) + SortBias(e);
 
                 if (v.RenderedDir != e.Facing)
                 {
                     v.RenderedDir = e.Facing;
-                    v.Renderer.sprite = PlaceholderArt.Character(KeyOf(e), ColorOf(e), e.Facing, _charWidthPx, _charHeightPx, _ppu);
+                    v.SpriteDirty = true;
+                }
+                if (v.SpriteDirty)
+                {
+                    v.Renderer.sprite = SpriteFor(e);
+                    v.SpriteDirty = false;
+                }
+
+                // 受击闪红 + 轻微弹一下
+                float flash;
+                if (_hitFlash.TryGetValue(e.Id.Value, out flash))
+                {
+                    flash -= dt;
+                    if (flash <= 0f)
+                    {
+                        _hitFlash.Remove(e.Id.Value);
+                        v.Renderer.color = Color.white;
+                        v.Transform.localScale = Vector3.one;
+                    }
+                    else
+                    {
+                        _hitFlash[e.Id.Value] = flash;
+                        float k = flash / HitFlashSeconds;
+                        v.Renderer.color = Color.Lerp(Color.white, new Color(1f, 0.25f, 0.25f), k);
+                        float s = 1f + 0.18f * k;
+                        v.Transform.localScale = new Vector3(s, s, 1f);
+                    }
+                }
+                else if (!e.IsAlive)
+                {
+                    v.Renderer.color = new Color(1f, 1f, 1f, 0.4f);   // 死了变半透明
                 }
             }
+        }
+
+        private const float HitFlashSeconds = 0.18f;
+
+        private Sprite SpriteFor(Entity e)
+        {
+            if (e.Kind == EntityKind.GroundItem) return PlaceholderArt.Coin(KeyOf(e), _itemSizePx, _itemSizePx, _ppu);
+            return PlaceholderArt.Character(KeyOf(e), ColorOf(e), e.Facing, _charWidthPx, _charHeightPx, _ppu);
+        }
+
+        private Vector3 AnchorFor(Entity e)
+        {
+            return e.Kind == EntityKind.GroundItem ? _projection.TileCenter(e.Pos) : _projection.FootPoint(e.Pos);
+        }
+
+        /// <summary>掉落物压在所有角色下面（同一格时不会盖住人）。</summary>
+        private static int SortBias(Entity e)
+        {
+            return e.Kind == EntityKind.GroundItem ? -50 : 0;
         }
 
         private static string KeyOf(Entity e)
@@ -101,6 +155,7 @@ namespace SimplyCQ.Unity
             // 玩家固定红色，怪按 id 上色：屏幕上一眼分得清
             if (e.Kind == EntityKind.Player) return new Color(0.86f, 0.28f, 0.24f);
             if (e.Kind == EntityKind.Npc) return new Color(0.30f, 0.62f, 0.90f);
+            if (e.Kind == EntityKind.GroundItem) return new Color(0.96f, 0.79f, 0.22f);
             return PlaceholderArt.BodyColorFor(e.DefId);
         }
 
@@ -120,11 +175,11 @@ namespace SimplyCQ.Unity
             go.transform.SetParent(_root, false);
             v.Transform = go.transform;
             v.Renderer = go.AddComponent<SpriteRenderer>();
-            v.Renderer.sprite = PlaceholderArt.Character(KeyOf(e), ColorOf(e), e.Facing, _charWidthPx, _charHeightPx, _ppu);
+            v.Renderer.sprite = SpriteFor(e);
             v.RenderedDir = e.Facing;
-            v.Target = _projection.FootPoint(e.Pos);
+            v.Target = AnchorFor(e);
             v.Transform.position = v.Target;
-            v.Renderer.sortingOrder = _projection.SortOrderFor(v.Target.y);
+            v.Renderer.sortingOrder = _projection.SortOrderFor(v.Target.y) + SortBias(e);
             _views[e.Id.Value] = v;
         }
 
@@ -132,6 +187,7 @@ namespace SimplyCQ.Unity
         {
             View v;
             if (!_views.TryGetValue(evt.Id.Value, out v)) return;
+            _hitFlash.Remove(evt.Id.Value);
             if (v.Transform != null) UnityEngine.Object.Destroy(v.Transform.gameObject);
             _views.Remove(evt.Id.Value);
         }
@@ -139,15 +195,20 @@ namespace SimplyCQ.Unity
         private void OnMoved(EntityMoved evt)
         {
             View v;
-            if (_views.TryGetValue(evt.Id.Value, out v)) v.Target = _projection.FootPoint(evt.To);
+            if (_views.TryGetValue(evt.Id.Value, out v)) v.Target = AnchorFor(v.Entity);
         }
 
         private void OnTeleported(EntityTeleported evt)
         {
             View v;
             if (!_views.TryGetValue(evt.Id.Value, out v)) return;
-            v.Target = _projection.FootPoint(evt.To);
+            v.Target = AnchorFor(v.Entity);
             if (v.Transform != null) v.Transform.position = v.Target;
+        }
+
+        private void OnDamaged(DamageDealt evt)
+        {
+            if (_views.ContainsKey(evt.Target.Value)) _hitFlash[evt.Target.Value] = HitFlashSeconds;
         }
     }
 }

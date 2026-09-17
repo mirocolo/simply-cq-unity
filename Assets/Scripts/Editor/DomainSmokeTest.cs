@@ -116,6 +116,69 @@ namespace SimplyCQ.EditorTools
             for (int i = 0; i < map.Spawners.Count; i++) cap += map.Spawners[i].Max;
             Check(maxMonsters <= cap, "怪物总数没超过配置上限 " + cap);
 
+            // ---------------- M2 战斗闭环（用真实数据表跑一遍）----------------
+            CombatTuning tuning = db.Tuning;
+            Check(tuning != null && tuning.PlayerAttackInterval > 0,
+                "balance.json 的 combat 段解析成功（攻击间隔 " + (tuning != null ? tuning.PlayerAttackInterval : 0) + " tick）");
+
+            GameMap arena = MapLoader.CreateFallbackMap(24, 24);
+            Simulation arena2 = new Simulation(arena, 20240617u, null, tuning);
+
+            Entity fighter = db.CreatePlayer();
+            fighter.Pos = arena.Spawn;
+            fighter.HomePos = fighter.Pos;
+            fighter.Hp = fighter.MaxHp;
+            fighter.Gold = 0;
+            arena2.World.Spawn(fighter);
+            arena2.World.Player = fighter;
+
+            string monsterId = map.Spawners.Count > 0 ? map.Spawners[0].MonsterId : "mon_hen";
+            Entity dummy = db.CreateMonster(monsterId);
+            Check(dummy != null, "能从数据表造出怪物 " + monsterId);
+
+            if (dummy != null)
+            {
+                TilePos at = arena.FindNearestWalkable(new TilePos(fighter.Pos.X + 1, fighter.Pos.Y), 8);
+                dummy.Pos = at;
+                dummy.HomePos = at;
+                dummy.Aggressive = false;
+                arena2.World.Spawn(dummy);
+
+                // 固定掉落，方便断言
+                dummy.GoldChance = 1f;
+                dummy.GoldMin = 3;
+                dummy.GoldMax = 3;
+                dummy.ExpReward = 7;
+
+                int diedCount = 0, damageCount = 0;
+                arena2.Bus.Subscribe<EntityDied>(delegate(EntityDied e) { diedCount++; });
+                arena2.Bus.Subscribe<DamageDealt>(delegate(DamageDealt e) { damageCount++; });
+
+                int expBefore = fighter.Exp;
+                CombatSystem.ApplyDamage(arena2.World, fighter, dummy,
+                    new DamageResult { Hit = true, Crit = false, Amount = dummy.MaxHp });
+                arena2.Step(new List<Intent>());
+
+                Check(diedCount == 1 && damageCount == 1, "致命伤 -> DamageDealt + EntityDied 各一次");
+                Check(fighter.Exp == expBefore + 7, "经验结算正确（" + expBefore + " -> " + fighter.Exp + "）");
+
+                Entity drop = null;
+                foreach (Entity e in arena2.World.Entities) if (e.Kind == EntityKind.GroundItem) drop = e;
+                Check(drop != null && drop.Gold == 3, "按掉落表掉出 3 金币");
+                Check(drop != null && drop.Pos == at, "金币落在怪物死亡点 " + at);
+                Check(arena2.World.EntityAt(at) == dummy, "此刻占着这一格的是尸体，掉落物不参与占格");
+
+                for (int i = 0; i < tuning.CorpseTicks + 2; i++) arena2.Step(new List<Intent>());
+                Check(arena2.World.Get(dummy.Id) == null, "尸体按 CorpseTicks=" + tuning.CorpseTicks + " 被清理");
+                Check(arena2.World.GroundItemAt(at) == drop, "金币还留在原地");
+                Check(!arena2.World.IsOccupied(at), "尸体清掉后金币所在格可通行（掉落物不占格）");
+
+                arena2.World.PlaceEntity(fighter, at);
+                arena2.Step(new List<Intent>());
+                Check(fighter.Gold == 3, "踩上去自动捡到 3 金币（实际 " + fighter.Gold + "）");
+                Check(arena2.World.GroundItemAt(at) == null, "捡完后地面金币消失");
+            }
+
             // 键盘操作的成败取决于 Player Settings，这里用编译期宏直接断言，
             // 免得出现「能跑但按键盘没反应」这种最难查的情况。
 #if ENABLE_LEGACY_INPUT_MANAGER

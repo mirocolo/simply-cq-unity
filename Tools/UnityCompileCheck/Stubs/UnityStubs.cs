@@ -13,6 +13,7 @@ namespace UnityEngine
         public string name;
         public HideFlags hideFlags;
         public static void Destroy(Object obj) { }
+        public static void DestroyImmediate(Object obj) { }
     }
 
     public enum HideFlags { None = 0, DontSave = 52 }
@@ -30,6 +31,7 @@ namespace UnityEngine
     public class Transform : Component
     {
         public Vector3 position { get; set; }
+        public Vector3 localScale { get; set; }
         public void SetParent(Transform parent, bool worldPositionStays) { }
     }
 
@@ -51,8 +53,11 @@ namespace UnityEngine
         public float aspect { get { return 1.7777f; } }
         public CameraClearFlags clearFlags { get; set; }
         public Color backgroundColor { get; set; }
+        public RenderTexture targetTexture { get; set; }
+        public void Render() { }
         public static Camera main { get { return null; } }
         public Vector3 ScreenToWorldPoint(Vector3 p) { return default(Vector3); }
+        public Vector3 WorldToScreenPoint(Vector3 p) { return default(Vector3); }
     }
 
     public class AudioListener : Behaviour { }
@@ -60,21 +65,33 @@ namespace UnityEngine
     {
         public bool enabled { get; set; }
         public int sortingOrder { get; set; }
+        public Color color { get; set; }
     }
     public class SpriteRenderer : Renderer { public Sprite sprite { get; set; } }
 
-    public enum TextureFormat { RGBA32 = 4 }
+    public enum TextureFormat { RGBA32 = 4, RGB24 = 3 }
     public enum FilterMode { Point = 0 }
     public enum TextureWrapMode { Clamp = 1 }
     public enum SpriteMeshType { FullRect = 1 }
 
-    public class Texture2D : Object
+    public class Texture : Object { }
+
+    public class RenderTexture : Texture
+    {
+        public RenderTexture(int width, int height, int depth) { }
+        public static RenderTexture active { get; set; }
+    }
+
+    public class Texture2D : Texture
     {
         public Texture2D(int w, int h, TextureFormat format, bool mipChain) { }
         public FilterMode filterMode { get; set; }
         public TextureWrapMode wrapMode { get; set; }
         public void SetPixels(Color[] colors) { }
-        public void Apply(bool updateMipmaps, bool makeNoLongerReadable) { }
+        public void Apply(bool updateMipmaps = true, bool makeNoLongerReadable = false) { }
+        public void ReadPixels(Rect source, int destX, int destY) { }
+        public byte[] EncodeToPNG() { return null; }
+        public static Texture2D whiteTexture { get { return null; } }
     }
 
     public class Sprite : Object
@@ -100,6 +117,7 @@ namespace UnityEngine
         public Vector3(float x, float y) { this.x = x; this.y = y; this.z = 0f; }
         public Vector3(float x, float y, float z) { this.x = x; this.y = y; this.z = z; }
         public static Vector3 zero { get { return new Vector3(0f, 0f, 0f); } }
+        public static Vector3 one { get { return new Vector3(1f, 1f, 1f); } }
         public static Vector3 MoveTowards(Vector3 current, Vector3 target, float maxDelta) { return current; }
         public static Vector3 Lerp(Vector3 a, Vector3 b, float t) { return a; }
         public static Vector3 operator +(Vector3 a, Vector3 b) { return new Vector3(a.x + b.x, a.y + b.y, a.z + b.z); }
@@ -134,6 +152,7 @@ namespace UnityEngine
         public static Color gray { get { return new Color(0.5f, 0.5f, 0.5f); } }
         public static Color magenta { get { return new Color(1f, 0f, 1f); } }
         public static Color HSVToRGB(float h, float s, float v) { return white; }
+        public static Color Lerp(Color a, Color b, float t) { return a; }
     }
 
     public static class Mathf
@@ -175,9 +194,20 @@ namespace UnityEngine
 
     public static class Time { public static float deltaTime { get { return 0.016f; } } }
 
-    public enum KeyCode { A, D, W, S, UpArrow, DownArrow, LeftArrow, RightArrow }
+    public enum KeyCode { A, D, W, S, J, Space, UpArrow, DownArrow, LeftArrow, RightArrow }
 
-    public static class Input { public static bool GetKey(KeyCode key) { return false; } }
+    public static class Input
+    {
+        public static bool GetKey(KeyCode key) { return false; }
+        public static bool GetKeyDown(KeyCode key) { return false; }
+        public static bool GetMouseButtonDown(int button) { return false; }
+    }
+
+    public static class Screen
+    {
+        public static int width { get { return 1280; } }
+        public static int height { get { return 720; } }
+    }
 
     public class GUIStyleState { public Color textColor { get; set; } }
 
@@ -194,7 +224,10 @@ namespace UnityEngine
     public static class GUI
     {
         public static GUISkin skin { get { return null; } }
+        public static Color color { get; set; }
         public static void Label(Rect position, string text, GUIStyle style) { }
+        public static void Box(Rect position, string text) { }
+        public static void DrawTexture(Rect position, Texture image) { }
     }
 
     public static class JsonUtility
@@ -224,7 +257,9 @@ namespace UnityEngine
 
 namespace UnityEngine.SceneManagement
 {
-    public struct Scene { }
+    public struct Scene { public string path { get { return ""; } } }
+
+    public static class SceneManager { public static Scene GetActiveScene() { return default(Scene); } }
 }
 
 namespace UnityEditor
@@ -245,7 +280,21 @@ namespace UnityEditor
 
     public static class AssetDatabase { public static void Refresh() { } }
 
-    public static class EditorApplication { public static void Exit(int returnValue) { } }
+    public static class EditorApplication
+    {
+        public static bool isPlaying { get; set; }
+        public static Action update;
+        public static void Exit(int returnValue) { }
+    }
+
+    public static class SessionState
+    {
+        public static bool GetBool(string key, bool defaultValue) { return defaultValue; }
+        public static void SetBool(string key, bool value) { }
+    }
+
+    [AttributeUsage(AttributeTargets.Method)]
+    public class InitializeOnLoadMethodAttribute : Attribute { }
 
     public class EditorBuildSettingsScene
     {

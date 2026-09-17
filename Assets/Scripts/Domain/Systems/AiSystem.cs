@@ -17,6 +17,14 @@ namespace SimplyCQ.Domain
             {
                 if (e.Kind != EntityKind.Monster) continue;
 
+                if (!e.IsAlive)
+                {
+                    // 尸体不再思考，也不留移动意图
+                    e.WantsMove = null;
+                    e.WantsAttack = false;
+                    continue;
+                }
+
                 if (e.AiThinkCooldown > 0)
                 {
                     // 非思考 tick：保留上一次的移动意图。

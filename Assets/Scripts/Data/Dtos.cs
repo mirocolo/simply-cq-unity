@@ -1,4 +1,5 @@
 using System;
+using SimplyCQ.Domain;
 
 namespace SimplyCQ.Data
 {
@@ -56,6 +57,11 @@ namespace SimplyCQ.Data
         public int vision = 5;
         public bool aggressive;
         public int leash = 12;
+
+        // 击杀收益（M2 战斗）
+        public int goldMin;
+        public int goldMax;
+        public float goldChance = 1f;
     }
 
     [Serializable]
@@ -83,6 +89,9 @@ namespace SimplyCQ.Data
         public float cameraSmoothTime = 0.12f;
         public int worldSeed = 20240617;
 
+        /// <summary>战斗/成长数值。JsonUtility 直接反序列化成 Domain 的 CombatTuning。</summary>
+        public CombatTuning combat;
+
         /// <summary>把明显不合理的值夹到安全范围，避免一个手抖让游戏起不来。</summary>
         public void Normalize()
         {
@@ -96,6 +105,7 @@ namespace SimplyCQ.Data
             if (characterHeightPx < 8) characterHeightPx = 8;
             if (visibleTilesVertically < 5) visibleTilesVertically = 5;
             if (playerHp < 1) playerHp = 1;
+            if (worldSeed == 0) worldSeed = 20240617;
         }
     }
 }

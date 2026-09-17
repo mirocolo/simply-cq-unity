@@ -14,7 +14,7 @@ namespace SimplyCQ.Domain
             foreach (Entity e in world.Entities)
             {
                 if (e.MoveCooldown > 0) e.MoveCooldown--;
-                if (e.AttackCooldown > 0) e.AttackCooldown--;
+                // 注意：AttackCooldown 由 CombatSystem 推进，这里不能碰，否则会被扣两次
             }
 
             // 2) 玩家（以及以后的被控实体）的移动意图
@@ -45,6 +45,7 @@ namespace SimplyCQ.Domain
             foreach (Entity e in world.Entities)
             {
                 if (e.Kind != EntityKind.Monster) continue;
+                if (!e.IsAlive) continue;          // 尸体不许再动
                 if (e.WantsMove == null) continue;
                 if (e.MoveCooldown > 0) continue;
 

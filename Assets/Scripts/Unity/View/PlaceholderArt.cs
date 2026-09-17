@@ -135,6 +135,31 @@ namespace SimplyCQ.Unity
             return sprite;
         }
 
+        /// <summary>地面金币。真素材进来之后这里换成金币 Sprite 就行。</summary>
+        public static Sprite Coin(string key, int w, int h, float ppu)
+        {
+            string full = "coin|" + w + "x" + h + "|" + ppu;
+            Sprite cached;
+            if (Cache.TryGetValue(full, out cached) && cached != null) return cached;
+
+            Color gold = new Color(0.96f, 0.79f, 0.22f);
+            Color dark = new Color(0.55f, 0.38f, 0.05f);
+            Color[] px = new Color[w * h];
+            int cx = w / 2;
+            int cy = h / 2 + Mathf.RoundToInt(h * 0.08f);
+            int rx = Mathf.RoundToInt(w * 0.34f);
+            int ry = Mathf.RoundToInt(h * 0.34f);
+
+            Ellipse(px, w, h, cx, Mathf.RoundToInt(h * 0.14f), Mathf.RoundToInt(w * 0.34f), Mathf.RoundToInt(h * 0.12f), new Color(0f, 0f, 0f, 0.30f));
+            Ellipse(px, w, h, cx, cy, rx, ry, gold);
+            Ellipse(px, w, h, cx, cy, Mathf.Max(1, rx / 2), Mathf.Max(1, ry / 2), dark);
+            Outline(px, w, h, new Color(0.05f, 0.05f, 0.07f, 0.95f));
+
+            Sprite sprite = Build(px, w, h, ppu, new Vector2(0.5f, 0.5f), full);
+            Cache[full] = sprite;
+            return sprite;
+        }
+
         public static void ClearCache() { Cache.Clear(); }
 
         // ------------------------------------------------------------------ 画图小工具

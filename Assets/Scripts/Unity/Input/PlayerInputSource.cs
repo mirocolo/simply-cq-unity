@@ -39,5 +39,28 @@ namespace SimplyCQ.Unity
             return false;
 #endif
         }
+
+        /// <summary>
+        /// 攻击是「按下的那一瞬间」，而逻辑是 10Hz —— 必须在每帧采样（见 GameBootstrap），
+        /// 不能在 tick 里采样，否则 60fps 下大部分按键会被丢掉。
+        /// </summary>
+        public bool TryReadAttack(Dir currentFacing, out Dir dir)
+        {
+            dir = currentFacing;
+            if (!Enabled) return false;
+
+#if ENABLE_LEGACY_INPUT_MANAGER
+            bool pressed = Input.GetKeyDown(KeyCode.Space)
+                        || Input.GetKeyDown(KeyCode.J)
+                        || Input.GetMouseButtonDown(0);
+            if (!pressed) return false;
+
+            Dir move;
+            if (TryReadMove(out move)) dir = move;   // 按着方向键打，就往那个方向打
+            return true;
+#else
+            return false;
+#endif
+        }
     }
 }

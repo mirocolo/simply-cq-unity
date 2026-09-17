@@ -12,6 +12,7 @@ namespace SimplyCQ.Data
         private readonly Dictionary<string, MonsterDto> _monsters = new Dictionary<string, MonsterDto>();
 
         public BalanceDto Balance { get; private set; }
+        public CombatTuning Tuning { get; private set; }
         public GameMap Map { get; private set; }
         public int MonsterKindCount { get { return _monsters.Count; } }
 
@@ -22,6 +23,9 @@ namespace SimplyCQ.Data
             BalanceDto balance = LoadJson<BalanceDto>(balanceFile);
             db.Balance = balance != null ? balance : new BalanceDto();
             db.Balance.Normalize();
+
+            db.Tuning = db.Balance.combat != null ? db.Balance.combat : new CombatTuning();
+            db.Tuning.Clamp();
 
             MonsterFile mf = LoadJson<MonsterFile>(monsterFile);
             if (mf != null && mf.monsters != null)
@@ -86,6 +90,11 @@ namespace SimplyCQ.Data
             e.Vision = d.vision;
             e.Aggressive = d.aggressive;
             e.Leash = d.leash;
+
+            e.ExpReward = d.exp;
+            e.GoldMin = d.goldMin;
+            e.GoldMax = d.goldMax;
+            e.GoldChance = d.goldChance;
             return e;
         }
 
@@ -104,6 +113,13 @@ namespace SimplyCQ.Data
             e.Ac = Balance.playerAc;
             e.MoveSpeed = Balance.playerMoveSpeed;
             e.Aggressive = false;
+
+            CombatTuning t = Tuning != null ? Tuning : new CombatTuning();
+            e.AttackInterval = t.PlayerAttackInterval;
+            e.AttackRange = 1;
+            e.ExpToNextLevel = LevelCurve.ExpToNext(e.Level, t);
+            e.Hp = Balance.playerHp;
+            e.MaxHp = Balance.playerHp;
             return e;
         }
     }

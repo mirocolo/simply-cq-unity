@@ -24,20 +24,50 @@ namespace SimplyCQ.Domain
         public TilePos Pos;
         public TilePos HomePos;
         public Dir Facing = Dir.Down;
+        /// <summary>是否占格。地面掉落物不占格，玩家可以踩上去捡。</summary>
+        public bool BlocksTile = true;
 
         // ---- 移动 ----
         /// <summary>走一格需要多少 tick（越小越快）。</summary>
         public int MoveSpeed = 3;
         public int MoveCooldown;
 
-        // ---- 数值（M2 战斗才会真正用起来）----
+        // ---- 数值 ----
         public int Level = 1;
         public int Hp = 30;
         public int MaxHp = 30;
         public int MinDc = 1;
         public int MaxDc = 3;
         public int Ac;
+
+        // ---- 成长 ----
+        /// <summary>当前等级内已积累的经验。</summary>
         public int Exp;
+        /// <summary>升到下一级还需要多少经验（由 LevelCurve 算好后写进来）。</summary>
+        public int ExpToNextLevel = 40;
+        /// <summary>玩家身上的金币。</summary>
+        public int Gold;
+
+        // ---- 被击杀后给击杀者的收益 ----
+        public int ExpReward;
+        public int GoldMin;
+        public int GoldMax;
+        public float GoldChance = 1f;
+
+        // ---- 死亡状态 ----
+        public ActorId Killer;
+        /// <summary>死亡发生的 tick；-1 表示还活着。</summary>
+        public long DeathTick = -1;
+        /// <summary>死亡是否已经结算过（发经验、掉金币）。</summary>
+        public bool DeathProcessed;
+        /// <summary>玩家复活时刻。</summary>
+        public long RespawnTick;
+        /// <summary>最近一次挨打的 tick，用于判断脱战回血。</summary>
+        public long LastDamagedTick = -100000;
+
+        // ---- 地面掉落物 ----
+        /// <summary>剩余存活 tick，到 0 消失（0 = 永不消失）。</summary>
+        public int LifetimeTicks;
 
         // ---- AI ----
         public int Vision = 5;

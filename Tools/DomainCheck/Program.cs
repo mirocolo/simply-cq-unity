@@ -29,6 +29,10 @@ namespace DomainCheck
             TestCollisionAndOccupancy();
             TestAiChase();
             TestSpawners();
+            TestDamage();
+            TestAttackArc();
+            TestCombatKill();
+            TestPlayerDeathAndRespawn();
             Console.WriteLine();
             Console.WriteLine(_failures == 0 ? "全部通过 ✓" : _failures + " 项失败 ✗");
             return _failures == 0 ? 0 : 1;
@@ -76,9 +80,10 @@ namespace DomainCheck
             {
                 if (!w.Map.InBounds(e.Pos)) return "实体越界 " + e.Pos;
                 if (!w.Map.IsWalkable(e.Pos)) return "实体站在阻挡格 " + e.Pos;
+                if (!w.Map.InBounds(e.HomePos)) return "HomePos 越界";
+                if (!e.BlocksTile) continue;   // 掉落物不占格，允许和角色同格
                 int key = e.Pos.Y * w.Map.Width + e.Pos.X;
                 if (!seen.Add(key)) return "两个实体占同一格 " + e.Pos;
-                if (!w.Map.InBounds(e.HomePos)) return "HomePos 越界";
             }
             return null;
         }
@@ -434,6 +439,238 @@ namespace DomainCheck
             }
             Check(stuck == null, "怪物不会跑出刷怪区太远" + (stuck == null ? "" : "（" + stuck + "）"));
             Check(inRect, "(占位断言)");
+        }
+
+        // ---------------------------------------------------------------- M2 战斗
+
+        private static void TestDamage()
+        {
+            Console.WriteLine("[伤害公式]");
+            CombatTuning t = new CombatTuning();
+            t.HitBase = 1f; t.CritChance = 0f; t.HitMin = 0f;
+
+            Entity a = MakeEntity(EntityKind.Player, new TilePos(0, 0));
+            a.MinDc = 5; a.MaxDc = 5; a.Level = 1;
+            Entity d = MakeEntity(EntityKind.Monster, new TilePos(1, 0));
+            d.Ac = 0; d.Level = 1;
+            Rng rng = new Rng(9u);
+
+            bool flat = true;
+            for (int i = 0; i < 200; i++)
+            {
+                DamageResult r = DamageCalculator.Roll(a, d, rng, t);
+                if (!r.Hit || r.Crit || r.Amount != 5) flat = false;
+            }
+            Check(flat, "必中 + AC=0 -> 伤害恒等于攻击力");
+
+            t.CritChance = 1f; t.CritMultiplier = 2f;
+            DamageResult crit = DamageCalculator.Roll(a, d, rng, t);
+            Check(crit.Crit && crit.Amount == 10, "暴击倍率生效（5 x2 = 10，实际 " + crit.Amount + "）");
+
+            t.CritChance = 0f;
+            d.Ac = 4;
+            bool bounded = true;
+            for (int i = 0; i < 300; i++)
+            {
+                DamageResult r = DamageCalculator.Roll(a, d, rng, t);
+                if (r.Amount < 1 || r.Amount > 5) bounded = false;
+            }
+            Check(bounded, "AC 只做减法且伤害有下限 1（实测落在 1..5）");
+
+            t.HitBase = 0f; t.HitMin = 0f; t.HitPerLevel = 0.01f;
+            a.Level = 1; d.Level = 100;
+            int hits = 0;
+            for (int i = 0; i < 400; i++) if (DamageCalculator.Roll(a, d, rng, t).Hit) hits++;
+            Check(hits == 0, "命中率被下限夹到 0 时永远打不中");
+
+            t.HitMin = 0.5f;
+            hits = 0;
+            for (int i = 0; i < 400; i++) if (DamageCalculator.Roll(a, d, rng, t).Hit) hits++;
+            float rate = hits / 400f;
+            Check(rate > 0.35f && rate < 0.65f, "命中率被 HitMin 抬到 50%（实测 " + rate.ToString("0.00") + "）");
+        }
+
+        private static void TestAttackArc()
+        {
+            Console.WriteLine("[攻击弧]");
+            Entity a = MakeEntity(EntityKind.Player, new TilePos(5, 5));
+            a.AttackRange = 1;
+            a.Facing = Dir.Right;
+
+            Check(CombatSystem.InAttackArc(a, MakeEntity(EntityKind.Monster, new TilePos(6, 5))), "正面 1 格能打到");
+            Check(CombatSystem.InAttackArc(a, MakeEntity(EntityKind.Monster, new TilePos(6, 6))), "斜前方 1 格能打到");
+            Check(!CombatSystem.InAttackArc(a, MakeEntity(EntityKind.Monster, new TilePos(4, 5))), "背后打不到");
+            Check(!CombatSystem.InAttackArc(a, MakeEntity(EntityKind.Monster, new TilePos(7, 5))), "超出距离打不到");
+            Check(!CombatSystem.InAttackArc(a, a), "不会打到自己");
+
+            Check(CombatSystem.IsHostile(a, MakeEntity(EntityKind.Monster, new TilePos(9, 9))), "玩家 <-> 怪 互为敌对");
+            Check(!CombatSystem.IsHostile(a, MakeEntity(EntityKind.Npc, new TilePos(9, 9))), "NPC 不算敌对");
+            Check(!CombatSystem.IsHostile(a, a), "自己不算敌对");
+        }
+
+        private static GameMap OpenMap(int size)
+        {
+            string[] rows = new string[size];
+            for (int i = 0; i < size; i++) rows[i] = new string('.', size);
+            return Map(rows);
+        }
+
+        private static void TestCombatKill()
+        {
+            Console.WriteLine("[战斗闭环：打死 -> 经验 -> 掉落 -> 拾取]");
+            GameMap map = OpenMap(20);
+
+            CombatTuning t = new CombatTuning();
+            t.HitBase = 1f; t.HitMin = 1f; t.CritChance = 0f;
+            t.CorpseTicks = 3; t.GroundLootTicks = 50; t.RegenDelayTicks = 100000;
+
+            Func<string, Entity> factory = delegate(string id)
+            {
+                Entity m = MakeEntity(EntityKind.Monster, new TilePos(10, 10));
+                m.DefId = id;
+                m.Hp = 12; m.MaxHp = 12;
+                m.MinDc = 0; m.MaxDc = 0; m.Ac = 0;
+                m.MoveSpeed = 100; m.AttackInterval = 100;
+                m.AttackRange = 1; m.Vision = 1; m.Aggressive = false; m.Leash = 2;
+                m.ExpReward = 20; m.GoldMin = 5; m.GoldMax = 5; m.GoldChance = 1f;
+                return m;
+            };
+
+            Simulation sim = new Simulation(map, 3u, factory, t);
+
+            Entity player = MakeEntity(EntityKind.Player, new TilePos(9, 10));
+            player.Facing = Dir.Right;
+            player.Hp = 100; player.MaxHp = 100;
+            player.MinDc = 6; player.MaxDc = 6; player.Ac = 0;
+            player.AttackInterval = 1; player.AttackRange = 1;
+            player.ExpToNextLevel = 1000;
+            sim.World.Spawn(player);
+            sim.World.Player = player;
+
+            Entity mon = factory("mon_test");
+            mon.Pos = new TilePos(10, 10);
+            mon.HomePos = mon.Pos;
+            sim.World.Spawn(mon);
+
+            int damageEvents = 0, diedEvents = 0, goldEvents = 0, expEvents = 0;
+            sim.Bus.Subscribe<DamageDealt>(delegate(DamageDealt e) { damageEvents++; });
+            sim.Bus.Subscribe<EntityDied>(delegate(EntityDied e) { diedEvents++; });
+            sim.Bus.Subscribe<GoldPicked>(delegate(GoldPicked e) { goldEvents++; });
+            sim.Bus.Subscribe<ExpGained>(delegate(ExpGained e) { expEvents++; });
+
+            List<Intent> intents = new List<Intent>();
+            string broken = null;
+            for (int i = 0; i < 20 && broken == null; i++)
+            {
+                intents.Clear();
+                intents.Add(Intent.Attack(player.Id, Dir.Right));
+                sim.Step(intents);
+                broken = Invariants(sim.World);
+                if (diedEvents == 1) break;      // 刚死，立刻检查尸体状态
+            }
+
+            Check(broken == null, "战斗全程不变量成立: " + (broken == null ? "ok" : broken));
+            Check(mon.Hp == 0, "怪被打死（HP " + mon.Hp + "）");
+            Check(damageEvents == 2, "12 点血 / 每下 6 点 = 2 次伤害（实际 " + damageEvents + "）");
+            Check(diedEvents == 1, "死亡事件发了一次（实际 " + diedEvents + "）");
+            Check(expEvents == 1 && player.Exp == 20, "击杀拿到 20 经验（实际 " + player.Exp + "）");
+
+            // 怪自己会游荡，所以用「死亡那一刻的真实格子」做断言
+            TilePos deathTile = mon.Pos;
+
+            Entity loot = null;
+            foreach (Entity e in sim.World.Entities) if (e.Kind == EntityKind.GroundItem) loot = e;
+            Check(loot != null, "掉出了地面金币");
+            Check(sim.World.Get(mon.Id) != null, "尸体还在，暂时还占着那一格");
+            Check(sim.World.IsOccupied(deathTile), "死亡点被尸体占着（" + deathTile + "）");
+            Check(loot != null && loot.Pos == deathTile, "金币掉在死亡点上（实际 " + (loot != null ? loot.Pos.ToString() : "-") + "）");
+
+            // 尸体到点被清掉；金币留在原地且不占格
+            for (int i = 0; i < 6; i++) sim.Step(new List<Intent>());
+            Check(mon.Pos == deathTile, "尸体挂掉之后一直没动过");
+            Check(sim.World.Get(mon.Id) == null, "尸体按 CorpseTicks 被清理");
+            Check(!sim.World.IsOccupied(deathTile), "尸体清掉后格子释放");
+            Check(sim.World.GroundItemAt(deathTile) == loot, "金币还在原地，且不占格");
+
+            // 走过去捡金币
+            if (loot != null)
+            {
+                sim.World.PlaceEntity(player, loot.Pos);
+                sim.Step(new List<Intent>());
+                Check(goldEvents == 1, "踩上去自动捡金币（事件 " + goldEvents + "）");
+                Check(player.Gold == 5, "金币进账 5（实际 " + player.Gold + "）");
+                Check(sim.World.Get(loot.Id) == null, "捡完后地面金币消失");
+            }
+
+            // 地面物到期自动消失
+            Entity loot2 = null;
+            foreach (Entity e in sim.World.Entities) if (e.Kind == EntityKind.GroundItem) loot2 = e;
+            Check(loot2 == null, "没有残留的地面物");
+        }
+
+        private static void TestPlayerDeathAndRespawn()
+        {
+            Console.WriteLine("[玩家死亡与复活]");
+            GameMap map = OpenMap(20);
+            map.Spawn = new TilePos(2, 2);
+
+            CombatTuning t = new CombatTuning();
+            t.HitBase = 1f; t.HitMin = 1f; t.CritChance = 0f;
+            t.PlayerRespawnTicks = 5;
+            t.CorpseTicks = 2;
+            t.RegenDelayTicks = 100000;
+
+            Func<string, Entity> factory = delegate(string id)
+            {
+                Entity m = MakeEntity(EntityKind.Monster, new TilePos(11, 10));
+                m.DefId = id;
+                m.Hp = 1000; m.MaxHp = 1000;
+                m.MinDc = 50; m.MaxDc = 50; m.Ac = 0;
+                m.AttackInterval = 1; m.AttackRange = 1;
+                m.Vision = 1; m.Leash = 3; m.MoveSpeed = 50; m.Aggressive = true;
+                m.ExpReward = 0;
+                return m;
+            };
+
+            Simulation sim = new Simulation(map, 4u, factory, t);
+
+            Entity player = MakeEntity(EntityKind.Player, new TilePos(10, 10));
+            player.Hp = 60; player.MaxHp = 60; player.Ac = 0; player.Level = 1;
+            player.AttackInterval = 10; player.ExpToNextLevel = 1000;
+            sim.World.Spawn(player);
+            sim.World.Player = player;
+
+            Entity wolf = factory("mon_wolf");
+            wolf.Pos = new TilePos(11, 10);
+            wolf.HomePos = wolf.Pos;
+            sim.World.Spawn(wolf);
+
+            int deaths = 0, respawns = 0;
+            sim.Bus.Subscribe<EntityDied>(delegate(EntityDied e) { if (e.Id == player.Id) deaths++; });
+            sim.Bus.Subscribe<PlayerRespawned>(delegate(PlayerRespawned e) { respawns++; });
+
+            List<Intent> intents = new List<Intent>();
+            string broken = null;
+            bool movedWhileDead = false;
+
+            for (int i = 0; i < 60 && broken == null; i++)
+            {
+                intents.Clear();
+                if (!player.IsAlive) intents.Add(Intent.Move(player.Id, Dir.Left));
+
+                TilePos before = player.Pos;
+                sim.Step(intents);
+                if (!player.IsAlive && player.Pos != before) movedWhileDead = true;
+                broken = Invariants(sim.World);
+            }
+
+            Check(broken == null, "死亡/复活全程不变量成立: " + (broken == null ? "ok" : broken));
+            Check(deaths == 1, "玩家死亡事件发了一次（实际 " + deaths + "）");
+            Check(respawns == 1, "玩家复活了一次（实际 " + respawns + "）");
+            Check(player.IsAlive && player.Hp == player.MaxHp, "复活后满血（" + player.Hp + "/" + player.MaxHp + "）");
+            Check(player.Pos == new TilePos(2, 2), "复活回出生点（实际 " + player.Pos + "）");
+            Check(!movedWhileDead, "死亡期间完全无法移动");
+            Check(!sim.World.IsOccupied(new TilePos(10, 10)), "玩家尸体原位置已释放");
         }
     }
 }
