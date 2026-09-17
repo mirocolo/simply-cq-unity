@@ -351,7 +351,7 @@ namespace DomainCheck
                 return m;
             };
 
-            Simulation sim = new Simulation(map, 11u, null, null, null);
+            Simulation sim = new Simulation(map, 11u, null, null, null, null);
             Entity player = MakeEntity(EntityKind.Player, new TilePos(10, 10));
             player.MoveSpeed = 3;
             sim.World.Spawn(player);
@@ -379,7 +379,7 @@ namespace DomainCheck
             Check(sim.World.Tick == 120 || attacked, "模拟推进正常");
 
             // 被动的鸡不会追人
-            Simulation sim2 = new Simulation(Map("..........", "..........", "..........", "..........", "..........", "..........", "..........", "..........", "..........", ".........."), 12u, null, null, null);
+            Simulation sim2 = new Simulation(Map("..........", "..........", "..........", "..........", "..........", "..........", "..........", "..........", "..........", ".........."), 12u, null, null, null, null);
             Entity p2 = MakeEntity(EntityKind.Player, new TilePos(8, 8));
             sim2.World.Spawn(p2);
             sim2.World.Player = p2;
@@ -416,7 +416,7 @@ namespace DomainCheck
                 return m;
             };
 
-            Simulation sim = new Simulation(map, 21u, factory, null, null);
+            Simulation sim = new Simulation(map, 21u, factory, null, null, null);
             Entity player = MakeEntity(EntityKind.Player, new TilePos(9, 9));
             sim.World.Spawn(player);
             sim.World.Player = player;
@@ -542,7 +542,7 @@ namespace DomainCheck
                 return m;
             };
 
-            Simulation sim = new Simulation(map, 3u, factory, t, null);
+            Simulation sim = new Simulation(map, 3u, factory, t, null, null);
 
             Entity player = MakeEntity(EntityKind.Player, new TilePos(9, 10));
             player.Facing = Dir.Right;
@@ -638,7 +638,7 @@ namespace DomainCheck
                 return m;
             };
 
-            Simulation sim = new Simulation(map, 4u, factory, t, null);
+            Simulation sim = new Simulation(map, 4u, factory, t, null, null);
 
             Entity player = MakeEntity(EntityKind.Player, new TilePos(10, 10));
             player.Hp = 60; player.MaxHp = 60; player.Ac = 0; player.Level = 1;
@@ -941,7 +941,7 @@ namespace DomainCheck
                 return m;
             };
 
-            Simulation sim = new Simulation(map, 9u, factory, t, cat);
+            Simulation sim = new Simulation(map, 9u, factory, t, cat, new ShopTuning());
             Entity p = MakeFullPlayer(cat, new TilePos(9, 10));
             sim.World.Spawn(p);
             sim.World.Player = p;

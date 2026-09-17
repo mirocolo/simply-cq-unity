@@ -4,13 +4,14 @@ using UnityEngine;
 namespace SimplyCQ.Unity
 {
     /// <summary>
-    /// 地面掉落物的名字。
-    /// 只在玩家附近显示（免得满屏是字），并且按类型上色：
-    /// 金币金、装备蓝、药水绿、材料灰 —— 站远一点也能一眼看出掉了什么好东西。
+    /// 地面上的名字：掉落物 + NPC。
+    /// 掉落物只在玩家附近显示（免得满屏是字），按类型上色：
+    /// 金币金、装备蓝、药水绿、材料灰；NPC 始终显示名字（金色）。
     /// </summary>
     public sealed class LootLabelOverlay
     {
         private const float ShowRadiusTiles = 5f;
+        private const float NpcRadiusTiles = 14f;
 
         private readonly World _world;
         private readonly EntityViewRegistry _views;
@@ -22,6 +23,7 @@ namespace SimplyCQ.Unity
         private GUIStyle _consumable;
         private GUIStyle _material;
         private GUIStyle _unknown;
+        private GUIStyle _npc;
 
         public LootLabelOverlay(World world, EntityViewRegistry views, IItemCatalog catalog, Camera camera)
         {
@@ -40,51 +42,58 @@ namespace SimplyCQ.Unity
 
             EnsureStyles();
 
-            foreach (Entity item in _world.Entities)
+            foreach (Entity e in _world.Entities)
             {
-                if (item.Kind != EntityKind.GroundItem) continue;
-                if (item.Pos.ChebyshevTo(player.Pos) > ShowRadiusTiles) continue;
-
-                Transform t = _views.GetTransform(item.Id);
-                if (t == null) continue;
-
-                Vector3 sp = _camera.WorldToScreenPoint(t.position + new Vector3(0f, 0.85f, 0f));
-                if (sp.z <= 0f) continue;
-
-                string text;
-                GUIStyle style;
-
-                if (item.Gold > 0)
+                if (e.Kind == EntityKind.Npc)
                 {
-                    text = "金币 x" + item.Gold;
-                    style = _gold;
-                }
-                else
-                {
-                    ItemDef def = _catalog != null ? _catalog.Get(item.DefId) : null;
-                    text = def != null ? def.Name : item.DefId;
-                    if (item.Count > 1) text += " x" + item.Count;
-
-                    ItemType type = def != null ? def.Type : ItemType.Material;
-                    if (type == ItemType.Equip) style = _equip;
-                    else if (type == ItemType.Consumable) style = _consumable;
-                    else if (type == ItemType.Material) style = _material;
-                    else style = _unknown;
+                    if (e.Pos.ChebyshevTo(player.Pos) <= NpcRadiusTiles) Label(e, e.Name, _npc);
+                    continue;
                 }
 
-                float w = UiScale.Px(160f);
-                GUI.Label(new Rect(sp.x - w * 0.5f, Screen.height - sp.y, w, UiScale.Px(20f)), text, style);
+                if (e.Kind != EntityKind.GroundItem) continue;
+                if (e.Pos.ChebyshevTo(player.Pos) > ShowRadiusTiles) continue;
+
+                if (e.Gold > 0)
+                {
+                    Label(e, "金币 x" + e.Gold, _gold);
+                    continue;
+                }
+
+                ItemDef def = _catalog != null ? _catalog.Get(e.DefId) : null;
+                string text = def != null ? def.Name : e.DefId;
+                if (e.Count > 1) text += " x" + e.Count;
+
+                ItemType type = def != null ? def.Type : ItemType.Material;
+                GUIStyle style = type == ItemType.Equip ? _equip
+                               : type == ItemType.Consumable ? _consumable
+                               : type == ItemType.Material ? _material
+                               : _unknown;
+
+                Label(e, text, style);
             }
+        }
+
+        private void Label(Entity e, string text, GUIStyle style)
+        {
+            Transform t = _views.GetTransform(e.Id);
+            if (t == null) return;
+
+            Vector3 sp = _camera.WorldToScreenPoint(t.position + new Vector3(0f, 0.85f, 0f));
+            if (sp.z <= 0f) return;
+
+            float w = UiScale.Px(180f);
+            GUI.Label(new Rect(sp.x - w * 0.5f, Screen.height - sp.y, w, UiScale.Px(20f)), text, style);
         }
 
         private void EnsureStyles()
         {
             if (_gold != null) return;
-            _gold = Make(new Color(1f, 0.86f, 0.25f));
-            _equip = Make(new Color(0.45f, 0.78f, 1f));
-            _consumable = Make(new Color(0.55f, 1f, 0.60f));
-            _material = Make(new Color(0.82f, 0.82f, 0.78f));
-            _unknown = Make(new Color(1f, 0.55f, 0.35f));
+            _gold = Make(UiColor.Srgb(1f, 0.86f, 0.25f));
+            _equip = Make(UiColor.Srgb(0.45f, 0.78f, 1f));
+            _consumable = Make(UiColor.Srgb(0.55f, 1f, 0.60f));
+            _material = Make(UiColor.Srgb(0.82f, 0.82f, 0.78f));
+            _unknown = Make(UiColor.Srgb(1f, 0.55f, 0.35f));
+            _npc = Make(UiColor.Srgb(1f, 0.93f, 0.60f));
         }
 
         private static GUIStyle Make(Color color)

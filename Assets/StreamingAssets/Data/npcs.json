@@ -1,0 +1,20 @@
+{
+  "npcs": [
+    {
+      "id": "npc_merchant",
+      "name": "杂货商",
+      "sprite": "npc_merchant",
+      "dialog": "买点什么？也可以把不要的东西卖给我。",
+      "stock": [
+        "pot_hp_s",
+        "pot_hp_m",
+        "pot_mp_s",
+        "wp_wood",
+        "wp_short",
+        "ar_cloth",
+        "he_cap",
+        "bt_straw"
+      ]
+    }
+  ]
+}

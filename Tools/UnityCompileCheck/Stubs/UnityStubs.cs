@@ -164,6 +164,7 @@ namespace UnityEngine
         public static Color gray { get { return new Color(0.5f, 0.5f, 0.5f); } }
         public static Color magenta { get { return new Color(1f, 0f, 1f); } }
         public static Color HSVToRGB(float h, float s, float v) { return white; }
+        public Color linear { get { return this; } }
         public static Color Lerp(Color a, Color b, float t) { return a; }
     }
 
@@ -219,7 +220,7 @@ namespace UnityEngine
         public static float timeSinceLevelLoad { get { return 0f; } }
     }
 
-    public enum KeyCode { A, B, C, D, I, J, S, W, Space, Escape, UpArrow, DownArrow, LeftArrow, RightArrow }
+    public enum KeyCode { A, B, C, D, E, I, J, S, W, F5, F9, Space, Escape, UpArrow, DownArrow, LeftArrow, RightArrow }
 
     public static class Input
     {
@@ -264,6 +265,7 @@ namespace UnityEngine
     {
         public static T FromJson<T>(string json) { return default(T); }
         public static string ToJson(object obj) { return ""; }
+        public static string ToJson(object obj, bool prettyPrint) { return ""; }
     }
 
     [AttributeUsage(AttributeTargets.Field)]

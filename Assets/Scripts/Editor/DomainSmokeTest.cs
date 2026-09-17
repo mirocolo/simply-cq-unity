@@ -74,7 +74,7 @@ namespace SimplyCQ.EditorTools
             Check(found && path.Count > 0, "从出生点能寻路到 " + far + "（" + path.Count + " 步）");
 
             // 跑 600 个 tick，每一步都检查不变量
-            Simulation sim = new Simulation(map, (uint)db.Balance.worldSeed, db.CreateMonster, db.Tuning, db.Items);
+            Simulation sim = new Simulation(map, (uint)db.Balance.worldSeed, db.CreateMonster, db.Tuning, db.Items, db.Shop);
             Entity player = db.CreatePlayer();
             player.Pos = map.Spawn;
             player.HomePos = player.Pos;
@@ -122,7 +122,7 @@ namespace SimplyCQ.EditorTools
                 "balance.json 的 combat 段解析成功（攻击间隔 " + (tuning != null ? tuning.PlayerAttackInterval : 0) + " tick）");
 
             GameMap arena = MapLoader.CreateFallbackMap(24, 24);
-            Simulation arena2 = new Simulation(arena, 20240617u, null, tuning, db.Items);
+            Simulation arena2 = new Simulation(arena, 20240617u, null, tuning, db.Items, db.Shop);
 
             Entity fighter = db.CreatePlayer();
             fighter.Pos = arena.Spawn;
@@ -203,7 +203,7 @@ namespace SimplyCQ.EditorTools
             Check(swordIdx >= 0, "新手包里有木剑");
             if (swordIdx >= 0)
             {
-                Simulation gearSim = new Simulation(arena, 4242u, null, tuning, db.Items);
+                Simulation gearSim = new Simulation(arena, 4242u, null, tuning, db.Items, db.Shop);
                 Check(ItemSystem.Equip(gearSim.World, hero, swordIdx, db.Items), "能把木剑穿上");
                 Check(hero.MinDc > baseDc, "攻击力从 " + baseDc + " 提升到 " + hero.MinDc);
                 ItemInstance worn = hero.Gear.Get(EquipSlot.Weapon);
@@ -315,6 +315,119 @@ namespace SimplyCQ.EditorTools
                     Check(refused == 1, "背包满时拒绝拾取并给出提示（" + refused + "）");
                     Check(fullWorld.GroundItemAt(full.Pos) != null, "背包满时东西留在原地，不会被吞");
                 }
+            }
+
+            // ---------------- M3c 商店（买 / 卖，用真实数据表）----------------
+            Check(db.Shop != null && db.Shop.SellRatio > 0f,
+                "balance.json 读到售价系数 " + (db.Shop != null ? db.Shop.SellRatio : 0f));
+            Check(db.Map.Npcs.Count > 0, "地图上摆了 " + db.Map.Npcs.Count + " 个 NPC");
+
+            {
+                Simulation shopSim = db.CreateSimulation(1234u);
+                Entity trader = db.CreatePlayer();
+                trader.Pos = shopSim.World.FindFreeTileNear(shopSim.World.Map.Spawn, 11);
+                trader.HomePos = trader.Pos;
+                trader.Gold = 1000;
+                shopSim.World.Spawn(trader);
+                shopSim.World.Player = trader;
+
+                db.SpawnNpcs(shopSim.World);   // 把商人放出来
+
+                Entity merchant = ShopSystem.NearestMerchant(shopSim.World, trader);
+                Check(merchant != null, "商人出现在玩家交互距离内（" + (merchant != null ? merchant.Name + "@" + merchant.Pos : "-") + "）");
+
+                if (merchant != null)
+                {
+                    int stockIndex = -1;
+                    for (int i = 0; i < merchant.Shop.Stock.Count; i++)
+                    {
+                        if (trader.Bag.IndexOf(merchant.Shop.Stock[i]) < 0) { stockIndex = i; break; }
+                    }
+                    Check(stockIndex >= 0, "商人有玩家背包里没有的货可以测买卖");
+
+                    string buyId = stockIndex >= 0 ? merchant.Shop.Stock[stockIndex] : "";
+                    ItemDef buyDef = stockIndex >= 0 ? db.Items.Get(buyId) : null;
+                    Check(buyDef != null, "商人卖的东西在 items.json 里：" + buyId);
+
+                    if (buyDef != null)
+                    {
+                        int goldBefore = trader.Gold;
+                        List<Intent> buyActs = new List<Intent>();
+                        buyActs.Add(Intent.BagAction(trader.Id, IntentKind.BuyItem, stockIndex));
+                        shopSim.World.Step(buyActs);
+
+                        Check(trader.Gold == goldBefore - buyDef.Price,
+                            "买 1 件扣 " + buyDef.Price + " 金（" + goldBefore + " -> " + trader.Gold + "）");
+                        Check(trader.Bag.IndexOf(buyId) >= 0, "买到的东西进了背包");
+
+                        int sellPrice = db.Shop.SellPriceOf(buyDef);
+                        int bagIndex = trader.Bag.IndexOf(buyId);
+                        int goldBeforeSell = trader.Gold;
+                        List<Intent> sellActs = new List<Intent>();
+                        sellActs.Add(Intent.BagAction(trader.Id, IntentKind.SellItem, bagIndex));
+                        shopSim.World.Step(sellActs);
+
+                        Check(trader.Gold == goldBeforeSell + sellPrice,
+                            "卖回去拿 " + sellPrice + " 金（售价系数 " + db.Shop.SellRatio + "）");
+                        Check(trader.Bag.IndexOf(buyId) < 0, "卖掉的东西离开背包");
+
+                        // 没钱：必须拒绝 + 给理由 + 绝不扣钱
+                        trader.Gold = 0;
+                        int refusedShop = 0;
+                        shopSim.Bus.Subscribe<ShopRefused>(delegate(ShopRefused x) { refusedShop++; });
+                        List<Intent> poorActs = new List<Intent>();
+                        poorActs.Add(Intent.BagAction(trader.Id, IntentKind.BuyItem, stockIndex));
+                        shopSim.World.Step(poorActs);
+
+                        Check(refusedShop == 1 && trader.Gold == 0, "没钱时拒绝交易并给出理由，且不扣钱");
+                    }
+                }
+            }
+
+            // ---------------- M3c 存档往返 ----------------
+            {
+                Simulation saveSim = db.CreateSimulation(4321u);
+                Entity before = db.CreatePlayer();
+                before.Pos = saveSim.World.FindFreeTileNear(saveSim.World.Map.Spawn, 11);
+                before.HomePos = before.Pos;
+                saveSim.World.Spawn(before);
+                saveSim.World.Player = before;
+
+                before.Level = 7;
+                before.Exp = 33;
+                before.Gold = 555;
+                before.BaseMaxHp = 250;
+                before.BaseMinDc = 12;
+                before.BaseMaxDc = 20;
+                StatCalculator.Apply(before, db.Items);
+                before.Hp = 200;
+
+                int swordSlot = before.Bag.IndexOf("wp_wood");
+                if (swordSlot >= 0) ItemSystem.Equip(saveSim.World, before, swordSlot, db.Items);
+                ItemDef hideForSave = db.Items.Get("mat_hide");
+                if (hideForSave != null) before.Bag.Add(hideForSave, 4);
+
+                SaveData data = SaveService.Capture(saveSim.World, 4321);
+                string json = JsonUtility.ToJson(data, true);
+                Check(json.Length > 100, "存档序列化出 " + json.Length + " 字节的 JSON");
+                Check(json.Contains("\"Level\": 7"), "JSON 里能看到等级");
+
+                SaveData back = JsonUtility.FromJson<SaveData>(json);
+
+                Simulation loadSim = db.CreateSimulation(4321u);
+                Entity after = db.CreatePlayer();
+                after.Pos = loadSim.World.Map.Spawn;
+                after.HomePos = after.Pos;
+                loadSim.World.Spawn(after);
+                loadSim.World.Player = after;
+
+                Check(SaveService.Apply(back, loadSim.World, db.Items), "读档应用成功");
+                Check(after.Level == 7 && after.Gold == 555, "等级/金币恢复（Lv" + after.Level + " " + after.Gold + " 金）");
+                Check(after.BaseMinDc == 12 && after.MinDc == 14,
+                    "基础属性恢复且装备加成重算（基础 " + after.BaseMinDc + " -> 有效 " + after.MinDc + "）");
+                Check(after.Gear.Get(EquipSlot.Weapon) != null, "装备栏恢复");
+                Check(after.Bag.IndexOf("mat_hide") >= 0, "背包恢复");
+                Check(after.Pos == before.Pos, "位置恢复（" + after.Pos + "）");
             }
 
             // 键盘操作的成败取决于 Player Settings，这里用编译期宏直接断言，

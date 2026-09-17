@@ -83,7 +83,7 @@ namespace SimplyCQ.Unity
                 if (sp.z <= 0f) continue;                       // 在相机背后
 
                 float alpha = 1f - it.Age / it.Life;
-                _style.normal.textColor = new Color(it.Color.r, it.Color.g, it.Color.b, alpha);
+                _style.normal.textColor = UiColor.Srgb(it.Color.r, it.Color.g, it.Color.b, alpha);
 
                 float w = UiScale.Px(LabelWidth);
                 GUI.Label(new Rect(sp.x - w * 0.5f, Screen.height - sp.y, w, UiScale.Px(22f)), it.Text, _style);
@@ -108,43 +108,43 @@ namespace SimplyCQ.Unity
         {
             Add(evt.Target,
                 evt.Crit ? evt.Amount + "!" : evt.Amount.ToString(),
-                evt.Crit ? new Color(1f, 0.86f, 0.20f) : new Color(1f, 0.36f, 0.30f),
+                evt.Crit ? UiColor.Srgb(1f, 0.86f, 0.20f) : UiColor.Srgb(1f, 0.36f, 0.30f),
                 0.95f, 0.9f);
         }
 
         private void OnMiss(AttackMissed evt)
         {
-            if (evt.Target.IsValid) Add(evt.Target, "MISS", new Color(0.85f, 0.85f, 0.90f), 0.7f, 0.7f);
-            else Add(evt.Source, "挥空", new Color(0.75f, 0.75f, 0.80f), 0.6f, 0.6f);
+            if (evt.Target.IsValid) Add(evt.Target, "MISS", UiColor.Srgb(0.85f, 0.85f, 0.90f), 0.7f, 0.7f);
+            else Add(evt.Source, "挥空", UiColor.Srgb(0.75f, 0.75f, 0.80f), 0.6f, 0.6f);
         }
 
         private void OnGold(GoldPicked evt)
         {
-            Add(evt.By, "+" + evt.Amount + " 金币", new Color(1f, 0.86f, 0.25f), 0.6f, 1.1f);
+            Add(evt.By, "+" + evt.Amount + " 金币", UiColor.Srgb(1f, 0.86f, 0.25f), 0.6f, 1.1f);
         }
 
         private void OnLevelUp(LevelUp evt)
         {
-            Add(evt.Id, "升级！Lv." + evt.Level, new Color(0.55f, 1f, 0.60f), 0.5f, 1.6f);
+            Add(evt.Id, "升级！Lv." + evt.Level, UiColor.Srgb(0.55f, 1f, 0.60f), 0.5f, 1.6f);
         }
 
         private void OnItemPicked(ItemPicked evt)
         {
             string name = _names != null && _names.Get(evt.DefId) != null ? _names.Get(evt.DefId).Name : evt.DefId;
-            Add(evt.By, "+" + name + (evt.Count > 1 ? " x" + evt.Count : ""), new Color(0.70f, 1f, 0.72f), 0.6f, 1.2f);
+            Add(evt.By, "+" + name + (evt.Count > 1 ? " x" + evt.Count : ""), UiColor.Srgb(0.70f, 1f, 0.72f), 0.6f, 1.2f);
         }
 
         /// <summary>捡不起来（负重不够 / 背包满）—— 必须给反馈，否则玩家只觉得"踩上去没反应"。</summary>
         private void OnPickupRefused(PickupRefused evt)
         {
-            Add(evt.By, "捡不起来：" + evt.Reason, new Color(1f, 0.55f, 0.25f), 0.55f, 1.6f);
+            Add(evt.By, "捡不起来：" + evt.Reason, UiColor.Srgb(1f, 0.55f, 0.25f), 0.55f, 1.6f);
         }
 
         private void OnDied(EntityDied evt)
         {
             Entity e = _world.Get(evt.Id);
             if (e != null && e.Kind == EntityKind.Player)
-                Add(evt.Id, "你死了…", new Color(1f, 0.45f, 0.45f), 0.4f, 1.6f);
+                Add(evt.Id, "你死了…", UiColor.Srgb(1f, 0.45f, 0.45f), 0.4f, 1.6f);
         }
     }
 }

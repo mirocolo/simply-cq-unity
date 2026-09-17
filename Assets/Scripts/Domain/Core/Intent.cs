@@ -10,7 +10,9 @@ namespace SimplyCQ.Domain
         Interact = 5,
         EquipItem = 6,
         UnequipItem = 7,
-        DropItem = 8
+        DropItem = 8,
+        BuyItem = 9,
+        SellItem = 10
     }
 
     /// <summary>玩家（或以后 AI 玩家）每 tick 提出的「意图」。合法性由 Domain 判定，表现层无权直接改世界。</summary>

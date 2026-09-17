@@ -18,6 +18,7 @@ namespace SimplyCQ.Domain
 
         public readonly List<Portal> Portals = new List<Portal>();
         public readonly List<Spawner> Spawners = new List<Spawner>();
+        public readonly List<NpcSpawn> Npcs = new List<NpcSpawn>();
         public TilePos Spawn = new TilePos(1, 1);
 
         public GameMap(string id, string name, int width, int height, byte[] tiles)
@@ -81,6 +82,13 @@ namespace SimplyCQ.Domain
                 SetTile(new TilePos(Width - 1, y), GroundId(new TilePos(Width - 1, y)), true);
             }
         }
+    }
+
+    /// <summary>地图上的 NPC 摆点。</summary>
+    public sealed class NpcSpawn
+    {
+        public TilePos Pos;
+        public string NpcId;
     }
 
     public sealed class Portal

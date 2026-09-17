@@ -17,7 +17,7 @@ namespace SimplyCQ.Domain
         /// 只是穿装备和捡物品会静默失效 —— 这种坑必须让编译器挡下来。
         /// </remarks>
         public Simulation(GameMap map, uint seed, Func<string, Entity> monsterFactory,
-                          CombatTuning tuning, IItemCatalog catalog)
+                          CombatTuning tuning, IItemCatalog catalog, ShopTuning shop)
         {
             Bus = new EventBus();
             World = new World(map, seed, Bus);
@@ -32,6 +32,7 @@ namespace SimplyCQ.Domain
             World.Systems.Add(new DeathSystem(Tuning, Catalog));
             World.Systems.Add(new LootSystem(Catalog));
             World.Systems.Add(new ItemSystem(Catalog));
+            World.Systems.Add(new ShopSystem(Catalog, shop));
             if (monsterFactory != null) World.Systems.Add(new SpawnerSystem(monsterFactory));
         }
 

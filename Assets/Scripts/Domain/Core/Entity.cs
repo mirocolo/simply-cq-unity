@@ -97,6 +97,9 @@ namespace SimplyCQ.Domain
         // ---- 掉落表（由数据表填好，Domain 只负责摇）----
         public readonly List<ItemDrop> ItemDrops = new List<ItemDrop>();
 
+        // ---- NPC（商人）----
+        public NpcDef Shop;
+
         // ---- AI ----
         public int Vision = 5;
         public int AttackRange = 1;

@@ -72,6 +72,19 @@ namespace SimplyCQ.Data
                 }
             }
 
+            if (dto.npcs != null)
+            {
+                for (int i = 0; i < dto.npcs.Length; i++)
+                {
+                    NpcSpawnDto n = dto.npcs[i];
+                    if (n == null || string.IsNullOrEmpty(n.npcId)) continue;
+                    NpcSpawn spawn = new NpcSpawn();
+                    spawn.Pos = new TilePos(n.x, n.y);
+                    spawn.NpcId = n.npcId;
+                    map.Npcs.Add(spawn);
+                }
+            }
+
             map.SealBorders();
             if (!map.IsWalkable(map.Spawn)) map.Spawn = map.FindNearestWalkable(map.Spawn, 16);
             return map;

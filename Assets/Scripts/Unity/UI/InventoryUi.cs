@@ -209,12 +209,12 @@ namespace SimplyCQ.Unity
             // 血条 / 经验条：数字之外给个图形，一眼知道还剩多少
             Bar(LRect(r, Pad, 48f, WindowW - Pad * 2f, 16f),
                 player.MaxHp > 0 ? player.Hp / (float)player.MaxHp : 0f,
-                new Color(0.78f, 0.18f, 0.15f),
+                UiColor.Srgb(0.78f, 0.18f, 0.15f),
                 "生命  " + player.Hp + " / " + player.MaxHp);
 
             Bar(LRect(r, Pad, 68f, WindowW - Pad * 2f, 16f),
                 player.ExpToNextLevel > 0 ? player.Exp / (float)player.ExpToNextLevel : 0f,
-                new Color(0.25f, 0.55f, 0.90f),
+                UiColor.Srgb(0.25f, 0.55f, 0.90f),
                 "经验  " + player.Exp + " / " + player.ExpToNextLevel);
 
             // 属性：总值 + 明细（基础 / 装备），这样换装有没有用一眼看得出
@@ -317,16 +317,16 @@ namespace SimplyCQ.Unity
         private void Bar(Rect r, float percent, Color fill, string text)
         {
             float pct = Mathf.Clamp01(percent);
-            Fill(r, new Color(0.10f, 0.10f, 0.12f, 0.92f));
+            Fill(r, UiColor.Srgb(0.10f, 0.10f, 0.12f, 0.92f));
             Fill(new Rect(r.x, r.y, r.width * pct, r.height), fill);
-            Border(r, new Color(0.44f, 0.39f, 0.26f, 1f));
+            Border(r, UiColor.Srgb(0.44f, 0.39f, 0.26f, 1f));
             GUI.Label(new Rect(r.x + UiScale.Px(6f), r.y, r.width, r.height), text, _label);
         }
 
         private void DrawCellBackground(Rect r, bool highlight)
         {
-            Fill(r, highlight ? new Color(0.34f, 0.30f, 0.18f, 0.95f) : new Color(0.15f, 0.14f, 0.13f, 0.92f));
-            Border(r, new Color(0.44f, 0.39f, 0.26f, 1f));
+            Fill(r, highlight ? UiColor.Srgb(0.34f, 0.30f, 0.18f, 0.95f) : UiColor.Srgb(0.15f, 0.14f, 0.13f, 0.92f));
+            Border(r, UiColor.Srgb(0.44f, 0.39f, 0.26f, 1f));
         }
 
         private void DrawIcon(Rect cell, ItemInstance item, ItemDef def)
@@ -342,8 +342,8 @@ namespace SimplyCQ.Unity
 
         private void Panel(Rect r, string title)
         {
-            Fill(r, new Color(0.06f, 0.06f, 0.08f, 0.90f));
-            Border(r, new Color(0.55f, 0.47f, 0.28f, 1f));
+            Fill(r, UiColor.Srgb(0.06f, 0.06f, 0.08f, 0.90f));
+            Border(r, UiColor.Srgb(0.55f, 0.47f, 0.28f, 1f));
             GUI.Label(LRect(r, Pad, 4f, WindowW, 20f), title, _title);
         }
 
@@ -384,8 +384,8 @@ namespace SimplyCQ.Unity
             if (r.xMax > Screen.width) r.x = Screen.width - r.width - UiScale.Px(4f);
             if (r.yMax > Screen.height) r.y = Screen.height - r.height - UiScale.Px(4f);
 
-            Fill(r, new Color(0.04f, 0.04f, 0.05f, 0.97f));
-            Border(r, new Color(0.70f, 0.60f, 0.32f, 1f));
+            Fill(r, UiColor.Srgb(0.04f, 0.04f, 0.05f, 0.97f));
+            Border(r, UiColor.Srgb(0.70f, 0.60f, 0.32f, 1f));
 
             string name = def.Name + (item != null && item.Count > 1 ? "  x" + item.Count : "");
             GUI.Label(new Rect(r.x + UiScale.Px(7f), r.y + UiScale.Px(4f), r.width, UiScale.Px(18f)), name, _tipTitle);
@@ -403,7 +403,7 @@ namespace SimplyCQ.Unity
             }
 
             Rect r = new Rect(Screen.width * 0.5f - UiScale.Px(180f), Screen.height - UiScale.Px(46f), UiScale.Px(360f), UiScale.Px(26f));
-            Fill(r, new Color(0.10f, 0.04f, 0.04f, 0.88f));
+            Fill(r, UiColor.Srgb(0.10f, 0.04f, 0.04f, 0.88f));
             GUI.Label(new Rect(r.x, r.y + UiScale.Px(4f), r.width, r.height), _hint, _label);
         }
 
@@ -429,7 +429,7 @@ namespace SimplyCQ.Unity
 
             _label = new GUIStyle(GUI.skin.label);
             _label.fontSize = UiScale.Font(13);
-            _label.normal.textColor = new Color(0.92f, 0.92f, 0.88f);
+            _label.normal.textColor = UiColor.Srgb(0.92f, 0.92f, 0.88f);
 
             _value = new GUIStyle(GUI.skin.label);
             _value.fontSize = UiScale.Font(14);
@@ -437,23 +437,23 @@ namespace SimplyCQ.Unity
 
             _bonus = new GUIStyle(GUI.skin.label);
             _bonus.fontSize = UiScale.Font(12);
-            _bonus.normal.textColor = new Color(0.45f, 0.95f, 0.55f);
+            _bonus.normal.textColor = UiColor.Srgb(0.45f, 0.95f, 0.55f);
 
             _small = new GUIStyle(GUI.skin.label);
             _small.fontSize = UiScale.Font(12);
-            _small.normal.textColor = new Color(0.72f, 0.70f, 0.62f);
+            _small.normal.textColor = UiColor.Srgb(0.72f, 0.70f, 0.62f);
 
             _title = new GUIStyle(GUI.skin.label);
             _title.fontSize = UiScale.Font(15);
-            _title.normal.textColor = new Color(1f, 0.90f, 0.55f);
+            _title.normal.textColor = UiColor.Srgb(1f, 0.90f, 0.55f);
 
             _tipTitle = new GUIStyle(GUI.skin.label);
             _tipTitle.fontSize = UiScale.Font(14);
-            _tipTitle.normal.textColor = new Color(1f, 0.88f, 0.45f);
+            _tipTitle.normal.textColor = UiColor.Srgb(1f, 0.88f, 0.45f);
 
             _tipBody = new GUIStyle(GUI.skin.label);
             _tipBody.fontSize = UiScale.Font(12);
-            _tipBody.normal.textColor = new Color(0.85f, 0.85f, 0.82f);
+            _tipBody.normal.textColor = UiColor.Srgb(0.85f, 0.85f, 0.82f);
         }
     }
 }

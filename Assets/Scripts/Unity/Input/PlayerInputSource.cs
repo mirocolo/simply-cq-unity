@@ -100,6 +100,28 @@ namespace SimplyCQ.Unity
 #endif
         }
 
+        /// <summary>E：开关商店。</summary>
+        public bool ReadShopToggle()
+        {
+            if (!Enabled) return false;
+#if ENABLE_LEGACY_INPUT_MANAGER
+            return Input.GetKeyDown(KeyCode.E);
+#else
+            return false;
+#endif
+        }
+
+        /// <summary>0 = 没按，1 = F5 存档，2 = F9 读档。</summary>
+        public int ReadSaveLoad()
+        {
+            if (!Enabled) return 0;
+#if ENABLE_LEGACY_INPUT_MANAGER
+            if (Input.GetKeyDown(KeyCode.F5)) return 1;
+            if (Input.GetKeyDown(KeyCode.F9)) return 2;
+#endif
+            return 0;
+        }
+
         /// <summary>面板开关：1 = 背包，2 = 角色，0 = 没按。同样是"按下瞬间"，要按帧采样。</summary>
         public int ReadPanelToggle()
         {

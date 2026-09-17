@@ -144,4 +144,19 @@ namespace SimplyCQ.Domain
         public int Count;
         public int Gold;
     }
+
+    public struct ItemBought
+    {
+        public ActorId By;
+        public string DefId;
+        public int Count;
+        public int Gold;
+    }
+
+    /// <summary>交易没做成（金币不够 / 背包满了 / 附近没商人）—— 必须显示给玩家。</summary>
+    public struct ShopRefused
+    {
+        public ActorId By;
+        public string Reason;
+    }
 }

@@ -15,6 +15,31 @@ namespace SimplyCQ.Data
         public string[] rows;
         public PortalDto[] portals;
         public SpawnerDto[] spawners;
+        public NpcSpawnDto[] npcs;
+    }
+
+    [Serializable]
+    public class NpcSpawnDto
+    {
+        public int x;
+        public int y;
+        public string npcId;
+    }
+
+    [Serializable]
+    public class NpcDto
+    {
+        public string id;
+        public string name;
+        public string sprite;
+        public string dialog;
+        public string[] stock;
+    }
+
+    [Serializable]
+    public class NpcFile
+    {
+        public NpcDto[] npcs;
     }
 
     [Serializable]
@@ -115,6 +140,7 @@ namespace SimplyCQ.Data
         public int tickPerSecond = 10;
         public int playerMoveSpeed = 3;
         public int playerLevel = 1;
+        public float shopSellRatio = 0.4f;
         public int playerHp = 90;
         public int playerMinDc = 2;
         public int playerMaxDc = 5;
@@ -144,6 +170,8 @@ namespace SimplyCQ.Data
             if (characterHeightPx < 8) characterHeightPx = 8;
             if (visibleTilesVertically < 5) visibleTilesVertically = 5;
             if (playerHp < 1) playerHp = 1;
+            if (shopSellRatio < 0f) shopSellRatio = 0f;
+            if (shopSellRatio > 2f) shopSellRatio = 2f;
             if (worldSeed == 0) worldSeed = 20240617;
         }
     }

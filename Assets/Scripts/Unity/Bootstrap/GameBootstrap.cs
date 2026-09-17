@@ -30,6 +30,7 @@ namespace SimplyCQ.Unity
         private CameraRig _cameraRig;
         private PlayerInputSource _input;
         private InventoryUi _inventoryUi;
+        private ShopUi _shopUi;
         private Camera _camera;
 
         private GUIStyle _hudStyle;
@@ -66,6 +67,10 @@ namespace SimplyCQ.Unity
         private float _demoLootAt = -1f;
         private bool _demoLootDone;
 
+        // 调试：命令行 -demoshop <秒> -> 站到商人旁边并打开商店面板（验证界面）
+        private float _demoShopAt = -1f;
+        private bool _demoShopDone;
+
         public World World { get { return _simulation != null ? _simulation.World : null; } }
 
         private void Awake()
@@ -89,6 +94,15 @@ namespace SimplyCQ.Unity
             _projection = new Projection(
                 balance.tileWidthPx / (float)balance.pixelsPerUnit,
                 balance.tileHeightPx / (float)balance.pixelsPerUnit);
+
+            // NPC 先放出来；再读档（读档会改玩家位置，相机要用最终位置）
+            _database.SpawnNpcs(_simulation.World);
+            if (SaveService.HasSave())
+            {
+                SaveData saved = SaveService.Load(SaveService.DefaultPath);
+                if (saved != null && SaveService.Apply(saved, _simulation.World, _database.Items))
+                    Debug.Log("[SimplyCQ] 已读取存档（" + saved.SavedAt + "）Lv" + saved.Level + " 金币 " + saved.Gold);
+            }
 
             _camera = Camera.main;
             if (_camera == null)
@@ -127,6 +141,7 @@ namespace SimplyCQ.Unity
 
             _input = new PlayerInputSource();
             _inventoryUi = new InventoryUi(_simulation.World, _database.Items);
+            _shopUi = new ShopUi(_simulation.World, _database.Items, _database.Shop);
 
             ParseCommandLine();
 
@@ -184,6 +199,23 @@ namespace SimplyCQ.Unity
                 SpawnDemoLoot();
             }
 
+            if (_demoShopAt > 0f && !_demoShopDone && Time.timeSinceLevelLoad >= _demoShopAt)
+            {
+                _demoShopDone = true;
+                PrepareDemoShop();
+            }
+
+            if (_input.ReadShopToggle()) _shopUi.Toggle();
+
+            int saveLoad = _input.ReadSaveLoad();
+            if (saveLoad == 1) SaveService.Save(_simulation.World, _database.Balance.worldSeed, SaveService.DefaultPath);
+            else if (saveLoad == 2)
+            {
+                SaveData loaded = SaveService.Load(SaveService.DefaultPath);
+                if (loaded != null && SaveService.Apply(loaded, _simulation.World, _database.Items))
+                    Debug.Log("[SimplyCQ] 读档成功 Lv" + loaded.Level);
+            }
+
             int toggle = _input.ReadPanelToggle();
             if (toggle == 1)
             {
@@ -198,7 +230,8 @@ namespace SimplyCQ.Unity
 
             // 鼠标在面板上时，左键是"点物品"而不是"挥砍"
             Dir attackDir;
-            if (player != null && !_inventoryUi.ConsumesMouse && _input.TryReadAttack(player.Facing, out attackDir))
+            if (player != null && !_inventoryUi.ConsumesMouse && !_shopUi.ConsumesMouse
+                && _input.TryReadAttack(player.Facing, out attackDir))
             {
                 _attackQueued = true;
                 _attackDir = attackDir;
@@ -238,6 +271,7 @@ namespace SimplyCQ.Unity
                 if (args[i] == "-autoshot" && float.TryParse(args[i + 1], out seconds)) _autoShotAt = seconds;
                 if (args[i] == "-selftest" && float.TryParse(args[i + 1], out seconds)) _selfTestAt = seconds;
                 if (args[i] == "-demoloot" && float.TryParse(args[i + 1], out seconds)) _demoLootAt = seconds;
+                if (args[i] == "-demoshop" && float.TryParse(args[i + 1], out seconds)) _demoShopAt = seconds;
             }
         }
 
@@ -416,9 +450,39 @@ namespace SimplyCQ.Unity
             Debug.Log("[SimplyCQ] 已放置 " + ids.Length + " 件演示掉落物，用来检查地面名字");
         }
 
+        /// <summary>把玩家挪到商人旁边并打开商店面板，用来截图检查界面。</summary>
+        private void PrepareDemoShop()
+        {
+            World world = _simulation.World;
+            Entity p = world.Player;
+            if (p == null) return;
+
+            Entity merchant = ShopSystem.NearestMerchant(world, p);
+            if (merchant == null)
+            {
+                foreach (Entity e in world.SnapshotEntities())
+                {
+                    if (e.Shop == null) continue;
+                    merchant = e;
+                    break;
+                }
+            }
+
+            if (merchant != null)
+            {
+                TilePos at = world.FindFreeTileNear(new TilePos(merchant.Pos.X - 1, merchant.Pos.Y), 6);
+                world.PlaceEntity(p, at);
+                p.HomePos = at;
+                Debug.Log("[SimplyCQ] 演示：已站到 " + merchant.Name + " @ " + merchant.Pos + " 旁边");
+            }
+
+            if (!_shopUi.IsOpen) _shopUi.Toggle();
+        }
+
         private void QuitGame()
         {
-            Debug.Log("[SimplyCQ] 退出");
+            SaveService.Save(_simulation.World, _database.Balance.worldSeed, SaveService.DefaultPath);
+            Debug.Log("[SimplyCQ] 退出（已自动存档）");
 #if UNITY_EDITOR
             UnityEditor.EditorApplication.isPlaying = false;
 #else
@@ -448,6 +512,7 @@ namespace SimplyCQ.Unity
             }
 
             _inventoryUi.DrainInto(_intents);
+            _shopUi.DrainInto(_intents);
             _simulation.Step(_intents);
         }
 
@@ -474,7 +539,7 @@ namespace SimplyCQ.Unity
 
                 _debugStyle = new GUIStyle(GUI.skin.label);
                 _debugStyle.fontSize = UiScale.Font(14);
-                _debugStyle.normal.textColor = new Color(0.85f, 0.90f, 0.95f);
+                _debugStyle.normal.textColor = UiColor.Srgb(0.85f, 0.90f, 0.95f);
 
                 _warnStyle = new GUIStyle(GUI.skin.label);
                 _warnStyle.fontSize = UiScale.Font(14);
@@ -493,7 +558,7 @@ namespace SimplyCQ.Unity
                         world.Player.Name, world.Player.Facing, world.Player.Pos, _floatingText.Count)
                     : "玩家 -";
 
-                const string line3 = "WASD 走路 · 空格/J/左键 攻击 · I 背包 · C 角色 · 背包里左键穿戴/使用，右键丢地上";
+                const string line3 = "WASD 走路 · 空格/J/左键 攻击 · I 背包 · C 角色 · E 商店 · F5 存档 · F9 读档 · Esc 退出";
 
                 GUI.Label(UiScale.R(10f, 8f, 1000f, 22f), line1, _debugStyle);
                 GUI.Label(UiScale.R(10f, 28f, 1000f, 22f), line2, _debugStyle);
@@ -503,12 +568,12 @@ namespace SimplyCQ.Unity
                 Rect inputRect = new Rect(Screen.width - UiScale.Px(620f), UiScale.Px(8f), UiScale.Px(610f), UiScale.Px(22f));
                 if (!Application.isFocused)
                 {
-                    _warnStyle.normal.textColor = new Color(1f, 0.45f, 0.4f);
+                    _warnStyle.normal.textColor = UiColor.Srgb(1f, 0.45f, 0.4f);
                     GUI.Label(inputRect, "⚠ 游戏窗口没有焦点！先用鼠标点一下窗口（或 Cmd+Tab 切过来），否则键盘鼠标都不会有反应", _warnStyle);
                 }
                 else if (_lastActivityAt <= 0f)
                 {
-                    _warnStyle.normal.textColor = new Color(1f, 0.85f, 0.4f);
+                    _warnStyle.normal.textColor = UiColor.Srgb(1f, 0.85f, 0.4f);
                     GUI.Label(inputRect, "窗口已有焦点，还没收到按键（WASD 走路 · 空格攻击 · I 背包 · Esc 退出）", _warnStyle);
                 }
                 else
@@ -520,6 +585,7 @@ namespace SimplyCQ.Unity
             _lootLabels.Draw();   // 地面掉落物的名字，先画再让面板盖住
             DrawHud(world);
             _inventoryUi.Draw();
+            _shopUi.Draw();
             _floatingText.Draw();
         }
 
@@ -535,15 +601,15 @@ namespace SimplyCQ.Unity
 
             DrawBar(x, y, w, h,
                 p.MaxHp > 0 ? p.Hp / (float)p.MaxHp : 0f,
-                new Color(0.16f, 0.05f, 0.05f, 0.85f),
-                new Color(0.80f, 0.19f, 0.16f, 0.95f),
+                UiColor.Srgb(0.16f, 0.05f, 0.05f, 0.85f),
+                UiColor.Srgb(0.80f, 0.19f, 0.16f, 0.95f),
                 "HP " + p.Hp + " / " + p.MaxHp);
 
             y += h + 4f;
             DrawBar(x, y, w, h,
                 p.ExpToNextLevel > 0 ? p.Exp / (float)p.ExpToNextLevel : 0f,
-                new Color(0.05f, 0.10f, 0.16f, 0.85f),
-                new Color(0.25f, 0.55f, 0.90f, 0.95f),
+                UiColor.Srgb(0.05f, 0.10f, 0.16f, 0.85f),
+                UiColor.Srgb(0.25f, 0.55f, 0.90f, 0.95f),
                 "EXP " + p.Exp + " / " + p.ExpToNextLevel);
 
             y += h + 6f;

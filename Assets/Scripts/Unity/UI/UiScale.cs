@@ -37,4 +37,18 @@ namespace SimplyCQ.Unity
             return new Rect(x * _scale, y * _scale, w * _scale, h * _scale);
         }
     }
+
+    /// <summary>
+    /// 项目是 Linear 色彩空间（m_ActiveColorSpace: 1）：
+    /// IMGUI 的颜色会被按【线性】解释，直接把 sRGB 数值写进去，显示出来会整体偏亮 ——
+    /// 0.06 的"近黑"面板会变成 0.25 的中灰，看起来又灰又平。
+    /// 所以界面颜色统一从 sRGB 转一次线性。（Gamma 空间的项目里这个转换是恒等，不会有副作用。）
+    /// </summary>
+    public static class UiColor
+    {
+        public static Color Srgb(float r, float g, float b, float a = 1f)
+        {
+            return new Color(r, g, b, a).linear;
+        }
+    }
 }

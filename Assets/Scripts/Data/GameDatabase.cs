@@ -10,15 +10,18 @@ namespace SimplyCQ.Data
     public sealed class GameDatabase
     {
         private readonly Dictionary<string, MonsterDto> _monsters = new Dictionary<string, MonsterDto>();
+        private readonly Dictionary<string, NpcDef> _npcs = new Dictionary<string, NpcDef>();
 
         public BalanceDto Balance { get; private set; }
         public CombatTuning Tuning { get; private set; }
         public ItemCatalog Items { get; private set; }
+        public ShopTuning Shop { get; private set; }
         public GameMap Map { get; private set; }
         public int MonsterKindCount { get { return _monsters.Count; } }
 
         public static GameDatabase LoadFromStreamingAssets(string mapFile, string monsterFile, string balanceFile,
-                                                          string itemFile = "Data/items.json")
+                                                          string itemFile = "Data/items.json",
+                                                          string npcFile = "Data/npcs.json")
         {
             GameDatabase db = new GameDatabase();
 
@@ -30,6 +33,28 @@ namespace SimplyCQ.Data
 
             db.Tuning = db.Balance.combat != null ? db.Balance.combat : new CombatTuning();
             db.Tuning.Clamp();
+
+            db.Shop = new ShopTuning();
+            db.Shop.SellRatio = db.Balance.shopSellRatio;
+            db.Shop.Clamp();
+
+            NpcFile npcFileData = LoadJson<NpcFile>(npcFile);
+            if (npcFileData != null && npcFileData.npcs != null)
+            {
+                for (int i = 0; i < npcFileData.npcs.Length; i++)
+                {
+                    NpcDto dto = npcFileData.npcs[i];
+                    if (dto == null || string.IsNullOrEmpty(dto.id)) continue;
+                    NpcDef def = new NpcDef();
+                    def.Id = dto.id;
+                    def.Name = string.IsNullOrEmpty(dto.name) ? dto.id : dto.name;
+                    def.SpriteId = string.IsNullOrEmpty(dto.sprite) ? dto.id : dto.sprite;
+                    def.Dialog = dto.dialog;
+                    if (dto.stock != null)
+                        for (int k = 0; k < dto.stock.Length; k++) def.Stock.Add(dto.stock[k]);
+                    db._npcs[def.Id] = def;
+                }
+            }
 
             MonsterFile mf = LoadJson<MonsterFile>(monsterFile);
             if (mf != null && mf.monsters != null)
@@ -75,7 +100,44 @@ namespace SimplyCQ.Data
         /// </summary>
         public Simulation CreateSimulation(uint seed)
         {
-            return new Simulation(Map, seed, CreateMonster, Tuning, Items);
+            return new Simulation(Map, seed, CreateMonster, Tuning, Items, Shop);
+        }
+
+        public NpcDef GetNpc(string npcId)
+        {
+            if (string.IsNullOrEmpty(npcId)) return null;
+            NpcDef def;
+            return _npcs.TryGetValue(npcId, out def) ? def : null;
+        }
+
+        /// <summary>把地图上摆的 NPC 生出来。商人的货来自 npcs.json。</summary>
+        public void SpawnNpcs(World world)
+        {
+            if (world == null) return;
+
+            for (int i = 0; i < Map.Npcs.Count; i++)
+            {
+                NpcSpawn spot = Map.Npcs[i];
+                NpcDef def = GetNpc(spot.NpcId);
+                if (def == null)
+                {
+                    Debug.LogWarning("[SimplyCQ] npcs.json 里没有 " + spot.NpcId);
+                    continue;
+                }
+
+                Entity e = new Entity();
+                e.Kind = EntityKind.Npc;
+                e.DefId = def.Id;
+                e.SpriteId = def.SpriteId;
+                e.Name = def.Name;
+                e.Shop = def;
+                e.BlocksTile = true;
+                e.BaseMaxHp = 100; e.MaxHp = 100; e.Hp = 100;
+                e.MoveSpeed = 1000;
+                e.Pos = world.FindFreeTileNear(spot.Pos, 8);
+                e.HomePos = e.Pos;
+                world.Spawn(e);
+            }
         }
 
         public Entity CreateMonster(string monsterId)

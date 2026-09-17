@@ -92,5 +92,12 @@
       "max": 4,
       "intervalTicks": 45
     }
+  ],
+  "npcs": [
+    {
+      "x": 26,
+      "y": 38,
+      "npcId": "npc_merchant"
+    }
   ]
 }

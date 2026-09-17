@@ -32,5 +32,6 @@
     "levelUpHpGain": 25,
     "levelUpDcGain": 2,
     "levelUpAcGain": 1
-  }
+  },
+  "shopSellRatio": 0.4
 }
