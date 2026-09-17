@@ -200,6 +200,16 @@ namespace SimplyCQ.EditorTools
                 "负重上限来自 balance.json（" + hero.Bag.MaxWeight + "）");
             Check(hero.Bag.UsedSlots > 0, "新手包里有 " + hero.Bag.UsedSlots + " 格东西");
 
+            // 负重规则：出生时装满一半以上，玩家捡第一件掉落物就会"捡不起来"（这次真踩过这个坑）
+            int startWeight = hero.Bag.WeightOf(db.Items);
+            Check(startWeight * 2 <= hero.Bag.MaxWeight,
+                "新手包负重占用低于上限一半（" + startWeight + "/" + hero.Bag.MaxWeight + "）");
+
+            int heaviest = 0;
+            foreach (ItemDef def in db.Items.All) if (def.Weight > heaviest) heaviest = def.Weight;
+            Check(startWeight + heaviest <= hero.Bag.MaxWeight,
+                "新手包(" + startWeight + ") + 最重掉落物(" + heaviest + ") 不超过负重上限(" + hero.Bag.MaxWeight + ")");
+
             int baseDc = hero.MinDc;
             int swordIdx = hero.Bag.IndexOf("wp_wood");
             Check(swordIdx >= 0, "新手包里有木剑");

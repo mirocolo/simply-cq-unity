@@ -40,10 +40,20 @@ namespace SimplyCQ.Unity
         private GUIStyle _tipTitle;
         private GUIStyle _tipBody;
 
+        private float _hintUntil;
+
         public InventoryUi(World world, IItemCatalog catalog)
         {
             _world = world;
             _catalog = catalog;
+
+            if (world != null) world.Events.Subscribe<PickupRefused>(OnPickupRefused);
+        }
+
+        private void OnPickupRefused(PickupRefused evt)
+        {
+            SetHint("捡不起来：" + evt.Reason + "（负重看背包标题栏）");
+            _hintUntil = Time.timeSinceLevelLoad + 3f;
         }
 
         public bool AnyOpen { get { return _bagOpen || _charOpen; } }
@@ -55,7 +65,11 @@ namespace SimplyCQ.Unity
 
         public void ToggleBag() { _bagOpen = !_bagOpen; }
         public void ToggleChar() { _charOpen = !_charOpen; }
-        public void SetHint(string hint) { _hint = hint; }
+        public void SetHint(string hint)
+        {
+            _hint = hint;
+            _hintUntil = Time.timeSinceLevelLoad + 3f;
+        }
 
         public void DrainInto(List<Intent> target)
         {
@@ -321,6 +335,12 @@ namespace SimplyCQ.Unity
         private void DrawHint()
         {
             if (string.IsNullOrEmpty(_hint)) return;
+            if (_hintUntil > 0f && Time.timeSinceLevelLoad > _hintUntil)
+            {
+                _hint = "";
+                _hintUntil = 0f;
+                return;
+            }
             Rect r = new Rect(Screen.width * 0.5f - 160f, Screen.height - 40f, 320f, 24f);
             Fill(r, new Color(0.10f, 0.04f, 0.04f, 0.85f));
             GUI.Label(new Rect(r.x, r.y + 3f, r.width, 20f), _hint, _label);

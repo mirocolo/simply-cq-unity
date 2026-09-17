@@ -111,7 +111,7 @@ namespace SimplyCQ.Unity
             _entityViews = new EntityViewRegistry(entityRoot, _projection, _simulation.World,
                 balance.characterWidthPx, balance.characterHeightPx, balance.pixelsPerUnit, _tickRate);
 
-            _floatingText = new FloatingTextOverlay(_entityViews, _camera, _simulation.World);
+            _floatingText = new FloatingTextOverlay(_entityViews, _camera, _simulation.World, _database.Items);
 
             _cameraRig = new CameraRig(_camera, _entityViews.GetTransform(player.Id),
                 _projection.MapWorldRect(_database.Map.Width, _database.Map.Height), balance.cameraSmoothTime);
@@ -321,6 +321,35 @@ namespace SimplyCQ.Unity
             world.Step(new List<Intent>());
             if (p.Gold <= goldBefore) { fail++; Debug.LogError("[SimplyCQ] 自检失败：金币没捡起来（" + goldBefore + " -> " + p.Gold + "）"); }
             else Debug.Log("[SimplyCQ] 自检 ok：捡到金币 " + goldBefore + " -> " + p.Gold);
+
+            // 3b) 捡物品（不只是金币）—— 物品要查物品表、要过负重，是另一条路
+            if (_database.Items != null && _database.Items.Get("mat_hide") != null)
+            {
+                Entity drop = new Entity();
+                drop.Kind = EntityKind.GroundItem;
+                drop.DefId = "mat_hide";
+                drop.SpriteId = "mat_hide";
+                drop.Name = "兽皮";
+                drop.BlocksTile = false;
+                drop.Count = 1;
+                drop.LifetimeTicks = 0;
+                drop.Pos = p.Pos;
+                drop.HomePos = p.Pos;
+                world.Spawn(drop);
+                world.Step(new List<Intent>());
+
+                if (p.Bag.IndexOf("mat_hide") < 0)
+                {
+                    fail++;
+                    Debug.LogError("[SimplyCQ] 自检失败：踩到物品没捡起来（负重 "
+                        + p.Bag.WeightOf(_database.Items) + "/" + p.Bag.MaxWeight + "）");
+                }
+                else
+                {
+                    Debug.Log("[SimplyCQ] 自检 ok：踩到物品进背包了（负重 "
+                        + p.Bag.WeightOf(_database.Items) + "/" + p.Bag.MaxWeight + "）");
+                }
+            }
 
             // 4) 走一遍界面真正用的 Intent 通道（点背包 = 排一个 Intent 丢给 Simulation）
             int clothIdx = p.Bag.IndexOf("ar_cloth");

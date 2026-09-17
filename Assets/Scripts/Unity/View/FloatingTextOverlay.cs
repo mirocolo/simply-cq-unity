@@ -27,13 +27,15 @@ namespace SimplyCQ.Unity
         private readonly EntityViewRegistry _views;
         private readonly Camera _camera;
         private readonly World _world;
+        private readonly IItemCatalog _names;
         private readonly GUIStyle _style;
 
-        public FloatingTextOverlay(EntityViewRegistry views, Camera camera, World world)
+        public FloatingTextOverlay(EntityViewRegistry views, Camera camera, World world, IItemCatalog names)
         {
             _views = views;
             _camera = camera;
             _world = world;
+            _names = names;
             _style = new GUIStyle();
             _style.fontSize = 18;
 
@@ -42,6 +44,8 @@ namespace SimplyCQ.Unity
             world.Events.Subscribe<GoldPicked>(OnGold);
             world.Events.Subscribe<LevelUp>(OnLevelUp);
             world.Events.Subscribe<EntityDied>(OnDied);
+            world.Events.Subscribe<ItemPicked>(OnItemPicked);
+            world.Events.Subscribe<PickupRefused>(OnPickupRefused);
         }
 
         public int Count { get { return _items.Count; } }
@@ -113,6 +117,18 @@ namespace SimplyCQ.Unity
         private void OnLevelUp(LevelUp evt)
         {
             Add(evt.Id, "升级！Lv." + evt.Level, new Color(0.55f, 1f, 0.60f), 0.5f, 1.6f);
+        }
+
+        private void OnItemPicked(ItemPicked evt)
+        {
+            string name = _names != null && _names.Get(evt.DefId) != null ? _names.Get(evt.DefId).Name : evt.DefId;
+            Add(evt.By, "+" + name + (evt.Count > 1 ? " x" + evt.Count : ""), new Color(0.70f, 1f, 0.72f), 0.6f, 1.2f);
+        }
+
+        /// <summary>捡不起来（负重不够 / 背包满）—— 必须给反馈，否则玩家只觉得"踩上去没反应"。</summary>
+        private void OnPickupRefused(PickupRefused evt)
+        {
+            Add(evt.By, "捡不起来：" + evt.Reason, new Color(1f, 0.55f, 0.25f), 0.55f, 1.6f);
         }
 
         private void OnDied(EntityDied evt)
