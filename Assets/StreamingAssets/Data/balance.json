@@ -2,6 +2,7 @@
   "tickPerSecond": 10,
   "playerMoveSpeed": 3,
   "playerLevel": 1,
+  "playerMaxWeight": 60,
   "playerHp": 120,
   "playerMinDc": 5,
   "playerMaxDc": 9,

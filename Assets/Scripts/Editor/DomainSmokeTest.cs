@@ -179,6 +179,73 @@ namespace SimplyCQ.EditorTools
                 Check(arena2.World.GroundItemAt(at) == null, "捡完后地面金币消失");
             }
 
+            // ---------------- M3 物品 / 背包 / 装备（用真实数据表）----------------
+            Check(db.Items != null && db.Items.Count > 0,
+                "items.json 加载了 " + (db.Items != null ? db.Items.Count : 0) + " 件物品");
+
+            // 掉落表引用的物品必须都存在 —— 这种数据错误拖到运行时才发现就晚了
+            int badDropRefs = 0;
+            for (int i = 0; i < map.Spawners.Count; i++)
+            {
+                Entity probe = db.CreateMonster(map.Spawners[i].MonsterId);
+                if (probe == null) continue;
+                for (int k = 0; k < probe.ItemDrops.Count; k++)
+                    if (db.Items.Get(probe.ItemDrops[k].ItemId) == null) badDropRefs++;
+            }
+            Check(badDropRefs == 0, "掉落表引用的物品都能在 items.json 里找到");
+
+            Entity hero = db.CreatePlayer();
+            Check(hero.Bag != null && hero.Gear != null, "玩家出生自带背包和装备栏");
+            Check(hero.Bag.MaxWeight == db.Balance.playerMaxWeight,
+                "负重上限来自 balance.json（" + hero.Bag.MaxWeight + "）");
+            Check(hero.Bag.UsedSlots > 0, "新手包里有 " + hero.Bag.UsedSlots + " 格东西");
+
+            int baseDc = hero.MinDc;
+            int swordIdx = hero.Bag.IndexOf("wp_wood");
+            Check(swordIdx >= 0, "新手包里有木剑");
+            if (swordIdx >= 0)
+            {
+                Simulation gearSim = new Simulation(arena, 4242u, null, tuning, db.Items);
+                Check(ItemSystem.Equip(gearSim.World, hero, swordIdx, db.Items), "能把木剑穿上");
+                Check(hero.MinDc > baseDc, "攻击力从 " + baseDc + " 提升到 " + hero.MinDc);
+                ItemInstance worn = hero.Gear.Get(EquipSlot.Weapon);
+                Check(worn != null && worn.Count == 1, "装备栏里的数量正确（" + (worn != null ? worn.Count : -1) + "）");
+                Check(ItemSystem.Unequip(gearSim.World, hero, EquipSlot.Weapon, db.Items), "能把木剑卸下");
+                Check(hero.MinDc == baseDc, "卸下后属性回到 " + hero.MinDc);
+            }
+
+            // 用真实物品表跑一次拾取
+            World lootWorld = new World(arena, 777u, new EventBus());
+            lootWorld.Systems.Add(new LootSystem(db.Items));
+            Entity picker = db.CreatePlayer();
+            picker.Pos = arena.Spawn;
+            picker.HomePos = picker.Pos;
+            lootWorld.Spawn(picker);
+            lootWorld.Player = picker;
+
+            int picked = 0;
+            lootWorld.Events.Subscribe<ItemPicked>(delegate(ItemPicked e) { picked++; });
+
+            ItemDef hideDef = db.Items.Get("mat_hide");
+            Check(hideDef != null, "items.json 里有 mat_hide");
+            if (hideDef != null)
+            {
+                Entity ground = new Entity();
+                ground.Kind = EntityKind.GroundItem;
+                ground.DefId = "mat_hide";
+                ground.SpriteId = "mat_hide";
+                ground.BlocksTile = false;
+                ground.Count = 2;
+                ground.Pos = arena.FindNearestWalkable(new TilePos(picker.Pos.X + 1, picker.Pos.Y), 8);
+                ground.HomePos = ground.Pos;
+                lootWorld.Spawn(ground);
+
+                lootWorld.PlaceEntity(picker, ground.Pos);
+                lootWorld.Step(new List<Intent>());
+                Check(picked == 1 && picker.Bag.IndexOf("mat_hide") >= 0, "踩上去把兽皮捡进背包");
+                Check(picker.Bag.WeightOf(db.Items) > 0, "背包重量随拾取增长");
+            }
+
             // 键盘操作的成败取决于 Player Settings，这里用编译期宏直接断言，
             // 免得出现「能跑但按键盘没反应」这种最难查的情况。
 #if ENABLE_LEGACY_INPUT_MANAGER

@@ -18,7 +18,21 @@
       "leash": 6,
       "goldMin": 0,
       "goldMax": 2,
-      "goldChance": 0.6
+      "goldChance": 0.6,
+      "drops": [
+        {
+          "itemId": "mat_hide",
+          "chance": 0.3,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "pot_hp_s",
+          "chance": 0.08,
+          "min": 1,
+          "max": 1
+        }
+      ]
     },
     {
       "id": "mon_wolf",
@@ -38,7 +52,33 @@
       "leash": 14,
       "goldMin": 2,
       "goldMax": 8,
-      "goldChance": 0.9
+      "goldChance": 0.9,
+      "drops": [
+        {
+          "itemId": "mat_hide",
+          "chance": 0.7,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "pot_hp_s",
+          "chance": 0.2,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "itemId": "wp_wood",
+          "chance": 0.06,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "ar_cloth",
+          "chance": 0.05,
+          "min": 1,
+          "max": 1
+        }
+      ]
     },
     {
       "id": "mon_boar",
@@ -58,7 +98,45 @@
       "leash": 10,
       "goldMin": 5,
       "goldMax": 15,
-      "goldChance": 1
+      "goldChance": 1,
+      "drops": [
+        {
+          "itemId": "mat_hide",
+          "chance": 1,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "itemId": "mat_fang",
+          "chance": 0.55,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "itemId": "pot_hp_m",
+          "chance": 0.25,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "wp_short",
+          "chance": 0.08,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "ar_leather",
+          "chance": 0.07,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "nk_bead",
+          "chance": 0.04,
+          "min": 1,
+          "max": 1
+        }
+      ]
     }
   ]
 }

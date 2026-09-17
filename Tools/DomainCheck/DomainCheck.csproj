@@ -14,7 +14,7 @@
 
   <ItemGroup>
     <Compile Include="../../Assets/Scripts/Domain/**/*.cs" />
-    <Compile Include="Program.cs" />
+    <Compile Include="*.cs" />
   </ItemGroup>
 
 </Project>

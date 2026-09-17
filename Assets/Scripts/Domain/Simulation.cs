@@ -9,20 +9,24 @@ namespace SimplyCQ.Domain
         public readonly EventBus Bus;
         public readonly World World;
         public readonly CombatTuning Tuning;
+        public readonly IItemCatalog Catalog;
 
-        public Simulation(GameMap map, uint seed, Func<string, Entity> monsterFactory, CombatTuning tuning = null)
+        public Simulation(GameMap map, uint seed, Func<string, Entity> monsterFactory,
+                          CombatTuning tuning = null, IItemCatalog catalog = null)
         {
             Bus = new EventBus();
             World = new World(map, seed, Bus);
             Tuning = tuning != null ? tuning : new CombatTuning();
             Tuning.Clamp();
+            Catalog = catalog;
 
             // 顺序有含义：先决策（AI），再执行移动，再结算战斗/死亡/拾取，最后刷怪
             World.Systems.Add(new AiSystem());
             World.Systems.Add(new MovementSystem());
             World.Systems.Add(new CombatSystem(Tuning));
-            World.Systems.Add(new DeathSystem(Tuning));
-            World.Systems.Add(new LootSystem());
+            World.Systems.Add(new DeathSystem(Tuning, Catalog));
+            World.Systems.Add(new LootSystem(Catalog));
+            World.Systems.Add(new ItemSystem(Catalog));
             if (monsterFactory != null) World.Systems.Add(new SpawnerSystem(monsterFactory));
         }
 

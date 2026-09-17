@@ -95,4 +95,53 @@ namespace SimplyCQ.Domain
         public ActorId Id;
         public TilePos At;
     }
+
+    public struct ItemDropped
+    {
+        public ActorId ItemId;
+        public string DefId;
+        public int Count;
+        public TilePos At;
+    }
+
+    public struct ItemPicked
+    {
+        public ActorId By;
+        public string DefId;
+        public int Count;
+    }
+
+    /// <summary>捡不起来：背包满 / 超重 / 数据表里没这件东西。</summary>
+    public struct PickupRefused
+    {
+        public ActorId By;
+        public string DefId;
+        public string Reason;
+    }
+
+    public struct ItemUsed
+    {
+        public ActorId By;
+        public string DefId;
+    }
+
+    public struct InventoryChanged
+    {
+        public ActorId Id;
+    }
+
+    public struct EquipmentChanged
+    {
+        public ActorId Id;
+        public EquipSlot Slot;
+        public string DefId;
+    }
+
+    public struct ItemSold
+    {
+        public ActorId By;
+        public string DefId;
+        public int Count;
+        public int Gold;
+    }
 }

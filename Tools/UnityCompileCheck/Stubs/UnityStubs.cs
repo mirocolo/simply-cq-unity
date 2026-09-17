@@ -280,6 +280,26 @@ namespace UnityEditor
 
     public static class AssetDatabase { public static void Refresh() { } }
 
+    public enum BuildTarget { StandaloneOSX = 2, StandaloneWindows64 = 19 }
+
+    public enum BuildTargetGroup { Standalone = 1 }
+
+    public enum BuildOptions { None = 0, Development = 1 }
+
+    public struct BuildPlayerOptions
+    {
+        public string[] scenes;
+        public string locationPathName;
+        public BuildTarget target;
+        public BuildTargetGroup targetGroup;
+        public BuildOptions options;
+    }
+
+    public static class BuildPipeline
+    {
+        public static UnityEditor.Build.Reporting.BuildReport BuildPlayer(BuildPlayerOptions options) { return null; }
+    }
+
     public static class EditorApplication
     {
         public static bool isPlaying { get; set; }
@@ -304,6 +324,25 @@ namespace UnityEditor
     }
 
     public static class EditorBuildSettings { public static EditorBuildSettingsScene[] scenes { get; set; } }
+}
+
+namespace UnityEditor.Build.Reporting
+{
+    public enum BuildResult { Unknown = 0, Succeeded = 1, Failed = 2, Cancelled = 3 }
+
+    public struct BuildSummary
+    {
+        public BuildResult result;
+        public ulong totalSize;
+        public System.TimeSpan totalTime;
+        public int totalErrors;
+        public int totalWarnings;
+    }
+
+    public class BuildReport
+    {
+        public BuildSummary summary { get { return default(BuildSummary); } }
+    }
 }
 
 namespace UnityEditor.SceneManagement

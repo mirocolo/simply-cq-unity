@@ -13,12 +13,16 @@ namespace SimplyCQ.Data
 
         public BalanceDto Balance { get; private set; }
         public CombatTuning Tuning { get; private set; }
+        public ItemCatalog Items { get; private set; }
         public GameMap Map { get; private set; }
         public int MonsterKindCount { get { return _monsters.Count; } }
 
-        public static GameDatabase LoadFromStreamingAssets(string mapFile, string monsterFile, string balanceFile)
+        public static GameDatabase LoadFromStreamingAssets(string mapFile, string monsterFile, string balanceFile,
+                                                          string itemFile = "Data/items.json")
         {
             GameDatabase db = new GameDatabase();
+
+            db.Items = ItemCatalog.FromFile(LoadJson<ItemFile>(itemFile));
 
             BalanceDto balance = LoadJson<BalanceDto>(balanceFile);
             db.Balance = balance != null ? balance : new BalanceDto();
@@ -78,11 +82,10 @@ namespace SimplyCQ.Data
             e.SpriteId = string.IsNullOrEmpty(d.sprite) ? d.id : d.sprite;
             e.Name = d.name;
             e.Level = d.level;
-            e.Hp = d.hp;
-            e.MaxHp = d.hp;
-            e.MinDc = d.minDc;
-            e.MaxDc = d.maxDc;
-            e.Ac = d.ac;
+            e.BaseMaxHp = d.hp;
+            e.BaseMinDc = d.minDc;
+            e.BaseMaxDc = d.maxDc;
+            e.BaseAc = d.ac;
             e.Exp = d.exp;
             e.MoveSpeed = d.moveSpeed;
             e.AttackInterval = d.attackInterval;
@@ -95,6 +98,24 @@ namespace SimplyCQ.Data
             e.GoldMin = d.goldMin;
             e.GoldMax = d.goldMax;
             e.GoldChance = d.goldChance;
+
+            if (d.drops != null)
+            {
+                for (int i = 0; i < d.drops.Length; i++)
+                {
+                    DropDto drop = d.drops[i];
+                    if (drop == null || string.IsNullOrEmpty(drop.itemId)) continue;
+                    ItemDrop entry = new ItemDrop();
+                    entry.ItemId = drop.itemId;
+                    entry.Chance = drop.chance;
+                    entry.Min = drop.min > 0 ? drop.min : 1;
+                    entry.Max = drop.max >= entry.Min ? drop.max : entry.Min;
+                    e.ItemDrops.Add(entry);
+                }
+            }
+
+            StatCalculator.Apply(e, Items);
+            e.Hp = e.MaxHp;
             return e;
         }
 
@@ -106,11 +127,10 @@ namespace SimplyCQ.Data
             e.SpriteId = "player_warrior";
             e.Name = "战士";
             e.Level = Balance.playerLevel;
-            e.Hp = Balance.playerHp;
-            e.MaxHp = Balance.playerHp;
-            e.MinDc = Balance.playerMinDc;
-            e.MaxDc = Balance.playerMaxDc;
-            e.Ac = Balance.playerAc;
+            e.BaseMaxHp = Balance.playerHp;
+            e.BaseMinDc = Balance.playerMinDc;
+            e.BaseMaxDc = Balance.playerMaxDc;
+            e.BaseAc = Balance.playerAc;
             e.MoveSpeed = Balance.playerMoveSpeed;
             e.Aggressive = false;
 
@@ -118,9 +138,29 @@ namespace SimplyCQ.Data
             e.AttackInterval = t.PlayerAttackInterval;
             e.AttackRange = 1;
             e.ExpToNextLevel = LevelCurve.ExpToNext(e.Level, t);
-            e.Hp = Balance.playerHp;
-            e.MaxHp = Balance.playerHp;
+
+            e.Bag = new Inventory();
+            e.Bag.MaxWeight = Balance.playerMaxWeight;
+            e.Gear = new Equipment();
+
+            // 送一套新手装备，进游戏就能立刻看到换装对属性的影响
+            GiveStartingKit(e);
+
+            StatCalculator.Apply(e, Items);
+            e.Hp = e.MaxHp;
             return e;
+        }
+
+        private void GiveStartingKit(Entity e)
+        {
+            if (Items == null || e.Bag == null) return;
+            string[] kit = { "wp_wood", "ar_cloth", "bt_straw", "pot_hp_s", "pot_hp_s", "pot_hp_s" };
+            for (int i = 0; i < kit.Length; i++)
+            {
+                ItemDef def = Items.Get(kit[i]);
+                if (def == null) continue;
+                e.Bag.Add(def, 1);
+            }
         }
     }
 }

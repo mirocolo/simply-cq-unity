@@ -155,6 +155,31 @@ namespace SimplyCQ.Domain
             return _scratch;
         }
 
+        /// <summary>
+        /// 找一个「没挡路 + 没掉落物」的格子，用来把战利品散开，
+        /// 否则一次掉三件东西会互相覆盖（一格只挂得下一个掉落物）。
+        /// </summary>
+        public TilePos FindFreeGroundTileNear(TilePos origin, int maxRadius)
+        {
+            if (Map.IsWalkable(origin) && !IsOccupied(origin) && GroundItemAt(origin) == null) return origin;
+            for (int r = 1; r <= maxRadius; r++)
+            {
+                for (int dy = -r; dy <= r; dy++)
+                {
+                    for (int dx = -r; dx <= r; dx++)
+                    {
+                        if (Math.Abs(dx) != r && Math.Abs(dy) != r) continue;
+                        TilePos p = new TilePos(origin.X + dx, origin.Y + dy);
+                        if (!Map.IsWalkable(p)) continue;
+                        if (IsOccupied(p)) continue;
+                        if (GroundItemAt(p) != null) continue;
+                        return p;
+                    }
+                }
+            }
+            return origin;
+        }
+
         public void Step(IReadOnlyList<Intent> intents)
         {
             Tick++;

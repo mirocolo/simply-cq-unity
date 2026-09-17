@@ -33,6 +33,12 @@ namespace DomainCheck
             TestAttackArc();
             TestCombatKill();
             TestPlayerDeathAndRespawn();
+            TestInventory();
+            TestEquipment();
+            TestItemPickup();
+            TestDropRoller();
+            TestConsumable();
+            TestLootLoop();
             Console.WriteLine();
             Console.WriteLine(_failures == 0 ? "全部通过 ✓" : _failures + " 项失败 ✗");
             return _failures == 0 ? 0 : 1;
@@ -671,6 +677,285 @@ namespace DomainCheck
             Check(player.Pos == new TilePos(2, 2), "复活回出生点（实际 " + player.Pos + "）");
             Check(!movedWhileDead, "死亡期间完全无法移动");
             Check(!sim.World.IsOccupied(new TilePos(10, 10)), "玩家尸体原位置已释放");
+        }
+
+        // ---------------------------------------------------------------- M3 物品 / 背包 / 装备
+
+        private static Entity MakeFullPlayer(TestCatalog catalog, TilePos pos, int maxWeight = 60)
+        {
+            Entity e = MakeEntity(EntityKind.Player, pos);
+            e.Level = 1;
+            e.BaseMinDc = 5; e.BaseMaxDc = 9; e.BaseAc = 2; e.BaseMaxHp = 120;
+            e.Bag = new Inventory();
+            e.Bag.MaxWeight = maxWeight;
+            e.Gear = new Equipment();
+            e.ExpToNextLevel = 1000;
+            e.AttackInterval = 10;
+            StatCalculator.Apply(e, catalog);
+            e.Hp = e.MaxHp;
+            return e;
+        }
+
+        private static Entity MakeGroundItem(TilePos at, string defId, int count)
+        {
+            Entity e = new Entity();
+            e.Kind = EntityKind.GroundItem;
+            e.DefId = defId;
+            e.SpriteId = defId;
+            e.Name = defId;
+            e.BlocksTile = false;
+            e.Count = count;
+            e.LifetimeTicks = 0;
+            e.Pos = at;
+            e.HomePos = at;
+            return e;
+        }
+
+        private static void TestInventory()
+        {
+            Console.WriteLine("[背包]");
+            TestCatalog cat = new TestCatalog();
+            cat.Material("hide", 3);
+            cat.Potion("pot", 30, 1);
+
+            Inventory bag = new Inventory();
+            bag.MaxWeight = 60;
+            ItemDef hide = cat.Get("hide");
+
+            Check(bag.Add(hide, 5) == 5, "放入 5 个可堆叠物品");
+            Check(bag.UsedSlots == 1, "堆叠进同一格（用了 " + bag.UsedSlots + " 格）");
+            bag.Add(hide, 10);
+            Check(bag.At(0).Count == 15, "继续叠加到 15（实际 " + bag.At(0).Count + "）");
+            Check(bag.WeightOf(cat) == 45, "重量 = 15 x 3（实际 " + bag.WeightOf(cat) + "）");
+            Check(bag.RemoveById("hide", 5) == 5, "按 id 移除 5 个");
+            Check(bag.At(0).Count == 10, "移除后剩 10 个");
+
+            ItemDef pot = cat.Get("pot");
+            int added = bag.Add(pot, Inventory.SlotCount * 99);
+            Check(added == (Inventory.SlotCount - 1) * 99, "剩余格子全塞满（实际加入 " + added + "）");
+            Check(bag.FreeSpaceFor(pot) == 0, "背包已满");
+            Check(bag.Add(pot, 1) == 0, "满了之后加不进去");
+            Check(bag.UsedSlots == Inventory.SlotCount, "48 格全满（实际 " + bag.UsedSlots + "）");
+
+            Check(bag.Move(0, 1), "交换两格");
+            Check(bag.At(0) != null && bag.At(1) != null, "交换后两格都还有东西");
+        }
+
+        private static void TestEquipment()
+        {
+            Console.WriteLine("[装备与属性聚合]");
+            TestCatalog cat = new TestCatalog();
+            cat.Equip("sword1", EquipSlot.Weapon, 2, 4, 0, 20);
+            cat.Equip("sword2", EquipSlot.Weapon, 6, 10, 0, 25);
+            cat.Equip("armour1", EquipSlot.Armour, 0, 0, 3, 15, 1, 20);
+            cat.Equip("relic", EquipSlot.Weapon, 50, 60, 0, 1, 99);
+            cat.Material("junk", 0);
+
+            GameMap map = OpenMap(8);
+            World world = new World(map, 1u, new EventBus());
+            Entity p = MakeFullPlayer(cat, new TilePos(1, 1));
+
+            Check(p.MinDc == 5 && p.MaxDc == 9 && p.Ac == 2, "初始有效属性 = 基础属性");
+            Check(p.MaxHp == 120, "初始最大生命 120");
+
+            p.Bag.Add(cat.Get("sword1"), 1);
+            Check(ItemSystem.Equip(world, p, p.Bag.IndexOf("sword1"), cat), "穿上木剑");
+            Check(p.Gear.Get(EquipSlot.Weapon) != null, "武器栏有东西了");
+            Check(p.Bag.IndexOf("sword1") == -1, "背包里的木剑没了");
+            Check(p.MinDc == 7 && p.MaxDc == 13, "攻击力 5+2 / 9+4（实际 " + p.MinDc + "-" + p.MaxDc + "）");
+
+            Check(p.Gear.Get(EquipSlot.Weapon).Count == 1, "身上的装备数量是 1（不能被背包的 RemoveAt 减成 0）");
+
+            p.Bag.Add(cat.Get("sword2"), 1);
+            Check(ItemSystem.Equip(world, p, p.Bag.IndexOf("sword2"), cat), "换上短剑");
+            Check(p.Gear.Get(EquipSlot.Weapon).DefId == "sword2", "武器栏是短剑");
+            Check(p.Bag.IndexOf("sword1") >= 0, "换下来的木剑回到背包");
+            Check(p.MinDc == 11 && p.MaxDc == 19, "攻击力 5+6 / 9+10（实际 " + p.MinDc + "-" + p.MaxDc + "）");
+
+            p.Bag.Add(cat.Get("relic"), 1);
+            Check(!ItemSystem.Equip(world, p, p.Bag.IndexOf("relic"), cat), "等级不够穿不上");
+            Check(p.Gear.Get(EquipSlot.Weapon).DefId == "sword2", "装备没被换掉");
+            Check(p.Bag.IndexOf("relic") >= 0, "那件装备还在背包里");
+
+            Check(ItemSystem.Unequip(world, p, EquipSlot.Weapon, cat), "卸下武器");
+            Check(p.Gear.Get(EquipSlot.Weapon) == null, "武器栏空了");
+            Check(p.MinDc == 5 && p.MaxDc == 9, "属性回到基础值");
+            Check(p.Bag.IndexOf("sword2") >= 0, "短剑回到背包");
+
+            p.Bag.Add(cat.Get("armour1"), 1);
+            ItemSystem.Equip(world, p, p.Bag.IndexOf("armour1"), cat);
+            Check(p.MaxHp == 140, "皮甲 +20 生命（实际 " + p.MaxHp + "）");
+            Check(p.Ac == 5, "防御 2+3=5（实际 " + p.Ac + "）");
+
+            // 背包塞满时换装必须失败，而且不能把身上的装备弄丢
+            Entity p3 = MakeFullPlayer(cat, new TilePos(3, 3));
+            p3.Bag.Add(cat.Get("sword1"), 1);
+            ItemSystem.Equip(world, p3, p3.Bag.IndexOf("sword1"), cat);
+            p3.Bag.Add(cat.Get("sword2"), 1);
+            int sword2Index = p3.Bag.IndexOf("sword2");
+            p3.Bag.Add(cat.Get("junk"), Inventory.SlotCount * 99);
+            Check(p3.Bag.UsedSlots == Inventory.SlotCount, "背包已满（" + p3.Bag.UsedSlots + " 格）");
+            Check(!ItemSystem.Equip(world, p3, sword2Index, cat), "背包满时换装失败");
+            Check(p3.Gear.Get(EquipSlot.Weapon).DefId == "sword1", "身上还是原来那把，没丢");
+            Check(p3.Bag.IndexOf("sword2") == sword2Index, "背包里的那把也没被吞");
+        }
+
+        private static void TestItemPickup()
+        {
+            Console.WriteLine("[物品拾取与负重]");
+            TestCatalog cat = new TestCatalog();
+            cat.Material("rock", 10);
+            cat.Material("heavy", 60);
+
+            GameMap map = OpenMap(12);
+            World world = new World(map, 7u, new EventBus());
+            world.Systems.Add(new LootSystem(cat));
+
+            Entity p = MakeFullPlayer(cat, new TilePos(5, 5), 60);
+            world.Spawn(p);
+            world.Player = p;
+
+            world.Spawn(MakeGroundItem(new TilePos(6, 5), "rock", 2));
+            world.PlaceEntity(p, new TilePos(6, 5));
+            world.Step(new List<Intent>());
+            Check(p.Bag.IndexOf("rock") >= 0, "踩上去自动捡起物品");
+            Check(world.GroundItemAt(new TilePos(6, 5)) == null, "地面上的东西消失了");
+            Check(world.GroundItemCount == 0, "地面物计数归零");
+
+            int refused = 0;
+            world.Events.Subscribe<PickupRefused>(delegate(PickupRefused e) { refused++; });
+            world.Spawn(MakeGroundItem(new TilePos(7, 5), "heavy", 2));
+            world.PlaceEntity(p, new TilePos(7, 5));
+            world.Step(new List<Intent>());
+            Check(refused == 1, "捡不动时给了一次提示（实际 " + refused + "）");
+            Check(world.GroundItemAt(new TilePos(7, 5)) != null, "太重的东西留在地上");
+            Check(p.Bag.IndexOf("heavy") == -1, "确实没进背包");
+
+            for (int i = 0; i < 8; i++) world.Step(new List<Intent>());
+            Check(refused == 1, "提示有节流，不会每 tick 刷屏（实际 " + refused + "）");
+
+            world.Spawn(MakeGroundItem(new TilePos(9, 5), "not_in_table", 1));
+            world.PlaceEntity(p, new TilePos(9, 5));
+            world.Step(new List<Intent>());
+            Check(world.GroundItemAt(new TilePos(9, 5)) != null, "表里没有的物品不会被吞掉");
+        }
+
+        private static void TestDropRoller()
+        {
+            Console.WriteLine("[掉落表]");
+            List<ItemDrop> table = new List<ItemDrop>();
+            ItemDrop always = new ItemDrop(); always.ItemId = "a"; always.Chance = 1f; always.Min = 2; always.Max = 2;
+            ItemDrop never = new ItemDrop(); never.ItemId = "b"; never.Chance = 0f;
+            table.Add(always); table.Add(never);
+
+            Rng rng = new Rng(5u);
+            List<ItemDropResult> results = new List<ItemDropResult>();
+            DropRoller.Roll(table, rng, results);
+            Check(results.Count == 1 && results[0].ItemId == "a" && results[0].Count == 2,
+                "100% 的必掉 2 个，0% 的绝不掉");
+
+            List<ItemDrop> half = new List<ItemDrop>();
+            ItemDrop h = new ItemDrop(); h.ItemId = "c"; h.Chance = 0.5f; h.Min = 1; h.Max = 1;
+            half.Add(h);
+            int hits = 0;
+            for (int i = 0; i < 2000; i++)
+            {
+                DropRoller.Roll(half, rng, results);
+                if (results.Count > 0) hits++;
+            }
+            float rate = hits / 2000f;
+            Check(rate > 0.44f && rate < 0.56f, "50% 概率实测 " + rate.ToString("0.00"));
+
+            ItemDrop range = new ItemDrop(); range.ItemId = "d"; range.Chance = 1f; range.Min = 2; range.Max = 5;
+            List<ItemDrop> one = new List<ItemDrop>(); one.Add(range);
+            bool inRange = true;
+            for (int i = 0; i < 300; i++)
+            {
+                DropRoller.Roll(one, rng, results);
+                if (results[0].Count < 2 || results[0].Count > 5) inRange = false;
+            }
+            Check(inRange, "数量落在 min..max 区间内");
+        }
+
+        private static void TestConsumable()
+        {
+            Console.WriteLine("[消耗品]");
+            TestCatalog cat = new TestCatalog();
+            cat.Potion("pot", 30);
+
+            GameMap map = OpenMap(8);
+            World world = new World(map, 3u, new EventBus());
+            Entity p = MakeFullPlayer(cat, new TilePos(4, 4));
+            world.Spawn(p);
+            world.Player = p;
+
+            p.Hp = 50;
+            p.Bag.Add(cat.Get("pot"), 3);
+            int idx = p.Bag.IndexOf("pot");
+
+            Check(ItemSystem.Use(world, p, idx, cat), "喝药成功");
+            Check(p.Hp == 80, "回血 30（实际 " + p.Hp + "）");
+            Check(p.Bag.At(idx).Count == 2, "药水少了一瓶");
+
+            p.Hp = p.MaxHp;
+            Check(!ItemSystem.Use(world, p, idx, cat), "满血时不浪费药");
+            Check(p.Bag.At(idx).Count == 2, "药水数量没变");
+        }
+
+        private static void TestLootLoop()
+        {
+            Console.WriteLine("[闭环：击杀 -> 掉装 -> 捡起 -> 穿上 -> 变强]");
+            TestCatalog cat = new TestCatalog();
+            cat.Equip("sword", EquipSlot.Weapon, 10, 10, 0, 5);
+
+            GameMap map = OpenMap(20);
+            CombatTuning t = new CombatTuning();
+            t.HitBase = 1f; t.HitMin = 1f; t.CritChance = 0f;
+            t.CorpseTicks = 1; t.GroundLootTicks = 100; t.RegenDelayTicks = 100000;
+
+            Func<string, Entity> factory = delegate(string id)
+            {
+                Entity m = MakeEntity(EntityKind.Monster, new TilePos(10, 10));
+                m.DefId = id;
+                m.BaseMaxHp = 10; m.BaseAc = 0;
+                m.AttackInterval = 100; m.MoveSpeed = 100;
+                m.Vision = 0; m.Aggressive = false; m.Leash = 1;
+                m.ExpReward = 5;
+                m.GoldMax = 0;
+                ItemDrop drop = new ItemDrop();
+                drop.ItemId = "sword"; drop.Chance = 1f; drop.Min = 1; drop.Max = 1;
+                m.ItemDrops.Add(drop);
+                return m;
+            };
+
+            Simulation sim = new Simulation(map, 9u, factory, t, cat);
+            Entity p = MakeFullPlayer(cat, new TilePos(9, 10), 200);
+            sim.World.Spawn(p);
+            sim.World.Player = p;
+
+            Entity dummy = factory("dummy");
+            dummy.Pos = new TilePos(10, 10);
+            dummy.HomePos = dummy.Pos;
+            sim.World.Spawn(dummy);
+
+            int before = p.MinDc;
+            CombatSystem.ApplyDamage(sim.World, p, dummy, new DamageResult { Hit = true, Crit = false, Amount = 999 });
+            sim.Step(new List<Intent>());
+
+            Entity drop = null;
+            foreach (Entity e in sim.World.Entities) if (e.Kind == EntityKind.GroundItem) drop = e;
+            Check(drop != null && drop.DefId == "sword", "怪掉了一把剑");
+
+            for (int i = 0; i < 4; i++) sim.Step(new List<Intent>());   // 等尸体消失
+            if (drop != null)
+            {
+                sim.World.PlaceEntity(p, drop.Pos);
+                sim.Step(new List<Intent>());
+                Check(p.Bag.IndexOf("sword") >= 0, "剑进了背包");
+
+                Check(ItemSystem.Equip(sim.World, p, p.Bag.IndexOf("sword"), cat), "把剑穿上了");
+                Check(p.MinDc > before, "攻击力从 " + before + " 提升到 " + p.MinDc);
+            }
         }
     }
 }

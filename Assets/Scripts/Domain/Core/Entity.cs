@@ -36,9 +36,30 @@ namespace SimplyCQ.Domain
         public int Level = 1;
         public int Hp = 30;
         public int MaxHp = 30;
+        /// <summary>有效攻击力（基础 + 装备）。战斗只读这个，由 StatCalculator 重算。</summary>
         public int MinDc = 1;
         public int MaxDc = 3;
         public int Ac;
+
+        public int Mc;      // 魔法
+        public int Sc;      // 道术
+        public int Mac;     // 魔御
+        public int Mp;
+        public int MaxMp;
+
+        // ---- 基础属性（不含装备）。升级、换装都改这里，然后重算有效值 ----
+        public int BaseMinDc = 1;
+        public int BaseMaxDc = 3;
+        public int BaseAc;
+        public int BaseMc;
+        public int BaseSc;
+        public int BaseMac;
+        public int BaseMaxHp = 30;
+        public int BaseMaxMp;
+
+        // ---- 背包与装备 ----
+        public Inventory Bag;
+        public Equipment Gear;
 
         // ---- 成长 ----
         /// <summary>当前等级内已积累的经验。</summary>
@@ -68,6 +89,13 @@ namespace SimplyCQ.Domain
         // ---- 地面掉落物 ----
         /// <summary>剩余存活 tick，到 0 消失（0 = 永不消失）。</summary>
         public int LifetimeTicks;
+        /// <summary>地面掉落物的数量（金币用 Gold，物品用这个）。</summary>
+        public int Count = 1;
+        /// <summary>捡不起来的提示节流，避免站在上面每 tick 刷一次飘字。</summary>
+        public int RefuseCooldown;
+
+        // ---- 掉落表（由数据表填好，Domain 只负责摇）----
+        public readonly List<ItemDrop> ItemDrops = new List<ItemDrop>();
 
         // ---- AI ----
         public int Vision = 5;
