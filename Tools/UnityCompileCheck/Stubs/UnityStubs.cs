@@ -94,8 +94,19 @@ namespace UnityEngine
         public static Texture2D whiteTexture { get { return null; } }
     }
 
+    public enum EventType { MouseDown = 0, MouseUp = 1, Repaint = 7, Layout = 8 }
+
+    public class Event
+    {
+        public static Event current { get { return null; } }
+        public EventType type { get; set; }
+        public int button { get; set; }
+        public Vector2 mousePosition { get; set; }
+    }
+
     public class Sprite : Object
     {
+        public Texture2D texture { get { return null; } }
         public static Sprite Create(Texture2D texture, Rect rect, Vector2 pivot, float pixelsPerUnit) { return null; }
         public static Sprite Create(Texture2D texture, Rect rect, Vector2 pivot, float pixelsPerUnit, uint extrude) { return null; }
         public static Sprite Create(Texture2D texture, Rect rect, Vector2 pivot, float pixelsPerUnit, uint extrude, SpriteMeshType meshType) { return null; }
@@ -136,6 +147,7 @@ namespace UnityEngine
         public float xMax { get { return x + width; } }
         public float yMin { get { return y; } }
         public float yMax { get { return y + height; } }
+        public bool Contains(Vector2 p) { return p.x >= x && p.x < xMax && p.y >= y && p.y < yMax; }
         public Vector2 center { get { return new Vector2(x + width * 0.5f, y + height * 0.5f); } }
         public static Rect MinMaxRect(float xmin, float ymin, float xmax, float ymax) { return new Rect(xmin, ymin, xmax - xmin, ymax - ymin); }
     }
@@ -194,7 +206,7 @@ namespace UnityEngine
 
     public static class Time { public static float deltaTime { get { return 0.016f; } } }
 
-    public enum KeyCode { A, D, W, S, J, Space, UpArrow, DownArrow, LeftArrow, RightArrow }
+    public enum KeyCode { A, B, C, D, I, J, S, W, Space, UpArrow, DownArrow, LeftArrow, RightArrow }
 
     public static class Input
     {

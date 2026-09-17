@@ -28,6 +28,7 @@ namespace SimplyCQ.Unity
         private FloatingTextOverlay _floatingText;
         private CameraRig _cameraRig;
         private PlayerInputSource _input;
+        private InventoryUi _inventoryUi;
         private Camera _camera;
 
         private GUIStyle _hudStyle;
@@ -102,6 +103,7 @@ namespace SimplyCQ.Unity
                 _projection.MapWorldRect(_database.Map.Width, _database.Map.Height), balance.cameraSmoothTime);
 
             _input = new PlayerInputSource();
+            _inventoryUi = new InventoryUi(_simulation.World, _database.Items);
 
             if (LogDataSummary)
             {
@@ -124,8 +126,14 @@ namespace SimplyCQ.Unity
 
             // 输入按帧采样：GetKeyDown 只在一帧为真，塞进 10Hz 的 tick 循环里大部分都会被丢掉
             Entity player = _simulation.World.Player;
+
+            int toggle = _input.ReadPanelToggle();
+            if (toggle == 1) _inventoryUi.ToggleBag();
+            else if (toggle == 2) _inventoryUi.ToggleChar();
+
+            // 鼠标在面板上时，左键是"点物品"而不是"挥砍"
             Dir attackDir;
-            if (player != null && _input.TryReadAttack(player.Facing, out attackDir))
+            if (player != null && !_inventoryUi.ConsumesMouse && _input.TryReadAttack(player.Facing, out attackDir))
             {
                 _attackQueued = true;
                 _attackDir = attackDir;
@@ -177,6 +185,7 @@ namespace SimplyCQ.Unity
                 _attackQueued = false;
             }
 
+            _inventoryUi.DrainInto(_intents);
             _simulation.Step(_intents);
         }
 
@@ -219,7 +228,7 @@ namespace SimplyCQ.Unity
                         world.Player.Name, world.Player.Facing, world.Player.Pos, _floatingText.Count)
                     : "玩家 -";
 
-                const string line3 = "WASD / 方向键 走路 · 空格 / J / 鼠标左键 攻击（M2 战斗）";
+                const string line3 = "WASD 走路 · 空格/J/左键 攻击 · I 背包 · C 角色 · 背包里左键穿戴/使用，右键丢地上";
 
                 GUI.Label(new Rect(10f, 8f, 1000f, 22f), line1, _debugStyle);
                 GUI.Label(new Rect(10f, 28f, 1000f, 22f), line2, _debugStyle);
@@ -227,6 +236,7 @@ namespace SimplyCQ.Unity
             }
 
             DrawHud(world);
+            _inventoryUi.Draw();
             _floatingText.Draw();
         }
 

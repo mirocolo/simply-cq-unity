@@ -62,5 +62,16 @@ namespace SimplyCQ.Unity
             return false;
 #endif
         }
+
+        /// <summary>面板开关：1 = 背包，2 = 角色，0 = 没按。同样是"按下瞬间"，要按帧采样。</summary>
+        public int ReadPanelToggle()
+        {
+            if (!Enabled) return 0;
+#if ENABLE_LEGACY_INPUT_MANAGER
+            if (Input.GetKeyDown(KeyCode.I) || Input.GetKeyDown(KeyCode.B)) return 1;
+            if (Input.GetKeyDown(KeyCode.C)) return 2;
+#endif
+            return 0;
+        }
     }
 }

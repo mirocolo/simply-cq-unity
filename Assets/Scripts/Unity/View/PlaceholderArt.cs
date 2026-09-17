@@ -160,6 +160,69 @@ namespace SimplyCQ.Unity
             return sprite;
         }
 
+        /// <summary>背包/装备栏里的小图标。按物品类型画不同形状，一眼能分出药水/装备/材料。</summary>
+        public static Sprite ItemIcon(string key, ItemType type, int sizePx)
+        {
+            string full = "icon|" + key + "|" + (int)type + "|" + sizePx;
+            Sprite cached;
+            if (Cache.TryGetValue(full, out cached) && cached != null) return cached;
+
+            int w = sizePx;
+            int h = sizePx;
+            Color body = BodyColorFor(key);
+            Color dark = Shade(body, 0.55f);
+            Color[] px = new Color[w * h];
+            int cx = w / 2;
+            int cy = h / 2;
+
+            switch (type)
+            {
+                case ItemType.Consumable:
+                    // 药瓶：圆肚子 + 细脖子 + 瓶塞
+                    Ellipse(px, w, h, cx, Mathf.RoundToInt(h * 0.34f), Mathf.RoundToInt(w * 0.32f), Mathf.RoundToInt(h * 0.30f), body);
+                    FillRect(px, w, h, cx - w / 8, Mathf.RoundToInt(h * 0.60f), cx + w / 8, Mathf.RoundToInt(h * 0.82f), body);
+                    FillRect(px, w, h, cx - w / 6, Mathf.RoundToInt(h * 0.82f), cx + w / 6, Mathf.RoundToInt(h * 0.94f), dark);
+                    Ellipse(px, w, h, cx, Mathf.RoundToInt(h * 0.30f), Mathf.RoundToInt(w * 0.12f), Mathf.RoundToInt(h * 0.10f), Shade(body, 1.35f));
+                    break;
+                case ItemType.Equip:
+                    // 装备：菱形
+                    Diamond(px, w, h, Mathf.RoundToInt(w * 0.42f), body);
+                    Diamond(px, w, h, Mathf.RoundToInt(w * 0.18f), dark);
+                    break;
+                case ItemType.Book:
+                    FillRect(px, w, h, Mathf.RoundToInt(w * 0.22f), Mathf.RoundToInt(h * 0.18f), Mathf.RoundToInt(w * 0.78f), Mathf.RoundToInt(h * 0.82f), body);
+                    FillRect(px, w, h, Mathf.RoundToInt(w * 0.30f), Mathf.RoundToInt(h * 0.45f), Mathf.RoundToInt(w * 0.70f), Mathf.RoundToInt(h * 0.55f), dark);
+                    break;
+                default:
+                    // 材料：圆饼
+                    Ellipse(px, w, h, cx, cy, Mathf.RoundToInt(w * 0.34f), Mathf.RoundToInt(h * 0.34f), body);
+                    Ellipse(px, w, h, cx, cy, Mathf.RoundToInt(w * 0.16f), Mathf.RoundToInt(h * 0.16f), dark);
+                    break;
+            }
+
+            Outline(px, w, h, new Color(0.05f, 0.05f, 0.07f, 0.95f));
+
+            Sprite sprite = Build(px, w, h, sizePx, new Vector2(0.5f, 0.5f), full);
+            Cache[full] = sprite;
+            return sprite;
+        }
+
+        private static void Diamond(Color[] px, int w, int h, int radius, Color c)
+        {
+            if (radius < 1) radius = 1;
+            int cx = w / 2;
+            int cy = h / 2;
+            for (int y = cy - radius; y <= cy + radius; y++)
+            {
+                if (y < 0 || y >= h) continue;
+                for (int x = cx - radius; x <= cx + radius; x++)
+                {
+                    if (x < 0 || x >= w) continue;
+                    if (Mathf.Abs(x - cx) + Mathf.Abs(y - cy) <= radius) px[y * w + x] = c;
+                }
+            }
+        }
+
         public static void ClearCache() { Cache.Clear(); }
 
         // ------------------------------------------------------------------ 画图小工具
