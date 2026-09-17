@@ -2,7 +2,7 @@ namespace SimplyCQ.Domain
 {
     public struct EntitySpawned
     {
-        public EntityId Id;
+        public ActorId Id;
         public EntityKind Kind;
         public string DefId;
         public TilePos Pos;
@@ -10,13 +10,13 @@ namespace SimplyCQ.Domain
 
     public struct EntityRemoved
     {
-        public EntityId Id;
+        public ActorId Id;
         public EntityKind Kind;
     }
 
     public struct EntityMoved
     {
-        public EntityId Id;
+        public ActorId Id;
         public TilePos From;
         public TilePos To;
         public Dir Facing;
@@ -24,27 +24,27 @@ namespace SimplyCQ.Domain
 
     public struct EntityTeleported
     {
-        public EntityId Id;
+        public ActorId Id;
         public TilePos To;
     }
 
     public struct DamageDealt
     {
-        public EntityId Source;
-        public EntityId Target;
+        public ActorId Source;
+        public ActorId Target;
         public int Amount;
         public bool Crit;
     }
 
     public struct EntityDied
     {
-        public EntityId Id;
-        public EntityId Killer;
+        public ActorId Id;
+        public ActorId Killer;
     }
 
     public struct LootDropped
     {
-        public EntityId ItemId;
+        public ActorId ItemId;
         public TilePos At;
     }
 

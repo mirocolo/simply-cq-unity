@@ -15,7 +15,19 @@ namespace SimplyCQ.EditorTools
     {
         private static int _pass;
         private static int _fail;
+
+        /// <summary>失败项数量，供命令行入口判断退出码。</summary>
+        public static int FailureCount { get { return _fail; } }
         private static readonly List<string> _failures = new List<string>();
+
+        /// <summary>命令行入口（CI / 脚本用）：
+        /// Unity -batchmode -nographics -quit -projectPath . -executeMethod SimplyCQ.EditorTools.DomainSmokeTest.RunBatch
+        /// 失败时以退出码 1 结束，这样脚本能直接判断。</summary>
+        public static void RunBatch()
+        {
+            Run();
+            EditorApplication.Exit(_fail == 0 ? 0 : 1);
+        }
 
         [MenuItem("SimplyCQ/④ 运行 Domain 冒烟自检（含数据文件校验）", false, 40)]
         public static void Run()
@@ -103,6 +115,14 @@ namespace SimplyCQ.EditorTools
             int cap = 0;
             for (int i = 0; i < map.Spawners.Count; i++) cap += map.Spawners[i].Max;
             Check(maxMonsters <= cap, "怪物总数没超过配置上限 " + cap);
+
+            // 键盘操作的成败取决于 Player Settings，这里用编译期宏直接断言，
+            // 免得出现「能跑但按键盘没反应」这种最难查的情况。
+#if ENABLE_LEGACY_INPUT_MANAGER
+            Check(true, "旧输入已启用（ENABLE_LEGACY_INPUT_MANAGER）");
+#else
+            Check(false, "旧输入未启用：Project Settings > Player > Other Settings 的 Active Input Handling 要改成 Both，否则键盘没反应");
+#endif
 
             Report();
         }

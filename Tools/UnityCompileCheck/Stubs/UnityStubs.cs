@@ -170,6 +170,7 @@ namespace UnityEngine
     {
         public static string streamingAssetsPath { get { return ""; } }
         public static int targetFrameRate { get; set; }
+        public static bool isBatchMode { get { return true; } }
     }
 
     public static class Time { public static float deltaTime { get { return 0.016f; } } }
@@ -243,6 +244,8 @@ namespace UnityEditor
     }
 
     public static class AssetDatabase { public static void Refresh() { } }
+
+    public static class EditorApplication { public static void Exit(int returnValue) { } }
 
     public class EditorBuildSettingsScene
     {

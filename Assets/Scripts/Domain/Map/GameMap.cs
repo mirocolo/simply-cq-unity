@@ -101,7 +101,7 @@ namespace SimplyCQ.Domain
         public int Max = 5;
         public int IntervalTicks = 50;
         public int Timer;
-        public readonly List<EntityId> Alive = new List<EntityId>();
+        public readonly List<ActorId> Alive = new List<ActorId>();
 
         public bool Contains(TilePos p)
         {

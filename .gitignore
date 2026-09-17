@@ -11,6 +11,7 @@
 *.csproj
 *.unityproj
 *.sln
+*.slnx
 *.suo
 *.user
 *.booproj
@@ -30,7 +31,7 @@ crashlytics-build.properties
 sysinfo.txt
 
 # ---- 本地开发工具（.NET SDK 约 200MB，不进版本库）----
-.tools/
+LocalTools/
 
 # ---- 自检工程的构建产物 ----
 Tools/**/bin/

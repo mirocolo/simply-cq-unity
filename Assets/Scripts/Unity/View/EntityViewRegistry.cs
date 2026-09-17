@@ -5,7 +5,7 @@ using UnityEngine;
 namespace SimplyCQ.Unity
 {
     /// <summary>
-    /// EntityId -> GameObject 的唯一映射。
+    /// ActorId -> GameObject 的唯一映射。
     /// 表现层只做两件事：订阅 World 的事件、每帧读实体状态做插值。
     /// 永远不反向写 World —— 这是整套架构能存档、能单测、以后能上服务端的前提。
     /// </summary>
@@ -61,7 +61,7 @@ namespace SimplyCQ.Unity
 
         public int ViewCount { get { return _views.Count; } }
 
-        public Transform GetTransform(EntityId id)
+        public Transform GetTransform(ActorId id)
         {
             View v;
             return _views.TryGetValue(id.Value, out v) ? v.Transform : null;

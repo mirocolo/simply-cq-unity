@@ -13,20 +13,20 @@ namespace SimplyCQ.Domain
     /// <summary>玩家（或以后 AI 玩家）每 tick 提出的「意图」。合法性由 Domain 判定，表现层无权直接改世界。</summary>
     public struct Intent
     {
-        public EntityId Actor;
+        public ActorId Actor;
         public IntentKind Kind;
         public Dir Dir;
-        public EntityId Target;
+        public ActorId Target;
         public int Slot;
 
-        public static Intent Move(EntityId actor, Dir dir)
+        public static Intent Move(ActorId actor, Dir dir)
         {
             Intent i = default(Intent);
             i.Actor = actor; i.Kind = IntentKind.Move; i.Dir = dir;
             return i;
         }
 
-        public static Intent Attack(EntityId actor, Dir dir)
+        public static Intent Attack(ActorId actor, Dir dir)
         {
             Intent i = default(Intent);
             i.Actor = actor; i.Kind = IntentKind.Attack; i.Dir = dir;

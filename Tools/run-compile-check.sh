@@ -4,7 +4,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-DOTNET="$ROOT/.tools/dotnet/dotnet"
+DOTNET="$ROOT/LocalTools/dotnet/dotnet"
 if [[ ! -x "$DOTNET" ]]; then
   DOTNET="$(command -v dotnet || true)"
 fi
@@ -13,8 +13,8 @@ if [[ -z "$DOTNET" || ! -x "$DOTNET" ]]; then
   exit 1
 fi
 
-export DOTNET_CLI_HOME="$ROOT/.tools/dotnet-home"
-export NUGET_PACKAGES="$ROOT/.tools/nuget"
+export DOTNET_CLI_HOME="$ROOT/LocalTools/dotnet-home"
+export NUGET_PACKAGES="$ROOT/LocalTools/nuget"
 export DOTNET_NOLOGO=1
 export DOTNET_CLI_TELEMETRY_OPTOUT=1
 

@@ -18,8 +18,8 @@ namespace SimplyCQ.Domain
         public long Tick;
         public Entity Player;
 
-        private readonly Dictionary<EntityId, Entity> _entities = new Dictionary<EntityId, Entity>();
-        private readonly Dictionary<int, EntityId> _occupancy = new Dictionary<int, EntityId>();
+        private readonly Dictionary<ActorId, Entity> _entities = new Dictionary<ActorId, Entity>();
+        private readonly Dictionary<int, ActorId> _occupancy = new Dictionary<int, ActorId>();
         private int _nextId = 1;
 
         public World(GameMap map, uint seed, IEventBus events)
@@ -38,38 +38,38 @@ namespace SimplyCQ.Domain
             if (e == null) throw new ArgumentNullException("e");
             if (!Map.InBounds(e.Pos))
                 throw new ArgumentOutOfRangeException("e", "实体出生点在map外: " + e.Pos);
-            e.Id = new EntityId(_nextId++);
+            e.Id = new ActorId(_nextId++);
             _entities[e.Id] = e;
             _occupancy[Key(e.Pos)] = e.Id;
             Events.Publish(new EntitySpawned { Id = e.Id, Kind = e.Kind, DefId = e.DefId, Pos = e.Pos });
             return e;
         }
 
-        public void Despawn(EntityId id)
+        public void Despawn(ActorId id)
         {
             Entity e;
             if (!_entities.TryGetValue(id, out e)) return;
             _entities.Remove(id);
-            EntityId occupant;
+            ActorId occupant;
             if (_occupancy.TryGetValue(Key(e.Pos), out occupant) && occupant == id)
                 _occupancy.Remove(Key(e.Pos));
             if (Player != null && Player.Id == id) Player = null;
             Events.Publish(new EntityRemoved { Id = id, Kind = e.Kind });
         }
 
-        public Entity Get(EntityId id)
+        public Entity Get(ActorId id)
         {
             Entity e;
             return _entities.TryGetValue(id, out e) ? e : null;
         }
 
-        public bool TryGet(EntityId id, out Entity e) { return _entities.TryGetValue(id, out e); }
+        public bool TryGet(ActorId id, out Entity e) { return _entities.TryGetValue(id, out e); }
 
         public bool IsOccupied(TilePos p) { return _occupancy.ContainsKey(Key(p)); }
 
         public Entity EntityAt(TilePos p)
         {
-            EntityId id;
+            ActorId id;
             if (_occupancy.TryGetValue(Key(p), out id)) return Get(id);
             return null;
         }
@@ -78,7 +78,7 @@ namespace SimplyCQ.Domain
         public bool CanWalk(TilePos p, Entity self)
         {
             if (!Map.IsWalkable(p)) return false;
-            EntityId occupant;
+            ActorId occupant;
             if (_occupancy.TryGetValue(Key(p), out occupant))
                 return self != null && occupant == self.Id;
             return true;
@@ -96,7 +96,7 @@ namespace SimplyCQ.Domain
         /// <summary>只改位置，不改朝向，不发 EntityMoved。</summary>
         public void Teleport(Entity e, TilePos to)
         {
-            EntityId occupant;
+            ActorId occupant;
             if (_occupancy.TryGetValue(Key(e.Pos), out occupant) && occupant == e.Id)
                 _occupancy.Remove(Key(e.Pos));
             e.Pos = to;

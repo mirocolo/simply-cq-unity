@@ -12,7 +12,7 @@ namespace SimplyCQ.Domain
 
     public sealed class Entity
     {
-        public EntityId Id;
+        public ActorId Id;
         public EntityKind Kind;
         /// <summary>数据表里的 id（monsterId / npcId / itemId）。逻辑只认它。</summary>
         public string DefId;
@@ -48,7 +48,7 @@ namespace SimplyCQ.Domain
         /// <summary>离出生点超过这个距离就脱战回家。</summary>
         public int Leash = 12;
         public int AiThinkCooldown;
-        public EntityId Target;
+        public ActorId Target;
         public TilePos? WanderTarget;
         public int WanderFail;
 

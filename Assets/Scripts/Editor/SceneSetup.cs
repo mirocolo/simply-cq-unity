@@ -22,7 +22,8 @@ namespace SimplyCQ.EditorTools
         {
             if (File.Exists(ScenePath))
             {
-                bool overwrite = EditorUtility.DisplayDialog(
+                // 批处理模式没有 UI，弹窗会直接卡死，所以直接覆盖
+                bool overwrite = Application.isBatchMode || EditorUtility.DisplayDialog(
                     "场景已存在",
                     ScenePath + " 已经存在，要覆盖它吗？",
                     "覆盖", "取消");

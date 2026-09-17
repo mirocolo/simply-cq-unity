@@ -61,13 +61,13 @@ namespace SimplyCQ.Domain
             Entity target = world.Get(e.Target);
             if (target == null || !target.IsAlive)
             {
-                e.Target = EntityId.None;
+                e.Target = ActorId.None;
                 return null;
             }
 
             if (e.Pos.ChebyshevTo(e.HomePos) > e.Leash)
             {
-                e.Target = EntityId.None;
+                e.Target = ActorId.None;
                 return null;
             }
 

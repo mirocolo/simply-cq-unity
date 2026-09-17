@@ -135,7 +135,7 @@ namespace DomainCheck
             bus.Subscribe(onDied);
 
             EntityMoved evt = new EntityMoved();
-            evt.Id = new EntityId(1);
+            evt.Id = new ActorId(1);
             bus.Publish(evt);
             bus.Publish(evt);
             Check(moved == 2, "订阅后收到事件");
@@ -380,7 +380,7 @@ namespace DomainCheck
             hen.Path.Clear();
             for (int i = 0; i < 80; i++) sim2.Step(none);
             Check(hen.Pos.ChebyshevTo(hen.HomePos) <= 4, "被动怪只在家附近游荡（实际偏移 " + hen.Pos.ChebyshevTo(hen.HomePos) + "）");
-            Check(hen.Target == EntityId.None, "被动怪不锁玩家为目标");
+            Check(hen.Target == ActorId.None, "被动怪不锁玩家为目标");
         }
 
         private static void TestSpawners()

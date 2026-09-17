@@ -26,25 +26,25 @@
 
 | 项 | 要求 |
 | --- | --- |
-| Unity | **6.3 LTS（6000.3.x）**，**Universal 2D** 模板（6.0 LTS 也可） |
-| 输入 | Project Settings → Player → Other Settings → Active Input Handling 设为 **Both**（或 Input Manager (Old)） |
-| 可选 | .NET SDK 8，用来无头跑逻辑自检（本仓库 `.tools/` 下已装了一份本地 SDK） |
+| Unity | **6000.6.1f1**（实测通过；同为 6000.x 系列也可，用 Unity Hub 装） |
+| 模板 | 已内建 **Universal 2D**（URP 2D Renderer 已挂到 QualitySettings，无需再建工程） |
+| 输入 | Active Input Handling 已设为 **Both**；键盘操作走旧 Input，零配置 |
+| 可选 | .NET SDK 8，用来无头跑逻辑自检（仓库内 `LocalTools/` 下已装了一份本地 SDK） |
 
-> 本机当前**没有安装 Unity**，第一步是装 Unity Hub。
+> **这个仓库本身就是一个可以直接打开的 Unity 工程**（ProjectSettings / Packages / Assets 齐全，版本锁在 `ProjectSettings/ProjectVersion.txt`）。
 
 ---
 
-## 5 分钟跑起来
+## 2 分钟跑起来
 
-1. 装 **Unity Hub** + **Unity 6.3 LTS**（勾选 macOS/Windows 构建支持）
-2. Hub → **New project** → 模板选 **Universal 2D** → 工程名 `simply-cq-unity`
-3. 把本仓库的这两个目录**合并**进新工程的 `Assets/`：
-   - `Assets/Scripts` → `Assets/Scripts`
-   - `Assets/StreamingAssets` → `Assets/StreamingAssets`
-4. 回到 Unity，等编译完成（Console 不能有红色报错）
-5. 菜单 **SimplyCQ → ① 搭建 M1 场景（并设为启动场景）**
-6. 打开 `Assets/Scenes/GameM1.unity` → 点 **Play**
-7. （可选）菜单 **SimplyCQ → ④ 运行 Domain 冒烟自检** 先验证数据和逻辑
+1. **Unity Hub → Add → Add project from disk** → 选这个仓库根目录（不是 `Assets/`）
+2. 用 **6000.6.1f1** 打开（其它 6000.x 会提示升级，点确认即可），等首次导入完成
+3. 打开 `Assets/Scenes/GameM1.unity` → 点 **Play**
+
+场景已经在仓库里，**不需要**再手动建工程、拷目录或搭场景。
+如果想从零重建，菜单 **SimplyCQ → ① 搭建 M1 场景（并设为启动场景）** 会重新生成它。
+
+开机先自检（可选但推荐）：菜单 **SimplyCQ → ④ 运行 Domain 冒烟自检**。
 
 > 场景里只有两样东西：一个正交相机 + 一个挂着 `GameBootstrap` 的空物体。
 > 地图、怪物、相机跟随、调试 HUD 全是运行时按数据生成的 —— 所以**没有需要手动拖拽的引用**，也不会有场景合并冲突。
@@ -197,6 +197,23 @@ bash Tools/run-compile-check.sh
 | **M4** 技能 | 技能系统 + 三职业 + 快捷栏 + 投射物 | ⬜ |
 | **M5** 内容 | 3 张图、15~20 种怪、60 件装备、NPC 与传送 | ⬜ |
 | **M6** 打磨 | UI 皮肤、音效、特效、数值平衡、手感调参面板 | ⬜ |
+
+### 已通过的真实验证（Unity 6000.6.1f1 批处理）
+
+```
+四层程序集编译：SimplyCQ.Domain / .Data / .Unity / .Editor 全部 0 error
+场景生成：      Assets/Scenes/GameM1.unity（Main Camera + CQ.Bootstrap）
+内建冒烟自检：  全部通过（地图/刷怪区/寻路/600 tick 不变量/输入宏）
+Unity 退出码：  0
+```
+
+一条命令复跑（需要能写 ~/Library/Caches/Unity 的权限）：
+
+```bash
+/Applications/Unity/Hub/Editor/6000.6.1f1/Unity.app/Contents/MacOS/Unity \\
+  -batchmode -nographics -quit -projectPath . \\
+  -executeMethod SimplyCQ.EditorTools.BatchRunner.RunAll -logFile LocalTools/unity.log
+```
 
 ---
 
