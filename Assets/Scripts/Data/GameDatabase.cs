@@ -68,6 +68,16 @@ namespace SimplyCQ.Data
             }
         }
 
+        /// <summary>
+        /// 装配一个能玩的 Simulation（地图 + 战斗数值 + 物品表 + 怪物工厂）。
+        /// 游戏本体和无头自检都走这里 —— 只留一条装配路径，就不会出现
+        /// "测试里好好的、真跑起来忘了传物品表"这种事。
+        /// </summary>
+        public Simulation CreateSimulation(uint seed)
+        {
+            return new Simulation(Map, seed, CreateMonster, Tuning, Items);
+        }
+
         public Entity CreateMonster(string monsterId)
         {
             MonsterDto d;

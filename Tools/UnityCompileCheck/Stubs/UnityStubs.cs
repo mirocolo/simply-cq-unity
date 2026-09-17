@@ -200,16 +200,31 @@ namespace UnityEngine
     public static class Application
     {
         public static string streamingAssetsPath { get { return ""; } }
+        public static string persistentDataPath { get { return ""; } }
         public static int targetFrameRate { get; set; }
         public static bool isBatchMode { get { return true; } }
+        public static bool isFocused { get { return true; } }
+        public static void Quit() { }
     }
 
-    public static class Time { public static float deltaTime { get { return 0.016f; } } }
+    public static class ScreenCapture
+    {
+        public static void CaptureScreenshot(string filename) { }
+    }
 
-    public enum KeyCode { A, B, C, D, I, J, S, W, Space, UpArrow, DownArrow, LeftArrow, RightArrow }
+    public static class Time
+    {
+        public static float deltaTime { get { return 0.016f; } }
+        public static float time { get { return 0f; } }
+        public static float timeSinceLevelLoad { get { return 0f; } }
+    }
+
+    public enum KeyCode { A, B, C, D, I, J, S, W, Space, Escape, UpArrow, DownArrow, LeftArrow, RightArrow }
 
     public static class Input
     {
+        public static bool anyKey { get { return false; } }
+        public static Vector3 mousePosition { get { return default(Vector3); } }
         public static bool GetKey(KeyCode key) { return false; }
         public static bool GetKeyDown(KeyCode key) { return false; }
         public static bool GetMouseButtonDown(int button) { return false; }

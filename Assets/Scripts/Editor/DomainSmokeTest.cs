@@ -74,7 +74,7 @@ namespace SimplyCQ.EditorTools
             Check(found && path.Count > 0, "从出生点能寻路到 " + far + "（" + path.Count + " 步）");
 
             // 跑 600 个 tick，每一步都检查不变量
-            Simulation sim = new Simulation(map, (uint)db.Balance.worldSeed, db.CreateMonster);
+            Simulation sim = new Simulation(map, (uint)db.Balance.worldSeed, db.CreateMonster, db.Tuning, db.Items);
             Entity player = db.CreatePlayer();
             player.Pos = map.Spawn;
             player.HomePos = player.Pos;
@@ -122,7 +122,7 @@ namespace SimplyCQ.EditorTools
                 "balance.json 的 combat 段解析成功（攻击间隔 " + (tuning != null ? tuning.PlayerAttackInterval : 0) + " tick）");
 
             GameMap arena = MapLoader.CreateFallbackMap(24, 24);
-            Simulation arena2 = new Simulation(arena, 20240617u, null, tuning);
+            Simulation arena2 = new Simulation(arena, 20240617u, null, tuning, db.Items);
 
             Entity fighter = db.CreatePlayer();
             fighter.Pos = arena.Spawn;
@@ -212,6 +212,44 @@ namespace SimplyCQ.EditorTools
                 Check(worn != null && worn.Count == 1, "装备栏里的数量正确（" + (worn != null ? worn.Count : -1) + "）");
                 Check(ItemSystem.Unequip(gearSim.World, hero, EquipSlot.Weapon, db.Items), "能把木剑卸下");
                 Check(hero.MinDc == baseDc, "卸下后属性回到 " + hero.MinDc);
+            }
+
+            // 界面点一下 = 排一个 Intent 丢给 Simulation。
+            // 这条路和"直接调 ItemSystem"是两条路，必须单独测 —— GameBootstrap 之前就是漏传物品表，
+            // 直接调用没事，走 Intent 却静默失效。
+            {
+                // 用和游戏本体完全相同的装配方式（GameDatabase.CreateSimulation）
+                Simulation uiSim = db.CreateSimulation(99u);
+                uiSim.World.Map.Spawners.Clear();   // 自检自己安排怪，别让刷怪区捣乱
+
+                Entity uiHero = db.CreatePlayer();
+                uiHero.Pos = arena.Spawn;
+                uiHero.HomePos = uiHero.Pos;
+                uiSim.World.Spawn(uiHero);
+                uiSim.World.Player = uiHero;
+
+                int clothIdx = uiHero.Bag.IndexOf("ar_cloth");
+                Check(clothIdx >= 0, "新手包里有布衣");
+                if (clothIdx >= 0)
+                {
+                    int acBefore = uiHero.Ac;
+                    List<Intent> uiActs = new List<Intent>();
+                    uiActs.Add(Intent.BagAction(uiHero.Id, IntentKind.EquipItem, clothIdx));
+                    uiSim.World.Step(uiActs);
+
+                    Check(uiHero.Gear.Get(EquipSlot.Armour) != null, "走 Intent 通道（界面点击）能把衣服穿上");
+                    Check(uiHero.Ac > acBefore, "穿上衣服后防御 " + acBefore + " -> " + uiHero.Ac);
+                }
+
+                int potIdx = uiHero.Bag.IndexOf("pot_hp_s");
+                if (potIdx >= 0)
+                {
+                    uiHero.Hp = 1;
+                    List<Intent> potActs = new List<Intent>();
+                    potActs.Add(Intent.BagAction(uiHero.Id, IntentKind.UseItem, potIdx));
+                    uiSim.World.Step(potActs);
+                    Check(uiHero.Hp > 1, "走 Intent 通道（界面点击）能喝药回血（1 -> " + uiHero.Hp + "）");
+                }
             }
 
             // 用真实物品表跑一次拾取

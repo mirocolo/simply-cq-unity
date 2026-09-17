@@ -11,8 +11,13 @@ namespace SimplyCQ.Domain
         public readonly CombatTuning Tuning;
         public readonly IItemCatalog Catalog;
 
+        /// <remarks>
+        /// tuning 和 catalog 故意做成【必填】：之前给它们默认值 null，
+        /// 结果 GameBootstrap 忘了传物品表，编译能过、运行也"正常"，
+        /// 只是穿装备和捡物品会静默失效 —— 这种坑必须让编译器挡下来。
+        /// </remarks>
         public Simulation(GameMap map, uint seed, Func<string, Entity> monsterFactory,
-                          CombatTuning tuning = null, IItemCatalog catalog = null)
+                          CombatTuning tuning, IItemCatalog catalog)
         {
             Bus = new EventBus();
             World = new World(map, seed, Bus);

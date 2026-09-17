@@ -33,6 +33,7 @@ namespace SimplyCQ.Unity
 
         private GUIStyle _hudStyle;
         private GUIStyle _debugStyle;
+        private GUIStyle _warnStyle;
 
         private readonly List<Intent> _intents = new List<Intent>();
         private float _accumulator;
@@ -47,6 +48,19 @@ namespace SimplyCQ.Unity
         private bool _attackQueued;
         private Dir _attackDir;
 
+        // 输入诊断：窗口没拿到焦点时，所有操作都会像坏了一样
+        private float _lastActivityAt = -1f;
+        private string _lastActivity = "";
+
+        // 调试：命令行 -autoshot <秒> -> 到时截整屏（含 IMGUI）再退出
+        private float _autoShotAt = -1f;
+        private bool _autoShotDone;
+        private float _quitAt = -1f;
+
+        // 调试：命令行 -selftest <秒> -> 在真实运行的游戏里跑一遍战斗/拾取/穿装
+        private float _selfTestAt = -1f;
+        private bool _selfTestDone;
+
         public World World { get { return _simulation != null ? _simulation.World : null; } }
 
         private void Awake()
@@ -59,7 +73,7 @@ namespace SimplyCQ.Unity
             _tickRate = balance.tickPerSecond;
             _tickDuration = 1f / _tickRate;
 
-            _simulation = new Simulation(_database.Map, (uint)balance.worldSeed, _database.CreateMonster, _database.Tuning);
+            _simulation = _database.CreateSimulation((uint)balance.worldSeed);
 
             Entity player = _database.CreatePlayer();
             player.Pos = _database.Map.Spawn;
@@ -102,8 +116,20 @@ namespace SimplyCQ.Unity
             _cameraRig = new CameraRig(_camera, _entityViews.GetTransform(player.Id),
                 _projection.MapWorldRect(_database.Map.Width, _database.Map.Height), balance.cameraSmoothTime);
 
+            if (_database.Items == null || _database.Items.Count == 0)
+                Debug.LogError("[SimplyCQ] items.json 一件物品都没读到 —— 捡东西和穿装备都会失效！");
+
             _input = new PlayerInputSource();
             _inventoryUi = new InventoryUi(_simulation.World, _database.Items);
+
+            ParseCommandLine();
+
+#if ENABLE_LEGACY_INPUT_MANAGER
+            Debug.Log("[SimplyCQ] 输入：旧输入（Input Manager）已编入本次构建 ✓  窗口焦点=" + Application.isFocused);
+#else
+            Debug.LogError("[SimplyCQ] 输入：旧输入【没有】编进本次构建 —— 键盘和鼠标都会完全没反应！" +
+                           "请把 Project Settings > Player > Other Settings 的 Active Input Handling 改成 Both 后重新打包。");
+#endif
 
             if (LogDataSummary)
             {
@@ -127,9 +153,34 @@ namespace SimplyCQ.Unity
             // 输入按帧采样：GetKeyDown 只在一帧为真，塞进 10Hz 的 tick 循环里大部分都会被丢掉
             Entity player = _simulation.World.Player;
 
+            if (_input.ReadQuit()) QuitGame();
+
+            string activity;
+            if (_input.TryReadActivity(out activity))
+            {
+                _lastActivityAt = Time.timeSinceLevelLoad;
+                _lastActivity = activity;
+            }
+
+            UpdateAutoShot();
+
+            if (_selfTestAt > 0f && !_selfTestDone && Time.timeSinceLevelLoad >= _selfTestAt)
+            {
+                _selfTestDone = true;
+                RunSelfTest();
+            }
+
             int toggle = _input.ReadPanelToggle();
-            if (toggle == 1) _inventoryUi.ToggleBag();
-            else if (toggle == 2) _inventoryUi.ToggleChar();
+            if (toggle == 1)
+            {
+                _inventoryUi.ToggleBag();
+                Debug.Log("[SimplyCQ] 收到按键：背包 = " + _inventoryUi.BagOpen);
+            }
+            else if (toggle == 2)
+            {
+                _inventoryUi.ToggleChar();
+                Debug.Log("[SimplyCQ] 收到按键：角色面板 = " + _inventoryUi.CharOpen);
+            }
 
             // 鼠标在面板上时，左键是"点物品"而不是"挥砍"
             Dir attackDir;
@@ -162,6 +213,138 @@ namespace SimplyCQ.Unity
                 _ticksThisSecond = 0;
                 _secondTimer = 0f;
             }
+        }
+
+        private void ParseCommandLine()
+        {
+            string[] args = System.Environment.GetCommandLineArgs();
+            for (int i = 0; i < args.Length - 1; i++)
+            {
+                float seconds;
+                if (args[i] == "-autoshot" && float.TryParse(args[i + 1], out seconds)) _autoShotAt = seconds;
+                if (args[i] == "-selftest" && float.TryParse(args[i + 1], out seconds)) _selfTestAt = seconds;
+            }
+        }
+
+        private void UpdateAutoShot()
+        {
+            float now = Time.timeSinceLevelLoad;
+
+            if (_autoShotAt > 0f && !_autoShotDone && now >= _autoShotAt)
+            {
+                _autoShotDone = true;
+
+                // 把关键数字打进日志：出问题时不用猜
+                Transform pv = _simulation.World.Player != null
+                    ? _entityViews.GetTransform(_simulation.World.Player.Id) : null;
+                Vector3 pw = pv != null ? pv.position : Vector3.zero;
+                Vector3 ps = _camera != null ? _camera.WorldToScreenPoint(pw) : Vector3.zero;
+                Debug.Log(string.Format(
+                    "[SimplyCQ] 诊断 Screen={0}x{1} aspect={2:0.000} cam={3} ortho={4:0.00} 玩家世界={5} 玩家屏幕={6} 可见格={7} 视图={8}",
+                    Screen.width, Screen.height, _camera != null ? _camera.aspect : -1f,
+                    _camera != null ? _camera.transform.position : Vector3.zero,
+                    _camera != null ? _camera.orthographicSize : -1f,
+                    pw, ps, _tilePool.VisibleCount, _entityViews.ViewCount));
+
+                string file = System.IO.Path.Combine(Application.persistentDataPath, "shot.png");
+                ScreenCapture.CaptureScreenshot(file);
+                Debug.Log("[SimplyCQ] 整屏截图（含 IMGUI）写入 " + file);
+                _quitAt = now + 1.5f;
+            }
+
+            if (_quitAt > 0f && now >= _quitAt) Application.Quit();
+        }
+
+        /// <summary>
+        /// 在"真的跑起来的游戏里"跑一遍核心操作：穿装、打怪、捡金币。
+        /// 它验证的是编译进包里的这份代码 + 真实场景里的对象，而不仅仅是 Domain 逻辑。
+        /// </summary>
+        private void RunSelfTest()
+        {
+            Debug.Log("[SimplyCQ] ===== 运行时自检开始 =====");
+            int fail = 0;
+
+            World world = _simulation.World;
+            Entity p = world.Player;
+            if (p == null) { Debug.LogError("[SimplyCQ] 自检失败：没有玩家实体"); return; }
+
+            // 1) 背包与穿装
+            if (p.Bag == null || p.Bag.UsedSlots == 0) { fail++; Debug.LogError("[SimplyCQ] 自检失败：背包是空的"); }
+            else Debug.Log("[SimplyCQ] 自检 ok：背包里有 " + p.Bag.UsedSlots + " 格东西");
+
+            int before = p.MinDc;
+            int idx = p.Bag.IndexOf("wp_wood");
+            if (idx < 0) { fail++; Debug.LogError("[SimplyCQ] 自检失败：背包里找不到 wp_wood"); }
+            else if (!ItemSystem.Equip(world, p, idx, _database.Items)) { fail++; Debug.LogError("[SimplyCQ] 自检失败：穿木剑失败"); }
+            else if (p.MinDc <= before) { fail++; Debug.LogError("[SimplyCQ] 自检失败：穿上木剑攻击力没变"); }
+            else Debug.Log("[SimplyCQ] 自检 ok：穿木剑后攻击力 " + before + " -> " + p.MinDc);
+
+            // 2) 打怪
+            Entity mon = _database.CreateMonster("mon_hen");
+            if (mon == null) { fail++; Debug.LogError("[SimplyCQ] 自检失败：造不出 mon_hen"); }
+            else
+            {
+                mon.Pos = world.FindFreeTileNear(new TilePos(p.Pos.X + 1, p.Pos.Y), 6);
+                mon.HomePos = mon.Pos;
+                mon.Aggressive = false;
+                mon.MoveSpeed = 9999;                 // 别跑，方便断言
+                world.Spawn(mon);
+                p.Facing = DirHelper.FromDelta(mon.Pos.X - p.Pos.X, mon.Pos.Y - p.Pos.Y, p.Facing);
+
+                int hpBefore = mon.Hp;
+                List<Intent> acts = new List<Intent>();
+                for (int i = 0; i < 40 && mon.IsAlive; i++)
+                {
+                    acts.Clear();
+                    acts.Add(Intent.Attack(p.Id, p.Facing));
+                    world.Step(acts);
+                    p.AttackCooldown = 0;
+                }
+                if (mon.Hp >= hpBefore) { fail++; Debug.LogError("[SimplyCQ] 自检失败：攻击没有造成伤害"); }
+                else Debug.Log("[SimplyCQ] 自检 ok：攻击生效，怪血量 " + hpBefore + " -> " + mon.Hp + (mon.IsAlive ? "（还活着）" : "（已击杀）"));
+            }
+
+            // 3) 捡金币
+            int goldBefore = p.Gold;
+            Entity coin = new Entity();
+            coin.Kind = EntityKind.GroundItem;
+            coin.DefId = "gold";
+            coin.SpriteId = "gold";
+            coin.Name = "金币";
+            coin.BlocksTile = false;
+            coin.Gold = 7;
+            coin.Count = 7;
+            coin.LifetimeTicks = 0;
+            coin.Pos = p.Pos;
+            coin.HomePos = p.Pos;
+            world.Spawn(coin);
+            world.Step(new List<Intent>());
+            if (p.Gold <= goldBefore) { fail++; Debug.LogError("[SimplyCQ] 自检失败：金币没捡起来（" + goldBefore + " -> " + p.Gold + "）"); }
+            else Debug.Log("[SimplyCQ] 自检 ok：捡到金币 " + goldBefore + " -> " + p.Gold);
+
+            // 4) 走一遍界面真正用的 Intent 通道（点背包 = 排一个 Intent 丢给 Simulation）
+            int clothIdx = p.Bag.IndexOf("ar_cloth");
+            if (clothIdx < 0) Debug.Log("[SimplyCQ] 自检跳过：背包里没有 ar_cloth");
+            else
+            {
+                List<Intent> uiActs = new List<Intent>();
+                uiActs.Add(Intent.BagAction(p.Id, IntentKind.EquipItem, clothIdx));
+                world.Step(uiActs);
+                if (p.Gear.Get(EquipSlot.Armour) == null) { fail++; Debug.LogError("[SimplyCQ] 自检失败：Intent 通道穿衣服没生效"); }
+                else Debug.Log("[SimplyCQ] 自检 ok：Intent 通道穿戴生效，防御 " + p.Ac);
+            }
+
+            Debug.Log("[SimplyCQ] ===== 运行时自检结束，失败 " + fail + " 项 =====");
+        }
+
+        private void QuitGame()
+        {
+            Debug.Log("[SimplyCQ] 退出");
+#if UNITY_EDITOR
+            UnityEditor.EditorApplication.isPlaying = false;
+#else
+            Application.Quit();
+#endif
         }
 
         private void StepOnce()
@@ -213,6 +396,9 @@ namespace SimplyCQ.Unity
                 _debugStyle = new GUIStyle(GUI.skin.label);
                 _debugStyle.fontSize = 14;
                 _debugStyle.normal.textColor = new Color(0.85f, 0.90f, 0.95f);
+
+                _warnStyle = new GUIStyle(GUI.skin.label);
+                _warnStyle.fontSize = 14;
             }
 
             World world = _simulation.World;
@@ -233,6 +419,23 @@ namespace SimplyCQ.Unity
                 GUI.Label(new Rect(10f, 8f, 1000f, 22f), line1, _debugStyle);
                 GUI.Label(new Rect(10f, 28f, 1000f, 22f), line2, _debugStyle);
                 GUI.Label(new Rect(10f, 48f, 1000f, 22f), line3, _debugStyle);
+
+                // 输入 / 焦点状态放右上角，别挡住左边的面板
+                Rect inputRect = new Rect(Screen.width - 620f, 8f, 610f, 22f);
+                if (!Application.isFocused)
+                {
+                    _warnStyle.normal.textColor = new Color(1f, 0.45f, 0.4f);
+                    GUI.Label(inputRect, "⚠ 游戏窗口没有焦点！先用鼠标点一下窗口（或 Cmd+Tab 切过来），否则键盘鼠标都不会有反应", _warnStyle);
+                }
+                else if (_lastActivityAt <= 0f)
+                {
+                    _warnStyle.normal.textColor = new Color(1f, 0.85f, 0.4f);
+                    GUI.Label(inputRect, "窗口已有焦点，还没收到按键（WASD 走路 · 空格攻击 · I 背包 · Esc 退出）", _warnStyle);
+                }
+                else
+                {
+                    GUI.Label(inputRect, "输入正常（最近：" + _lastActivity + "）  WASD 走路 · 空格攻击 · I 背包 · Esc 退出", _debugStyle);
+                }
             }
 
             DrawHud(world);

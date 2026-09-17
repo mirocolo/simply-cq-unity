@@ -68,6 +68,16 @@ namespace SimplyCQ.Domain
             attacker.AttackCooldown = attacker.AttackInterval < 1 ? 1 : attacker.AttackInterval;
 
             Entity target = PickTarget(world, attacker);
+
+            if (target == null)
+            {
+                // 手上明明贴着怪、只是朝向不对：自动转身砍它。
+                // 传奇里玩家也是"面向就是攻击方向"，不转身的话按了没反应，体验像坏了。
+                target = PickNearestHostile(world, attacker);
+                if (target != null)
+                    attacker.Facing = DirHelper.FromDelta(target.Pos.X - attacker.Pos.X, target.Pos.Y - attacker.Pos.Y, attacker.Facing);
+            }
+
             if (target == null)
             {
                 world.Events.Publish(new AttackMissed { Source = attacker.Id, Target = ActorId.None });
@@ -95,6 +105,24 @@ namespace SimplyCQ.Domain
                 if (!InAttackArc(attacker, candidate)) continue;
 
                 int dist = attacker.Pos.ChebyshevTo(candidate.Pos);
+                if (dist < bestDist) { bestDist = dist; best = candidate; }
+            }
+            return best;
+        }
+
+        /// <summary>攻击范围内最近的敌对目标（不看朝向，用来给"朝向不对"兜底）。</summary>
+        private static Entity PickNearestHostile(World world, Entity attacker)
+        {
+            Entity best = null;
+            int bestDist = int.MaxValue;
+            int range = attacker.AttackRange < 1 ? 1 : attacker.AttackRange;
+
+            foreach (Entity candidate in world.Entities)
+            {
+                if (!IsHostile(attacker, candidate)) continue;
+                if (!candidate.IsAlive) continue;
+                int dist = attacker.Pos.ChebyshevTo(candidate.Pos);
+                if (dist == 0 || dist > range) continue;
                 if (dist < bestDist) { bestDist = dist; best = candidate; }
             }
             return best;

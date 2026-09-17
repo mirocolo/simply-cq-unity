@@ -63,6 +63,43 @@ namespace SimplyCQ.Unity
 #endif
         }
 
+        private Vector3 _lastMouse = new Vector3(-9999f, -9999f, 0f);
+
+        /// <summary>Esc 退出。</summary>
+        public bool ReadQuit()
+        {
+            if (!Enabled) return false;
+#if ENABLE_LEGACY_INPUT_MANAGER
+            return Input.GetKeyDown(KeyCode.Escape);
+#else
+            return false;
+#endif
+        }
+
+        /// <summary>
+        /// 最近有没有收到任何输入（按键 / 鼠标键 / 鼠标移动）。
+        /// 用来在屏幕上直接告诉玩家"窗口拿到焦点了没有" —— 没焦点的话所有操作都会像坏了一样。
+        /// </summary>
+        public bool TryReadActivity(out string what)
+        {
+            what = null;
+            if (!Enabled) return false;
+#if ENABLE_LEGACY_INPUT_MANAGER
+            if (Input.anyKey) { what = "按键/鼠标键"; return true; }
+
+            Vector3 m = Input.mousePosition;
+            if (m.x != _lastMouse.x || m.y != _lastMouse.y)
+            {
+                _lastMouse = m;
+                what = "鼠标移动";
+                return true;
+            }
+            return false;
+#else
+            return false;
+#endif
+        }
+
         /// <summary>面板开关：1 = 背包，2 = 角色，0 = 没按。同样是"按下瞬间"，要按帧采样。</summary>
         public int ReadPanelToggle()
         {
