@@ -236,6 +236,8 @@ namespace UnityEngine
         public static int height { get { return 720; } }
     }
 
+    public enum TextAnchor { UpperLeft = 0, MiddleCenter = 4, MiddleLeft = 3 }
+
     public class GUIStyleState { public Color textColor { get; set; } }
 
     public class GUIStyle
@@ -243,6 +245,7 @@ namespace UnityEngine
         public GUIStyle() { }
         public GUIStyle(GUIStyle other) { }
         public int fontSize { get; set; }
+        public TextAnchor alignment { get; set; }
         public GUIStyleState normal { get { return null; } }
     }
 

@@ -28,7 +28,7 @@ namespace SimplyCQ.Unity
         private readonly Camera _camera;
         private readonly World _world;
         private readonly IItemCatalog _names;
-        private readonly GUIStyle _style;
+        private GUIStyle _style;   // 在 OnGUI 里懒建（构造时 GUI.skin 还没准备好）
 
         public FloatingTextOverlay(EntityViewRegistry views, Camera camera, World world, IItemCatalog names)
         {
@@ -36,8 +36,6 @@ namespace SimplyCQ.Unity
             _camera = camera;
             _world = world;
             _names = names;
-            _style = new GUIStyle();
-            _style.fontSize = 18;
 
             world.Events.Subscribe<DamageDealt>(OnDamage);
             world.Events.Subscribe<AttackMissed>(OnMiss);
@@ -69,6 +67,15 @@ namespace SimplyCQ.Unity
         {
             if (_camera == null) return;
 
+            // 样式必须在 OnGUI 里建：构造函数里 GUI.skin 还没准备好，
+            // 那时候 new 出来的空 style 没有字体，飘字会直接看不见。
+            if (_style == null)
+            {
+                _style = new GUIStyle(GUI.skin.label);
+                _style.fontSize = UiScale.Font(18);
+                _style.alignment = TextAnchor.MiddleCenter;
+            }
+
             for (int i = 0; i < _items.Count; i++)
             {
                 Item it = _items[i];
@@ -77,7 +84,9 @@ namespace SimplyCQ.Unity
 
                 float alpha = 1f - it.Age / it.Life;
                 _style.normal.textColor = new Color(it.Color.r, it.Color.g, it.Color.b, alpha);
-                GUI.Label(new Rect(sp.x - LabelWidth * 0.5f, Screen.height - sp.y, LabelWidth, 22f), it.Text, _style);
+
+                float w = UiScale.Px(LabelWidth);
+                GUI.Label(new Rect(sp.x - w * 0.5f, Screen.height - sp.y, w, UiScale.Px(22f)), it.Text, _style);
             }
         }
 

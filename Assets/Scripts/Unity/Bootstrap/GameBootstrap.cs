@@ -26,6 +26,7 @@ namespace SimplyCQ.Unity
         private TileViewPool _tilePool;
         private EntityViewRegistry _entityViews;
         private FloatingTextOverlay _floatingText;
+        private LootLabelOverlay _lootLabels;
         private CameraRig _cameraRig;
         private PlayerInputSource _input;
         private InventoryUi _inventoryUi;
@@ -60,6 +61,10 @@ namespace SimplyCQ.Unity
         // 调试：命令行 -selftest <秒> -> 在真实运行的游戏里跑一遍战斗/拾取/穿装
         private float _selfTestAt = -1f;
         private bool _selfTestDone;
+
+        // 调试：命令行 -demoloot <秒> -> 在玩家旁边撒几件掉落物（验证地面名字显示）
+        private float _demoLootAt = -1f;
+        private bool _demoLootDone;
 
         public World World { get { return _simulation != null ? _simulation.World : null; } }
 
@@ -112,6 +117,7 @@ namespace SimplyCQ.Unity
                 balance.characterWidthPx, balance.characterHeightPx, balance.pixelsPerUnit, _tickRate);
 
             _floatingText = new FloatingTextOverlay(_entityViews, _camera, _simulation.World, _database.Items);
+            _lootLabels = new LootLabelOverlay(_simulation.World, _entityViews, _database.Items, _camera);
 
             _cameraRig = new CameraRig(_camera, _entityViews.GetTransform(player.Id),
                 _projection.MapWorldRect(_database.Map.Width, _database.Map.Height), balance.cameraSmoothTime);
@@ -146,6 +152,8 @@ namespace SimplyCQ.Unity
         {
             if (_simulation == null) return;
 
+            UiScale.Refresh();
+
             float dt = Time.deltaTime;
             float instantFps = 1f / Mathf.Max(dt, 1e-4f);
             _fps = _fps <= 0f ? instantFps : Mathf.Lerp(_fps, instantFps, 0.1f);
@@ -168,6 +176,12 @@ namespace SimplyCQ.Unity
             {
                 _selfTestDone = true;
                 RunSelfTest();
+            }
+
+            if (_demoLootAt > 0f && !_demoLootDone && Time.timeSinceLevelLoad >= _demoLootAt)
+            {
+                _demoLootDone = true;
+                SpawnDemoLoot();
             }
 
             int toggle = _input.ReadPanelToggle();
@@ -223,6 +237,7 @@ namespace SimplyCQ.Unity
                 float seconds;
                 if (args[i] == "-autoshot" && float.TryParse(args[i + 1], out seconds)) _autoShotAt = seconds;
                 if (args[i] == "-selftest" && float.TryParse(args[i + 1], out seconds)) _selfTestAt = seconds;
+                if (args[i] == "-demoloot" && float.TryParse(args[i + 1], out seconds)) _demoLootAt = seconds;
             }
         }
 
@@ -240,8 +255,8 @@ namespace SimplyCQ.Unity
                 Vector3 pw = pv != null ? pv.position : Vector3.zero;
                 Vector3 ps = _camera != null ? _camera.WorldToScreenPoint(pw) : Vector3.zero;
                 Debug.Log(string.Format(
-                    "[SimplyCQ] 诊断 Screen={0}x{1} aspect={2:0.000} cam={3} ortho={4:0.00} 玩家世界={5} 玩家屏幕={6} 可见格={7} 视图={8}",
-                    Screen.width, Screen.height, _camera != null ? _camera.aspect : -1f,
+                    "[SimplyCQ] 诊断 Screen={0}x{1} aspect={2:0.000} UI缩放={3:0.0} cam={4} ortho={5:0.00} 玩家世界={6} 玩家屏幕={7} 可见格={8} 视图={9}",
+                    Screen.width, Screen.height, _camera != null ? _camera.aspect : -1f, UiScale.Scale,
                     _camera != null ? _camera.transform.position : Vector3.zero,
                     _camera != null ? _camera.orthographicSize : -1f,
                     pw, ps, _tilePool.VisibleCount, _entityViews.ViewCount));
@@ -366,6 +381,41 @@ namespace SimplyCQ.Unity
             Debug.Log("[SimplyCQ] ===== 运行时自检结束，失败 " + fail + " 项 =====");
         }
 
+        /// <summary>往玩家周围放几件掉落物，用来肉眼/截图检查"地面掉落物名字"是否正常。</summary>
+        private void SpawnDemoLoot()
+        {
+            World world = _simulation.World;
+            Entity p = world.Player;
+            if (p == null) return;
+
+            string[] ids = { "wp_long", "pot_hp_m", "mat_fang", "gold" };
+            int[] golds = { 0, 0, 0, 42 };
+
+            for (int i = 0; i < ids.Length; i++)
+            {
+                bool up = i < 2;
+                int dx = (i % 2 == 0) ? 1 : -1;
+                TilePos near = new TilePos(p.Pos.X + dx, p.Pos.Y + (up ? -1 : 1));
+                TilePos at = world.FindFreeGroundTileNear(near, 6);
+
+                ItemDef def = _database.Items != null ? _database.Items.Get(ids[i]) : null;
+                Entity loot = new Entity();
+                loot.Kind = EntityKind.GroundItem;
+                loot.DefId = ids[i];
+                loot.SpriteId = def != null ? def.SpriteId : ids[i];
+                loot.Name = golds[i] > 0 ? "金币" : (def != null ? def.Name : ids[i]);
+                loot.BlocksTile = false;
+                loot.Gold = golds[i];
+                loot.Count = golds[i] > 0 ? golds[i] : 1;
+                loot.LifetimeTicks = 0;
+                loot.Pos = at;
+                loot.HomePos = at;
+                world.Spawn(loot);
+            }
+
+            Debug.Log("[SimplyCQ] 已放置 " + ids.Length + " 件演示掉落物，用来检查地面名字");
+        }
+
         private void QuitGame()
         {
             Debug.Log("[SimplyCQ] 退出");
@@ -419,15 +469,15 @@ namespace SimplyCQ.Unity
             if (_hudStyle == null)
             {
                 _hudStyle = new GUIStyle(GUI.skin.label);
-                _hudStyle.fontSize = 14;
+                _hudStyle.fontSize = UiScale.Font(14);
                 _hudStyle.normal.textColor = Color.white;
 
                 _debugStyle = new GUIStyle(GUI.skin.label);
-                _debugStyle.fontSize = 14;
+                _debugStyle.fontSize = UiScale.Font(14);
                 _debugStyle.normal.textColor = new Color(0.85f, 0.90f, 0.95f);
 
                 _warnStyle = new GUIStyle(GUI.skin.label);
-                _warnStyle.fontSize = 14;
+                _warnStyle.fontSize = UiScale.Font(14);
             }
 
             World world = _simulation.World;
@@ -445,12 +495,12 @@ namespace SimplyCQ.Unity
 
                 const string line3 = "WASD 走路 · 空格/J/左键 攻击 · I 背包 · C 角色 · 背包里左键穿戴/使用，右键丢地上";
 
-                GUI.Label(new Rect(10f, 8f, 1000f, 22f), line1, _debugStyle);
-                GUI.Label(new Rect(10f, 28f, 1000f, 22f), line2, _debugStyle);
-                GUI.Label(new Rect(10f, 48f, 1000f, 22f), line3, _debugStyle);
+                GUI.Label(UiScale.R(10f, 8f, 1000f, 22f), line1, _debugStyle);
+                GUI.Label(UiScale.R(10f, 28f, 1000f, 22f), line2, _debugStyle);
+                GUI.Label(UiScale.R(10f, 48f, 1000f, 22f), line3, _debugStyle);
 
                 // 输入 / 焦点状态放右上角，别挡住左边的面板
-                Rect inputRect = new Rect(Screen.width - 620f, 8f, 610f, 22f);
+                Rect inputRect = new Rect(Screen.width - UiScale.Px(620f), UiScale.Px(8f), UiScale.Px(610f), UiScale.Px(22f));
                 if (!Application.isFocused)
                 {
                     _warnStyle.normal.textColor = new Color(1f, 0.45f, 0.4f);
@@ -467,6 +517,7 @@ namespace SimplyCQ.Unity
                 }
             }
 
+            _lootLabels.Draw();   // 地面掉落物的名字，先画再让面板盖住
             DrawHud(world);
             _inventoryUi.Draw();
             _floatingText.Draw();
@@ -498,7 +549,7 @@ namespace SimplyCQ.Unity
             y += h + 6f;
             string status = "Lv." + p.Level + "    金币 " + p.Gold + "    攻 " + p.MinDc + "-" + p.MaxDc + "    防 " + p.Ac;
             if (!p.IsAlive) status += "    （死亡，等待复活…）";
-            GUI.Label(new Rect(x, y, 520f, 20f), status, _hudStyle);
+            GUI.Label(UiScale.R(x, y, 520f, 20f), status, _hudStyle);
         }
 
         private void DrawBar(float x, float y, float w, float h, float percent, Color back, Color fill, string text)
@@ -506,12 +557,12 @@ namespace SimplyCQ.Unity
             float pct = Mathf.Clamp01(percent);
 
             GUI.color = back;
-            GUI.DrawTexture(new Rect(x, y, w, h), Texture2D.whiteTexture);
+            GUI.DrawTexture(UiScale.R(x, y, w, h), Texture2D.whiteTexture);
             GUI.color = fill;
-            GUI.DrawTexture(new Rect(x, y, w * pct, h), Texture2D.whiteTexture);
+            GUI.DrawTexture(UiScale.R(x, y, w * pct, h), Texture2D.whiteTexture);
             GUI.color = Color.white;
 
-            GUI.Label(new Rect(x + 6f, y, w, h), text, _hudStyle);
+            GUI.Label(UiScale.R(x + 6f, y, w, h), text, _hudStyle);
         }
     }
 }
