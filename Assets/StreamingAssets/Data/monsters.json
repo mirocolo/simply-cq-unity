@@ -1,0 +1,55 @@
+{
+  "monsters": [
+    {
+      "id": "mon_hen",
+      "name": "鸡",
+      "sprite": "mon_hen",
+      "level": 1,
+      "hp": 24,
+      "ac": 0,
+      "minDc": 1,
+      "maxDc": 2,
+      "exp": 4,
+      "moveSpeed": 7,
+      "attackInterval": 14,
+      "attackRange": 1,
+      "vision": 4,
+      "aggressive": false,
+      "leash": 6
+    },
+    {
+      "id": "mon_wolf",
+      "name": "野狼",
+      "sprite": "mon_wolf",
+      "level": 4,
+      "hp": 70,
+      "ac": 1,
+      "minDc": 3,
+      "maxDc": 6,
+      "exp": 18,
+      "moveSpeed": 4,
+      "attackInterval": 10,
+      "attackRange": 1,
+      "vision": 7,
+      "aggressive": true,
+      "leash": 14
+    },
+    {
+      "id": "mon_boar",
+      "name": "野猪",
+      "sprite": "mon_boar",
+      "level": 6,
+      "hp": 130,
+      "ac": 4,
+      "minDc": 5,
+      "maxDc": 9,
+      "exp": 34,
+      "moveSpeed": 6,
+      "attackInterval": 12,
+      "attackRange": 1,
+      "vision": 6,
+      "aggressive": true,
+      "leash": 10
+    }
+  ]
+}

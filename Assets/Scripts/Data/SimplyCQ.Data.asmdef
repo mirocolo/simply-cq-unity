@@ -1,0 +1,16 @@
+{
+    "name": "SimplyCQ.Data",
+    "rootNamespace": "SimplyCQ.Data",
+    "references": [
+        "SimplyCQ.Domain"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

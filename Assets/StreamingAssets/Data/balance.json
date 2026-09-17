@@ -1,0 +1,17 @@
+{
+  "tickPerSecond": 10,
+  "playerMoveSpeed": 3,
+  "playerLevel": 1,
+  "playerHp": 90,
+  "playerMinDc": 2,
+  "playerMaxDc": 5,
+  "playerAc": 1,
+  "tileWidthPx": 48,
+  "tileHeightPx": 32,
+  "pixelsPerUnit": 32,
+  "characterWidthPx": 32,
+  "characterHeightPx": 48,
+  "visibleTilesVertically": 15,
+  "cameraSmoothTime": 0.12,
+  "worldSeed": 20240617
+}

@@ -1,0 +1,40 @@
+# ---- Unity ----
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Uu]ser[Ss]ettings/
+[Mm]emoryCaptures/
+[Rr]ecordings/
+*.csproj
+*.unityproj
+*.sln
+*.suo
+*.user
+*.booproj
+*.pidb
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+.vs/
+.idea/
+.vscode/
+*.apk
+*.aab
+*.unitypackage
+crashlytics-build.properties
+sysinfo.txt
+
+# ---- 本地开发工具（.NET SDK 约 200MB，不进版本库）----
+.tools/
+
+# ---- 自检工程的构建产物 ----
+Tools/**/bin/
+Tools/**/obj/
+
+# Unity 模板的 *.csproj 规则会误伤自检工程，这两个必须提交
+!Tools/**/*.csproj
