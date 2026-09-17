@@ -16,9 +16,12 @@ namespace SimplyCQ.Unity
             public Entity Entity;
             public Transform Transform;
             public SpriteRenderer Renderer;
+            public Vector3 Base;      // 插值出来的位置
             public Vector3 Target;
             public Dir RenderedDir;
             public bool SpriteDirty = true;
+            public float Lunge;       // 攻击前冲剩余时间
+            public Vector3 LungeDir;
         }
 
         private readonly Dictionary<int, View> _views = new Dictionary<int, View>();
@@ -49,6 +52,7 @@ namespace SimplyCQ.Unity
             world.Events.Subscribe<EntityMoved>(OnMoved);
             world.Events.Subscribe<EntityTeleported>(OnTeleported);
             world.Events.Subscribe<DamageDealt>(OnDamaged);
+            world.Events.Subscribe<AttackSwing>(OnSwing);
 
             // 视图层很可能晚于实体出生（启动顺序、存档读取、换地图），
             // 所以不能只依赖 EntitySpawned —— 构造完先跟 World 对齐一次。
@@ -83,7 +87,17 @@ namespace SimplyCQ.Unity
                 Entity e = v.Entity;
                 float tilesPerSecond = _tickRate / Mathf.Max(1, e.MoveSpeed);
                 float unitsPerSecond = tilesPerSecond * _projection.TileW;
-                v.Transform.position = Vector3.MoveTowards(v.Transform.position, v.Target, unitsPerSecond * dt);
+                v.Base = Vector3.MoveTowards(v.Base, v.Target, unitsPerSecond * dt);
+
+                // 攻击时朝面向方向冲一下再弹回来 —— 普攻的"动作"就靠这个
+                Vector3 lunge = Vector3.zero;
+                if (v.Lunge > 0f)
+                {
+                    v.Lunge -= dt;
+                    float k = Mathf.Clamp01(v.Lunge / LungeSeconds);
+                    lunge = v.LungeDir * (Mathf.Sin(k * Mathf.PI) * 0.30f);
+                }
+                v.Transform.position = v.Base + lunge;
 
                 v.Renderer.sortingOrder = _projection.SortOrderFor(v.Transform.position.y) + SortBias(e);
 
@@ -126,6 +140,7 @@ namespace SimplyCQ.Unity
         }
 
         private const float HitFlashSeconds = 0.18f;
+        private const float LungeSeconds = 0.16f;
 
         private Sprite SpriteFor(Entity e)
         {
@@ -178,6 +193,7 @@ namespace SimplyCQ.Unity
             v.Renderer.sprite = SpriteFor(e);
             v.RenderedDir = e.Facing;
             v.Target = AnchorFor(e);
+            v.Base = v.Target;
             v.Transform.position = v.Target;
             v.Renderer.sortingOrder = _projection.SortOrderFor(v.Target.y) + SortBias(e);
             _views[e.Id.Value] = v;
@@ -203,7 +219,16 @@ namespace SimplyCQ.Unity
             View v;
             if (!_views.TryGetValue(evt.Id.Value, out v)) return;
             v.Target = AnchorFor(v.Entity);
+            v.Base = v.Target;
             if (v.Transform != null) v.Transform.position = v.Target;
+        }
+
+        private void OnSwing(AttackSwing evt)
+        {
+            View v;
+            if (!_views.TryGetValue(evt.Actor.Value, out v)) return;
+            v.Lunge = LungeSeconds;
+            v.LungeDir = new Vector3(DirHelper.Dx(evt.Dir), -DirHelper.Dy(evt.Dir), 0f);
         }
 
         private void OnDamaged(DamageDealt evt)

@@ -60,6 +60,9 @@ namespace SimplyCQ.Unity
             if (world != null) world.Events.Subscribe<PickupRefused>(OnPickupRefused);
         }
 
+        /// <summary>逻辑 tick 频率，用来把攻击间隔换算成秒。</summary>
+        public float TickRate = 10f;
+
         public bool AnyOpen { get { return _bagOpen || _charOpen; } }
         public bool MouseOverPanel { get; private set; }
         public bool ConsumesMouse { get { return AnyOpen && MouseOverPanel; } }
@@ -218,10 +221,15 @@ namespace SimplyCQ.Unity
                 "经验  " + player.Exp + " / " + player.ExpToNextLevel);
 
             // 属性：总值 + 明细（基础 / 装备），这样换装有没有用一眼看得出
+            Bar(LRect(r, Pad, 88f, WindowW - Pad * 2f, 16f),
+                player.MaxMp > 0 ? player.Mp / (float)player.MaxMp : 0f,
+                new Color(0.28f, 0.34f, 0.85f),
+                "魔法  " + player.Mp + " / " + player.MaxMp);
+
             int gearMin, gearMax, gearAc, gearHp;
             SumGearBonus(player, out gearMin, out gearMax, out gearAc, out gearHp);
 
-            float y = 94f;
+            float y = 114f;
             StatBlock(r, y, "攻击", player.MinDc + " - " + player.MaxDc,
                 "基础 " + player.BaseMinDc + "-" + player.BaseMaxDc,
                 (gearMin > 0 || gearMax > 0) ? "装备 +" + gearMin + "~+" + gearMax : "");
@@ -235,6 +243,10 @@ namespace SimplyCQ.Unity
             StatBlock(r, y, "生命", player.MaxHp.ToString(),
                 "基础 " + player.BaseMaxHp,
                 gearHp > 0 ? "装备 +" + gearHp : "");
+            y += 38f;
+
+            StatBlock(r, y, "攻速", (TickRate / Mathf.Max(1, player.AttackInterval)).ToString("0.0") + " 次/秒",
+                "间隔 " + player.AttackInterval + " tick", "");
             y += 38f;
 
             if (player.Mc > 0 || player.Sc > 0)

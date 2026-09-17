@@ -27,6 +27,8 @@ namespace SimplyCQ.Unity
         private EntityViewRegistry _entityViews;
         private FloatingTextOverlay _floatingText;
         private LootLabelOverlay _lootLabels;
+        private CombatFxPool _fxPool;
+        private SkillBarUi _skillBar;
         private CameraRig _cameraRig;
         private PlayerInputSource _input;
         private InventoryUi _inventoryUi;
@@ -49,6 +51,8 @@ namespace SimplyCQ.Unity
         // 攻击是「按下的那一瞬间」，必须先按帧 latch 住，等 tick 再消费
         private bool _attackQueued;
         private Dir _attackDir;
+        private bool _attackHeld;
+        private int _skillQueued = -1;
 
         // 输入诊断：窗口没拿到焦点时，所有操作都会像坏了一样
         private float _lastActivityAt = -1f;
@@ -132,6 +136,9 @@ namespace SimplyCQ.Unity
 
             _floatingText = new FloatingTextOverlay(_entityViews, _camera, _simulation.World, _database.Items);
             _lootLabels = new LootLabelOverlay(_simulation.World, _entityViews, _database.Items, _camera);
+            _fxPool = new CombatFxPool(entityRoot, _projection, _simulation.World, _entityViews);
+            _skillBar = new SkillBarUi();
+            _skillBar.TickRate = _tickRate;
 
             _cameraRig = new CameraRig(_camera, _entityViews.GetTransform(player.Id),
                 _projection.MapWorldRect(_database.Map.Width, _database.Map.Height), balance.cameraSmoothTime);
@@ -141,6 +148,7 @@ namespace SimplyCQ.Unity
 
             _input = new PlayerInputSource();
             _inventoryUi = new InventoryUi(_simulation.World, _database.Items);
+            _inventoryUi.TickRate = _tickRate;   // 必须在这之后赋值，否则 Awake 直接 NRE
             _shopUi = new ShopUi(_simulation.World, _database.Items, _database.Shop);
 
             ParseCommandLine();
@@ -237,6 +245,13 @@ namespace SimplyCQ.Unity
                 _attackDir = attackDir;
             }
 
+            // 按住空格/左键 = 持续普攻，由攻击间隔节流（这样攻速才有感觉）
+            _attackHeld = player != null && !_inventoryUi.ConsumesMouse && !_shopUi.ConsumesMouse && _input.IsAttackHeld();
+            if (_attackHeld) _attackDir = player.Facing;
+
+            int skillSlot = _input.ReadSkillSlot();
+            if (skillSlot >= 0) _skillQueued = skillSlot;
+
             _accumulator += dt;
             float maxBacklog = _tickDuration * 5f;
             if (_accumulator > maxBacklog) _accumulator = maxBacklog;
@@ -251,6 +266,7 @@ namespace SimplyCQ.Unity
             }
 
             _entityViews.Tick(dt);
+            _fxPool.Tick(dt);
             _floatingText.Tick(dt);
 
             _secondTimer += dt;
@@ -412,6 +428,49 @@ namespace SimplyCQ.Unity
                 else Debug.Log("[SimplyCQ] 自检 ok：Intent 通道穿戴生效，防御 " + p.Ac);
             }
 
+            // 5) 战士技能：按等级自动学 + 能放出来
+            if (_database.Skills != null && _database.Skills.Get("sk_slash") != null)
+            {
+                world.Step(new List<Intent>());   // 触发自动学
+
+                SkillDef slash = _database.Skills.Get("sk_slash");
+                if (!p.LearnedSkills.Contains("sk_slash"))
+                {
+                    fail++;
+                    Debug.LogError("[SimplyCQ] 自检失败：1 级没学会攻杀剑术");
+                }
+                else
+                {
+                    Debug.Log("[SimplyCQ] 自检 ok：已学 " + p.LearnedSkills.Count + " 个技能，命中 +" + p.HitBonus);
+
+                    p.Mp = p.MaxMp;
+                    int mpBeforeSkill = p.Mp;
+                    List<Intent> castActs = new List<Intent>();
+                    castActs.Add(Intent.BagAction(p.Id, IntentKind.CastSkill, 0));
+                    world.Step(castActs);
+
+                    if (SkillSystem.CooldownLeft(p, slash.Id) <= 0)
+                    {
+                        fail++;
+                        Debug.LogError("[SimplyCQ] 自检失败：放了技能但没进冷却");
+                    }
+                    else
+                    {
+                        Debug.Log("[SimplyCQ] 自检 ok：技能可释放，扣蓝 " + (mpBeforeSkill - p.Mp) + "，冷却 "
+                            + SkillSystem.CooldownLeft(p, slash.Id) + " tick");
+
+                        // 刀光特效：验证"事件 -> 特效池 -> 真的生成了对象"这条链路
+                        if (_fxPool != null && _fxPool.ActiveCount > 0)
+                            Debug.Log("[SimplyCQ] 自检 ok：技能生成了刀光特效（" + _fxPool.ActiveCount + " 个）");
+                        else
+                        {
+                            fail++;
+                            Debug.LogError("[SimplyCQ] 自检失败：技能没有产生刀光特效");
+                        }
+                    }
+                }
+            }
+
             Debug.Log("[SimplyCQ] ===== 运行时自检结束，失败 " + fail + " 项 =====");
         }
 
@@ -500,15 +559,22 @@ namespace SimplyCQ.Unity
                 Dir moveDir;
                 if (_input.TryReadMove(out moveDir)) _intents.Add(Intent.Move(player.Id, moveDir));
 
-                if (_attackQueued)
+                if (_attackQueued || _attackHeld)
                 {
                     _attackQueued = false;
                     _intents.Add(Intent.Attack(player.Id, _attackDir));
+                }
+
+                if (_skillQueued >= 0)
+                {
+                    _intents.Add(Intent.BagAction(player.Id, IntentKind.CastSkill, _skillQueued));
+                    _skillQueued = -1;
                 }
             }
             else
             {
                 _attackQueued = false;
+                _skillQueued = -1;
             }
 
             _inventoryUi.DrainInto(_intents);
@@ -558,7 +624,7 @@ namespace SimplyCQ.Unity
                         world.Player.Name, world.Player.Facing, world.Player.Pos, _floatingText.Count)
                     : "玩家 -";
 
-                const string line3 = "WASD 走路 · 空格/J/左键 攻击 · I 背包 · C 角色 · E 商店 · F5 存档 · F9 读档 · Esc 退出";
+                const string line3 = "WASD 走路 · 按住空格/左键 持续普攻 · 1~3 战士技能 · I 背包 · C 角色 · E 商店 · F5 存档 · F9 读档 · Esc 退出";
 
                 GUI.Label(UiScale.R(10f, 8f, 1000f, 22f), line1, _debugStyle);
                 GUI.Label(UiScale.R(10f, 28f, 1000f, 22f), line2, _debugStyle);
@@ -586,6 +652,7 @@ namespace SimplyCQ.Unity
             DrawHud(world);
             _inventoryUi.Draw();
             _shopUi.Draw();
+            _skillBar.Draw(world.Player, _database.Skills);
             _floatingText.Draw();
         }
 

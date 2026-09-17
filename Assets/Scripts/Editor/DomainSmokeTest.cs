@@ -74,7 +74,7 @@ namespace SimplyCQ.EditorTools
             Check(found && path.Count > 0, "从出生点能寻路到 " + far + "（" + path.Count + " 步）");
 
             // 跑 600 个 tick，每一步都检查不变量
-            Simulation sim = new Simulation(map, (uint)db.Balance.worldSeed, db.CreateMonster, db.Tuning, db.Items, db.Shop);
+            Simulation sim = new Simulation(map, (uint)db.Balance.worldSeed, db.CreateMonster, db.Tuning, db.Items, db.Skills, db.Shop);
             Entity player = db.CreatePlayer();
             player.Pos = map.Spawn;
             player.HomePos = player.Pos;
@@ -122,7 +122,7 @@ namespace SimplyCQ.EditorTools
                 "balance.json 的 combat 段解析成功（攻击间隔 " + (tuning != null ? tuning.PlayerAttackInterval : 0) + " tick）");
 
             GameMap arena = MapLoader.CreateFallbackMap(24, 24);
-            Simulation arena2 = new Simulation(arena, 20240617u, null, tuning, db.Items, db.Shop);
+            Simulation arena2 = new Simulation(arena, 20240617u, null, tuning, db.Items, db.Skills, db.Shop);
 
             Entity fighter = db.CreatePlayer();
             fighter.Pos = arena.Spawn;
@@ -203,7 +203,7 @@ namespace SimplyCQ.EditorTools
             Check(swordIdx >= 0, "新手包里有木剑");
             if (swordIdx >= 0)
             {
-                Simulation gearSim = new Simulation(arena, 4242u, null, tuning, db.Items, db.Shop);
+                Simulation gearSim = new Simulation(arena, 4242u, null, tuning, db.Items, db.Skills, db.Shop);
                 Check(ItemSystem.Equip(gearSim.World, hero, swordIdx, db.Items), "能把木剑穿上");
                 Check(hero.MinDc > baseDc, "攻击力从 " + baseDc + " 提升到 " + hero.MinDc);
                 ItemInstance worn = hero.Gear.Get(EquipSlot.Weapon);
@@ -381,6 +381,77 @@ namespace SimplyCQ.EditorTools
 
                         Check(refusedShop == 1 && trader.Gold == 0, "没钱时拒绝交易并给出理由，且不扣钱");
                     }
+                }
+            }
+
+            // ---------------- M4 战士技能 ----------------
+            Check(db.Skills != null && db.Skills.Count > 0,
+                "skills.json 加载了 " + (db.Skills != null ? db.Skills.Count : 0) + " 个技能");
+
+            {
+                Simulation skillSim = db.CreateSimulation(7777u);
+                skillSim.World.Map.Spawners.Clear();
+
+                Entity hero3 = db.CreatePlayer();
+                hero3.Pos = skillSim.World.FindFreeTileNear(skillSim.World.Map.Spawn, 11);
+                hero3.HomePos = hero3.Pos;
+                skillSim.World.Spawn(hero3);
+                skillSim.World.Player = hero3;
+
+                skillSim.World.Step(new List<Intent>());   // 跑一 tick 触发按等级自动学
+
+                Check(hero3.LearnedSkills.Contains("sk_basic_sword"), "1 级自动学会「基本剑术」（被动）");
+                Check(hero3.LearnedSkills.Contains("sk_slash"), "1 级自动学会「攻杀剑术」");
+                Check(!hero3.LearnedSkills.Contains("sk_thrust"), "「刺杀剑术」要 3 级，现在还不会");
+                Check(hero3.HitBonus > 0, "被动把命中加成加上了（+" + hero3.HitBonus + "）");
+
+                SkillDef slash = db.Skills.Get("sk_slash");
+                Check(SkillSystem.BarSkill(hero3, 0, db.Skills) == slash, "快捷栏第 1 格是攻杀剑术（被动不占格）");
+                Check(SkillSystem.BarSkill(hero3, 1, db.Skills) == null, "还没学会的格子是空的");
+
+                // 升到 10 级：既验证"到级自动学"，也让命中率封顶到 100%，避免用例偶发 miss 而变成 flaky
+                hero3.Level = 10;
+                skillSim.World.Step(new List<Intent>());
+                Check(hero3.LearnedSkills.Contains("sk_thrust"), "10 级自动学会「刺杀剑术」");
+                Check(hero3.LearnedSkills.Contains("sk_flame"), "10 级自动学会「烈火剑法」");
+                Check(SkillSystem.BarSkill(hero3, 1, db.Skills) != null, "快捷栏第 2 格有技能了");
+
+                Entity dummy3 = db.CreateMonster("mon_hen");
+                if (dummy3 != null && slash != null)
+                {
+                    dummy3.Pos = skillSim.World.FindFreeTileNear(new TilePos(hero3.Pos.X + 1, hero3.Pos.Y), 6);
+                    dummy3.HomePos = dummy3.Pos;
+                    dummy3.Aggressive = false;
+                    dummy3.MoveSpeed = 9999;
+                    dummy3.BaseMaxHp = 500; dummy3.MaxHp = 500; dummy3.Hp = 500;
+                    skillSim.World.Spawn(dummy3);
+                    // 钉住它：怪在同一个 tick 里 AI 会先动一格，那样就已经不在技能攻击弧里了
+                    dummy3.MoveCooldown = 100000;
+                    hero3.Facing = DirHelper.FromDelta(dummy3.Pos.X - hero3.Pos.X, dummy3.Pos.Y - hero3.Pos.Y, hero3.Facing);
+
+                    int mpBefore = hero3.Mp;
+                    int hpBefore = dummy3.Hp;
+                    int castEvents = 0;
+                    skillSim.Bus.Subscribe<SkillCast>(delegate(SkillCast x) { castEvents++; });
+
+                    List<Intent> skillActs = new List<Intent>();
+                    skillActs.Add(Intent.BagAction(hero3.Id, IntentKind.CastSkill, 0));
+                    skillSim.World.Step(skillActs);
+
+                    Check(castEvents == 1, "技能释放事件发了一次");
+                    Check(hero3.Mp < mpBefore, "放技能扣了蓝（" + mpBefore + " -> " + hero3.Mp + "）");
+                    Check(dummy3.Hp < hpBefore, "技能造成伤害（" + hpBefore + " -> " + dummy3.Hp + "）");
+                    Check(SkillSystem.CooldownLeft(hero3, slash.Id) > 0,
+                        "技能进入冷却（剩 " + SkillSystem.CooldownLeft(hero3, slash.Id) + " tick）");
+
+                    int mpBefore2 = hero3.Mp;
+                    int hpBefore2 = dummy3.Hp;
+                    int refusedSkill = 0;
+                    skillSim.Bus.Subscribe<SkillRefused>(delegate(SkillRefused x) { refusedSkill++; });
+                    skillSim.World.Step(skillActs);
+
+                    Check(refusedSkill == 1, "冷却中再按 -> 拒绝并给理由");
+                    Check(hero3.Mp >= mpBefore2 && dummy3.Hp == hpBefore2, "冷却中被拒时不扣蓝也不造成伤害");
                 }
             }
 

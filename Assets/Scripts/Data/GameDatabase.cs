@@ -15,17 +15,20 @@ namespace SimplyCQ.Data
         public BalanceDto Balance { get; private set; }
         public CombatTuning Tuning { get; private set; }
         public ItemCatalog Items { get; private set; }
+        public SkillCatalog Skills { get; private set; }
         public ShopTuning Shop { get; private set; }
         public GameMap Map { get; private set; }
         public int MonsterKindCount { get { return _monsters.Count; } }
 
         public static GameDatabase LoadFromStreamingAssets(string mapFile, string monsterFile, string balanceFile,
                                                           string itemFile = "Data/items.json",
-                                                          string npcFile = "Data/npcs.json")
+                                                          string npcFile = "Data/npcs.json",
+                                                          string skillFile = "Data/skills.json")
         {
             GameDatabase db = new GameDatabase();
 
             db.Items = ItemCatalog.FromFile(LoadJson<ItemFile>(itemFile));
+            db.Skills = SkillCatalog.FromFile(LoadJson<SkillFile>(skillFile));
 
             BalanceDto balance = LoadJson<BalanceDto>(balanceFile);
             db.Balance = balance != null ? balance : new BalanceDto();
@@ -100,7 +103,7 @@ namespace SimplyCQ.Data
         /// </summary>
         public Simulation CreateSimulation(uint seed)
         {
-            return new Simulation(Map, seed, CreateMonster, Tuning, Items, Shop);
+            return new Simulation(Map, seed, CreateMonster, Tuning, Items, Skills, Shop);
         }
 
         public NpcDef GetNpc(string npcId)
@@ -205,6 +208,8 @@ namespace SimplyCQ.Data
             e.BaseAc = Balance.playerAc;
             e.MoveSpeed = Balance.playerMoveSpeed;
             e.Aggressive = false;
+            e.ClassId = "warrior";
+            e.BaseMaxMp = Balance.playerMp;
 
             CombatTuning t = Tuning != null ? Tuning : new CombatTuning();
             e.AttackInterval = t.PlayerAttackInterval;
@@ -219,6 +224,7 @@ namespace SimplyCQ.Data
 
             StatCalculator.Apply(e, Items);
             e.Hp = e.MaxHp;
+            e.Mp = e.MaxMp;
             return e;
         }
 

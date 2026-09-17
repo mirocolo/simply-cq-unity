@@ -1,0 +1,54 @@
+{
+  "skills": [
+    {
+      "id": "sk_basic_sword",
+      "name": "基本剑术",
+      "classId": "warrior",
+      "learnLevel": 1,
+      "kind": "passive",
+      "bonusHit": 3,
+      "bonusMinDc": 1,
+      "bonusMaxDc": 1,
+      "desc": "被动：命中 +3，攻击 +1"
+    },
+    {
+      "id": "sk_slash",
+      "name": "攻杀剑术",
+      "classId": "warrior",
+      "learnLevel": 1,
+      "kind": "active",
+      "target": "single",
+      "mp": 3,
+      "cooldownTicks": 18,
+      "range": 1,
+      "damageCoeff": 2.2,
+      "desc": "对身前的敌人造成 220% 伤害"
+    },
+    {
+      "id": "sk_thrust",
+      "name": "刺杀剑术",
+      "classId": "warrior",
+      "learnLevel": 3,
+      "kind": "active",
+      "target": "line",
+      "mp": 5,
+      "cooldownTicks": 16,
+      "range": 2,
+      "damageCoeff": 1.5,
+      "desc": "刺穿身前两格"
+    },
+    {
+      "id": "sk_flame",
+      "name": "烈火剑法",
+      "classId": "warrior",
+      "learnLevel": 6,
+      "kind": "active",
+      "target": "around",
+      "mp": 9,
+      "cooldownTicks": 40,
+      "range": 1,
+      "damageCoeff": 1.8,
+      "desc": "以自身为中心的烈焰斩"
+    }
+  ]
+}

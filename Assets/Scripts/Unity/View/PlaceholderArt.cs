@@ -223,6 +223,38 @@ namespace SimplyCQ.Unity
             }
         }
 
+        /// <summary>挥砍刀光：一道月牙。配合旋转使用，指向攻击方向。</summary>
+        public static Sprite Slash(int widthPx, int heightPx, float ppu)
+        {
+            string key = "slash|" + widthPx + "x" + heightPx;
+            Sprite cached;
+            if (Cache.TryGetValue(key, out cached) && cached != null) return cached;
+
+            Color core = new Color(1f, 1f, 1f, 0.95f);
+            Color glow = new Color(0.75f, 0.92f, 1f, 0.75f);
+            Color[] px = new Color[widthPx * heightPx];
+
+            for (int x = 0; x < widthPx; x++)
+            {
+                float t = x / (float)(widthPx - 1);
+                float bend = Mathf.Sin(t * Mathf.PI);
+                int y = Mathf.RoundToInt(heightPx * 0.5f + bend * (heightPx * 0.30f));
+                int thickness = Mathf.Max(2, Mathf.RoundToInt(bend * heightPx * 0.32f));
+
+                for (int k = -thickness / 2; k <= thickness / 2; k++)
+                {
+                    int yy = y + k;
+                    if (yy < 0 || yy >= heightPx) continue;
+                    bool isCore = Mathf.Abs(k) <= Mathf.Max(0, thickness / 4);
+                    px[yy * widthPx + x] = isCore ? core : glow;
+                }
+            }
+
+            Sprite sprite = Build(px, widthPx, heightPx, ppu, new Vector2(0.5f, 0.5f), key);
+            Cache[key] = sprite;
+            return sprite;
+        }
+
         public static void ClearCache() { Cache.Clear(); }
 
         // ------------------------------------------------------------------ 画图小工具

@@ -43,6 +43,34 @@ namespace SimplyCQ.Data
     }
 
     [Serializable]
+    public class SkillDto
+    {
+        public string id;
+        public string name;
+        public string classId;
+        public int learnLevel = 1;
+        /// <summary>passive / active</summary>
+        public string kind;
+        /// <summary>single / line / around</summary>
+        public string target;
+        public int mp;
+        public int cooldownTicks = 20;
+        public int range = 1;
+        public float damageCoeff = 1f;
+        public int bonusHit;
+        public int bonusMinDc;
+        public int bonusMaxDc;
+        public int bonusAc;
+        public string desc;
+    }
+
+    [Serializable]
+    public class SkillFile
+    {
+        public SkillDto[] skills;
+    }
+
+    [Serializable]
     public class PortalDto
     {
         public int x;
@@ -140,6 +168,7 @@ namespace SimplyCQ.Data
         public int tickPerSecond = 10;
         public int playerMoveSpeed = 3;
         public int playerLevel = 1;
+        public int playerMp = 40;
         public float shopSellRatio = 0.4f;
         public int playerHp = 90;
         public int playerMinDc = 2;
@@ -170,6 +199,7 @@ namespace SimplyCQ.Data
             if (characterHeightPx < 8) characterHeightPx = 8;
             if (visibleTilesVertically < 5) visibleTilesVertically = 5;
             if (playerHp < 1) playerHp = 1;
+            if (playerMp < 0) playerMp = 0;
             if (shopSellRatio < 0f) shopSellRatio = 0f;
             if (shopSellRatio > 2f) shopSellRatio = 2f;
             if (worldSeed == 0) worldSeed = 20240617;

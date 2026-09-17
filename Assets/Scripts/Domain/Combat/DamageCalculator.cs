@@ -23,7 +23,7 @@ namespace SimplyCQ.Domain
 
             CombatTuning t = tuning != null ? tuning : new CombatTuning();
 
-            float chance = t.HitBase + t.HitPerLevel * (attacker.Level - target.Level);
+            float chance = t.HitBase + t.HitPerLevel * (attacker.Level - target.Level) + attacker.HitBonus * 0.01f;
             if (chance < t.HitMin) chance = t.HitMin;
             if (chance > 1f) chance = 1f;
 

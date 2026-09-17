@@ -100,6 +100,15 @@ namespace SimplyCQ.Domain
         // ---- NPC（商人）----
         public NpcDef Shop;
 
+        // ---- 职业与技能 ----
+        public string ClassId = "";
+        /// <summary>命中加成，单位是百分点（基本剑术这类被动给的）。</summary>
+        public int HitBonus;
+        /// <summary>已学会的技能 id，按学习顺序（快捷栏就按这个顺序排）。</summary>
+        public readonly List<string> LearnedSkills = new List<string>();
+        /// <summary>技能剩余冷却 tick。</summary>
+        public readonly Dictionary<string, int> SkillCooldowns = new Dictionary<string, int>();
+
         // ---- AI ----
         public int Vision = 5;
         public int AttackRange = 1;

@@ -54,6 +54,37 @@ namespace SimplyCQ.Domain
         public string Reason;
     }
 
+    /// <summary>挥砍动作（普攻）。表现层用它播刀光 + 前冲，让普攻"看得见"。</summary>
+    public struct AttackSwing
+    {
+        public ActorId Actor;
+        public Dir Dir;
+        public int Range;
+    }
+
+    public struct SkillCast
+    {
+        public ActorId Caster;
+        public string SkillId;
+        public Dir Dir;
+        public int TargetCount;
+        public bool Success;
+    }
+
+    public struct SkillLearned
+    {
+        public ActorId Id;
+        public string SkillId;
+        public string SkillName;
+    }
+
+    public struct SkillRefused
+    {
+        public ActorId Id;
+        public string SkillId;
+        public string Reason;
+    }
+
     /// <summary>挥空了 / 被打的人不在攻击弧内。</summary>
     public struct AttackMissed
     {

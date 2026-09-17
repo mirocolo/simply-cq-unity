@@ -44,6 +44,8 @@ namespace SimplyCQ.Unity
             world.Events.Subscribe<EntityDied>(OnDied);
             world.Events.Subscribe<ItemPicked>(OnItemPicked);
             world.Events.Subscribe<PickupRefused>(OnPickupRefused);
+            world.Events.Subscribe<SkillLearned>(OnSkillLearned);
+            world.Events.Subscribe<SkillRefused>(OnSkillRefused);
         }
 
         public int Count { get { return _items.Count; } }
@@ -138,6 +140,16 @@ namespace SimplyCQ.Unity
         private void OnPickupRefused(PickupRefused evt)
         {
             Add(evt.By, "捡不起来：" + evt.Reason, UiColor.Srgb(1f, 0.55f, 0.25f), 0.55f, 1.6f);
+        }
+
+        private void OnSkillLearned(SkillLearned evt)
+        {
+            Add(evt.Id, "学会「" + evt.SkillName + "」！", new Color(0.60f, 0.95f, 1f), 0.5f, 2.0f);
+        }
+
+        private void OnSkillRefused(SkillRefused evt)
+        {
+            Add(evt.Id, evt.Reason, new Color(1f, 0.62f, 0.35f), 0.5f, 1.2f);
         }
 
         private void OnDied(EntityDied evt)

@@ -32,6 +32,7 @@ namespace UnityEngine
     {
         public Vector3 position { get; set; }
         public Vector3 localScale { get; set; }
+        public Quaternion localRotation { get; set; }
         public void SetParent(Transform parent, bool worldPositionStays) { }
     }
 
@@ -112,6 +113,12 @@ namespace UnityEngine
         public static Sprite Create(Texture2D texture, Rect rect, Vector2 pivot, float pixelsPerUnit, uint extrude, SpriteMeshType meshType) { return null; }
     }
 
+    public struct Quaternion
+    {
+        public static Quaternion identity { get { return default(Quaternion); } }
+        public static Quaternion Euler(float x, float y, float z) { return default(Quaternion); }
+    }
+
     public struct Vector2
     {
         public float x;
@@ -129,6 +136,8 @@ namespace UnityEngine
         public Vector3(float x, float y, float z) { this.x = x; this.y = y; this.z = z; }
         public static Vector3 zero { get { return new Vector3(0f, 0f, 0f); } }
         public static Vector3 one { get { return new Vector3(1f, 1f, 1f); } }
+        public float sqrMagnitude { get { return x * x + y * y + z * z; } }
+        public void Normalize() { }
         public static Vector3 MoveTowards(Vector3 current, Vector3 target, float maxDelta) { return current; }
         public static Vector3 Lerp(Vector3 a, Vector3 b, float t) { return a; }
         public static Vector3 operator +(Vector3 a, Vector3 b) { return new Vector3(a.x + b.x, a.y + b.y, a.z + b.z); }
@@ -171,6 +180,9 @@ namespace UnityEngine
     public static class Mathf
     {
         public const float Infinity = float.PositiveInfinity;
+        public const float PI = 3.14159265f;
+        public const float Rad2Deg = 57.29578f;
+        public static float Atan2(float y, float x) { return 0f; }
         public static float Clamp01(float v) { return v; }
         public static int Clamp(int v, int min, int max) { return v; }
         public static float Clamp(float v, float min, float max) { return v; }
@@ -220,7 +232,7 @@ namespace UnityEngine
         public static float timeSinceLevelLoad { get { return 0f; } }
     }
 
-    public enum KeyCode { A, B, C, D, E, I, J, S, W, F5, F9, Space, Escape, UpArrow, DownArrow, LeftArrow, RightArrow }
+    public enum KeyCode { A, B, C, D, E, I, J, S, W, F5, F9, Space, Escape, Alpha1, Alpha2, Alpha3, Alpha4, Alpha5, Alpha6, UpArrow, DownArrow, LeftArrow, RightArrow }
 
     public static class Input
     {
@@ -229,6 +241,7 @@ namespace UnityEngine
         public static bool GetKey(KeyCode key) { return false; }
         public static bool GetKeyDown(KeyCode key) { return false; }
         public static bool GetMouseButtonDown(int button) { return false; }
+        public static bool GetMouseButton(int button) { return false; }
     }
 
     public static class Screen

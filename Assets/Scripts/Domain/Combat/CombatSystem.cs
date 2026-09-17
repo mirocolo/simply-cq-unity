@@ -60,6 +60,15 @@ namespace SimplyCQ.Domain
                 if (gain < 1) gain = 1;
                 e.Hp += gain;
                 if (e.Hp > e.MaxHp) e.Hp = e.MaxHp;
+
+                // 蓝也一起回，不然放两个技能就没蓝了
+                if (e.MaxMp > 0 && e.Mp < e.MaxMp)
+                {
+                    int mpGain = (int)(e.MaxMp * _tuning.RegenPctPerTick + 0.5f);
+                    if (mpGain < 1) mpGain = 1;
+                    e.Mp += mpGain;
+                    if (e.Mp > e.MaxMp) e.Mp = e.MaxMp;
+                }
             }
         }
 
@@ -67,7 +76,15 @@ namespace SimplyCQ.Domain
         {
             attacker.AttackCooldown = attacker.AttackInterval < 1 ? 1 : attacker.AttackInterval;
 
-            Entity target = PickTarget(world, attacker);
+            // 先发"挥砍"事件：表现层靠它播刀光/前冲，普攻才"看得见"
+            world.Events.Publish(new AttackSwing
+            {
+                Actor = attacker.Id,
+                Dir = attacker.Facing,
+                Range = attacker.AttackRange < 1 ? 1 : attacker.AttackRange
+            });
+
+            Entity target = PickTarget(world, attacker, attacker.AttackRange);
 
             if (target == null)
             {
@@ -94,7 +111,8 @@ namespace SimplyCQ.Domain
             ApplyDamage(world, attacker, target, result);
         }
 
-        private static Entity PickTarget(World world, Entity attacker)
+        /// <summary>攻击弧内最近的一个敌人（射程可覆盖，技能会用到）。</summary>
+        public static Entity PickTarget(World world, Entity attacker, int range)
         {
             Entity best = null;
             int bestDist = int.MaxValue;
@@ -102,12 +120,18 @@ namespace SimplyCQ.Domain
             {
                 if (!IsHostile(attacker, candidate)) continue;
                 if (!candidate.IsAlive) continue;
-                if (!InAttackArc(attacker, candidate)) continue;
+                if (!InAttackArc(attacker, candidate, range)) continue;
 
                 int dist = attacker.Pos.ChebyshevTo(candidate.Pos);
                 if (dist < bestDist) { bestDist = dist; best = candidate; }
             }
             return best;
+        }
+
+        /// <summary>攻击弧内最近的目标（技能用；和普攻共用同一套朝向判定）。</summary>
+        public static Entity FindTargetInArc(World world, Entity attacker, int range)
+        {
+            return PickTarget(world, attacker, range);
         }
 
         /// <summary>攻击范围内最近的敌对目标（不看朝向，用来给"朝向不对"兜底）。</summary>
@@ -131,11 +155,16 @@ namespace SimplyCQ.Domain
         /// <summary>近战只打「面向那一侧」的敌人，不做背刺。点积 &gt; 0 就是前方的半平面。</summary>
         public static bool InAttackArc(Entity attacker, Entity target)
         {
+            return InAttackArc(attacker, target, attacker.AttackRange);
+        }
+
+        public static bool InAttackArc(Entity attacker, Entity target, int range)
+        {
             int dx = target.Pos.X - attacker.Pos.X;
             int dy = target.Pos.Y - attacker.Pos.Y;
             int dist = Math.Max(Math.Abs(dx), Math.Abs(dy));
-            int range = attacker.AttackRange < 1 ? 1 : attacker.AttackRange;
-            if (dist == 0 || dist > range) return false;
+            int r = range < 1 ? 1 : range;
+            if (dist == 0 || dist > r) return false;
             return dx * DirHelper.Dx(attacker.Facing) + dy * DirHelper.Dy(attacker.Facing) > 0;
         }
 

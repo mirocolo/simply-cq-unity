@@ -100,6 +100,32 @@ namespace SimplyCQ.Unity
 #endif
         }
 
+        /// <summary>按住就持续攻击（由攻击间隔节流）—— 这样"攻速"才感觉得到。</summary>
+        public bool IsAttackHeld()
+        {
+            if (!Enabled) return false;
+#if ENABLE_LEGACY_INPUT_MANAGER
+            return Input.GetKey(KeyCode.Space) || Input.GetKey(KeyCode.J) || Input.GetMouseButton(0);
+#else
+            return false;
+#endif
+        }
+
+        /// <summary>数字键 1..6 -> 快捷栏下标；没按返回 -1。</summary>
+        public int ReadSkillSlot()
+        {
+            if (!Enabled) return -1;
+#if ENABLE_LEGACY_INPUT_MANAGER
+            if (Input.GetKeyDown(KeyCode.Alpha1)) return 0;
+            if (Input.GetKeyDown(KeyCode.Alpha2)) return 1;
+            if (Input.GetKeyDown(KeyCode.Alpha3)) return 2;
+            if (Input.GetKeyDown(KeyCode.Alpha4)) return 3;
+            if (Input.GetKeyDown(KeyCode.Alpha5)) return 4;
+            if (Input.GetKeyDown(KeyCode.Alpha6)) return 5;
+#endif
+            return -1;
+        }
+
         /// <summary>E：开关商店。</summary>
         public bool ReadShopToggle()
         {
