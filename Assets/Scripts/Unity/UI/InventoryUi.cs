@@ -52,7 +52,7 @@ namespace SimplyCQ.Unity
 
         private void OnPickupRefused(PickupRefused evt)
         {
-            SetHint("捡不起来：" + evt.Reason + "（负重看背包标题栏）");
+            SetHint("捡不起来：" + evt.Reason);
             _hintUntil = Time.timeSinceLevelLoad + 3f;
         }
 
@@ -128,14 +128,8 @@ namespace SimplyCQ.Unity
             _bagOpenRect = r;
             Panel(r, "背包");
 
-            // 金币 / 负重
-            int weight = bag.WeightOf(_catalog);
-            string head = "金币 " + player.Gold + "    负重 " + weight + " / " + bag.MaxWeight + "    格子 " + bag.UsedSlots + " / " + Inventory.SlotCount;
+            string head = "金币 " + player.Gold + "    格子 " + bag.UsedSlots + " / " + Inventory.SlotCount;
             GUI.Label(new Rect(r.x + Pad, r.y + 26f, r.width - Pad * 2f, 18f), head, _label);
-
-            bool overweight = bag.MaxWeight > 0 && weight > bag.MaxWeight;
-            if (overweight)
-                GUI.Label(new Rect(r.x + Pad, r.y + 44f, r.width - Pad * 2f, 18f), "超重！走不动也捡不起来", _small);
 
             float gx = r.x + Pad + Gap;
             float gy = r.y + 70f;
@@ -214,14 +208,6 @@ namespace SimplyCQ.Unity
             y += 18f;
             GUI.Label(new Rect(r.x + Pad, y, r.width - Pad * 2f, 18f),
                 "魔法 " + player.Mc + "    道术 " + player.Sc + "    魔御 " + player.Mac, _label);
-
-            Inventory bag = player.Bag;
-            if (bag != null)
-            {
-                y += 18f;
-                GUI.Label(new Rect(r.x + Pad, y, r.width - Pad * 2f, 18f),
-                    "负重 " + bag.WeightOf(_catalog) + " / " + bag.MaxWeight, _label);
-            }
 
             y += 26f;
             GUI.Label(new Rect(r.x + Pad, y, r.width - Pad * 2f, 18f), "—— 装备 ——", _label);
@@ -316,7 +302,7 @@ namespace SimplyCQ.Unity
             }
 
             if (!string.IsNullOrEmpty(def.Description)) body += "\n" + def.Description;
-            body += "\n重量 " + def.Weight + "    售价 " + (def.Price / 2);
+            body += "\n售价 " + (def.Price / 2) + " 金币";
 
             float w = 220f;
             float h = 46f + (body.Split('\n').Length) * 17f;

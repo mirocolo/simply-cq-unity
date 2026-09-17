@@ -36,7 +36,6 @@ namespace SimplyCQ.Domain
         public EquipSlot Slot;
 
         public int MaxStack = 1;
-        public int Weight = 1;
         public int Price;
         public int LevelReq = 1;
         public string ClassReq;

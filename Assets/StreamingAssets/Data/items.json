@@ -6,7 +6,6 @@
       "sprite": "pot_hp_s",
       "type": "consumable",
       "maxStack": 99,
-      "weight": 1,
       "price": 10,
       "healHp": 30,
       "desc": "恢复 30 点生命"
@@ -17,7 +16,6 @@
       "sprite": "pot_hp_m",
       "type": "consumable",
       "maxStack": 99,
-      "weight": 2,
       "price": 35,
       "healHp": 90,
       "desc": "恢复 90 点生命"
@@ -28,7 +26,6 @@
       "sprite": "pot_mp_s",
       "type": "consumable",
       "maxStack": 99,
-      "weight": 1,
       "price": 12,
       "healMp": 25,
       "desc": "恢复 25 点魔法"
@@ -39,7 +36,6 @@
       "sprite": "mat_hide",
       "type": "material",
       "maxStack": 99,
-      "weight": 3,
       "price": 8,
       "desc": "可以卖钱"
     },
@@ -49,7 +45,6 @@
       "sprite": "mat_fang",
       "type": "material",
       "maxStack": 99,
-      "weight": 2,
       "price": 14,
       "desc": "可以卖钱"
     },
@@ -59,7 +54,6 @@
       "sprite": "wp_wood",
       "type": "equip",
       "slot": "weapon",
-      "weight": 20,
       "price": 100,
       "minDc": 2,
       "maxDc": 4,
@@ -71,7 +65,6 @@
       "sprite": "wp_short",
       "type": "equip",
       "slot": "weapon",
-      "weight": 25,
       "price": 350,
       "levelReq": 3,
       "minDc": 4,
@@ -84,7 +77,6 @@
       "sprite": "wp_long",
       "type": "equip",
       "slot": "weapon",
-      "weight": 32,
       "price": 900,
       "levelReq": 7,
       "minDc": 6,
@@ -97,7 +89,6 @@
       "sprite": "ar_cloth",
       "type": "equip",
       "slot": "armour",
-      "weight": 15,
       "price": 80,
       "ac": 2,
       "desc": "新手衣服"
@@ -108,7 +99,6 @@
       "sprite": "ar_leather",
       "type": "equip",
       "slot": "armour",
-      "weight": 28,
       "price": 400,
       "levelReq": 3,
       "ac": 4,
@@ -121,7 +111,6 @@
       "sprite": "ar_bronze",
       "type": "equip",
       "slot": "armour",
-      "weight": 45,
       "price": 1200,
       "levelReq": 7,
       "ac": 7,
@@ -134,7 +123,6 @@
       "sprite": "he_cap",
       "type": "equip",
       "slot": "helmet",
-      "weight": 8,
       "price": 60,
       "ac": 1,
       "desc": ""
@@ -145,7 +133,6 @@
       "sprite": "he_iron",
       "type": "equip",
       "slot": "helmet",
-      "weight": 18,
       "price": 500,
       "levelReq": 5,
       "ac": 3,
@@ -158,7 +145,6 @@
       "sprite": "nk_bead",
       "type": "equip",
       "slot": "necklace",
-      "weight": 5,
       "price": 220,
       "minDc": 0,
       "maxDc": 2,
@@ -170,7 +156,6 @@
       "sprite": "br_copper",
       "type": "equip",
       "slot": "bracelet",
-      "weight": 6,
       "price": 260,
       "ac": 1,
       "desc": ""
@@ -181,7 +166,6 @@
       "sprite": "rg_copper",
       "type": "equip",
       "slot": "ring",
-      "weight": 3,
       "price": 240,
       "minDc": 1,
       "maxDc": 2,
@@ -193,7 +177,6 @@
       "sprite": "be_cloth",
       "type": "equip",
       "slot": "belt",
-      "weight": 5,
       "price": 150,
       "ac": 1,
       "desc": ""
@@ -204,7 +187,6 @@
       "sprite": "bt_straw",
       "type": "equip",
       "slot": "boots",
-      "weight": 6,
       "price": 90,
       "ac": 1,
       "desc": ""

@@ -86,8 +86,7 @@ namespace SimplyCQ.Domain
             ItemInstance old = e.Gear.Get(def.Slot);
             if (old != null)
             {
-                ItemDef oldDef = catalog != null ? catalog.Get(old.DefId) : null;
-                if (!e.Bag.CanAdd(oldDef, old.Count, catalog)) return false;
+                if (!e.Bag.CanAdd(catalog != null ? catalog.Get(old.DefId) : null, old.Count)) return false;
             }
 
             // 关键：先克隆再移出背包。
@@ -119,7 +118,7 @@ namespace SimplyCQ.Domain
             if (worn == null) return false;
 
             ItemDef def = catalog != null ? catalog.Get(worn.DefId) : null;
-            if (!e.Bag.CanAdd(def, worn.Count, catalog)) return false;
+            if (!e.Bag.CanAdd(def, worn.Count)) return false;
 
             e.Gear.Clear(gearSlot);
             e.Bag.Add(def, worn.Count);

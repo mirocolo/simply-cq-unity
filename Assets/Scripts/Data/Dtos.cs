@@ -87,7 +87,6 @@ namespace SimplyCQ.Data
         /// <summary>weapon / armour / helmet / necklace / bracelet / ring / belt / boots</summary>
         public string slot;
         public int maxStack = 1;
-        public int weight = 1;
         public int price;
         public int levelReq = 1;
         public string classReq;
@@ -116,7 +115,6 @@ namespace SimplyCQ.Data
         public int tickPerSecond = 10;
         public int playerMoveSpeed = 3;
         public int playerLevel = 1;
-        public int playerMaxWeight = 60;
         public int playerHp = 90;
         public int playerMinDc = 2;
         public int playerMaxDc = 5;
@@ -146,7 +144,6 @@ namespace SimplyCQ.Data
             if (characterHeightPx < 8) characterHeightPx = 8;
             if (visibleTilesVertically < 5) visibleTilesVertically = 5;
             if (playerHp < 1) playerHp = 1;
-            if (playerMaxWeight < 1) playerMaxWeight = 1;
             if (worldSeed == 0) worldSeed = 20240617;
         }
     }

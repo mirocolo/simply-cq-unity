@@ -12,9 +12,6 @@ namespace SimplyCQ.Domain
 
         public readonly ItemInstance[] Slots = new ItemInstance[SlotCount];
 
-        /// <summary>负重上限。0 表示不限重。</summary>
-        public int MaxWeight = 60;
-
         public ItemInstance At(int index)
         {
             if (index < 0 || index >= SlotCount) return null;
@@ -33,19 +30,6 @@ namespace SimplyCQ.Domain
             }
         }
 
-        public int WeightOf(IItemCatalog catalog)
-        {
-            int weight = 0;
-            for (int i = 0; i < SlotCount; i++)
-            {
-                ItemInstance s = Slots[i];
-                if (s == null) continue;
-                ItemDef def = catalog != null ? catalog.Get(s.DefId) : null;
-                weight += (def != null ? def.Weight : 1) * s.Count;
-            }
-            return weight;
-        }
-
         /// <summary>还能塞下多少个这种物品（按堆叠上限算）。</summary>
         public int FreeSpaceFor(ItemDef def)
         {
@@ -61,17 +45,14 @@ namespace SimplyCQ.Domain
             return space;
         }
 
-        /// <summary>背包里放不放得下 + 重量够不够。负重是第一道门槛，这正是传奇捡不动东西的原因。</summary>
-        public bool CanAdd(ItemDef def, int count, IItemCatalog catalog)
+        /// <summary>
+        /// 背包放不放得下。只有格子会被限制 —— 负重机制已按需求移除，
+        /// 现在唯一的"捡不起来"就是格子满了。
+        /// </summary>
+        public bool CanAdd(ItemDef def, int count)
         {
             if (def == null || count <= 0) return false;
-            if (FreeSpaceFor(def) < count) return false;
-            if (MaxWeight > 0)
-            {
-                int weight = WeightOf(catalog) + def.Weight * count;
-                if (weight > MaxWeight) return false;
-            }
-            return true;
+            return FreeSpaceFor(def) >= count;
         }
 
         /// <summary>加物品，返回真正放进去的数量（可能小于 count）。</summary>

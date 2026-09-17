@@ -196,19 +196,7 @@ namespace SimplyCQ.EditorTools
 
             Entity hero = db.CreatePlayer();
             Check(hero.Bag != null && hero.Gear != null, "玩家出生自带背包和装备栏");
-            Check(hero.Bag.MaxWeight == db.Balance.playerMaxWeight,
-                "负重上限来自 balance.json（" + hero.Bag.MaxWeight + "）");
             Check(hero.Bag.UsedSlots > 0, "新手包里有 " + hero.Bag.UsedSlots + " 格东西");
-
-            // 负重规则：出生时装满一半以上，玩家捡第一件掉落物就会"捡不起来"（这次真踩过这个坑）
-            int startWeight = hero.Bag.WeightOf(db.Items);
-            Check(startWeight * 2 <= hero.Bag.MaxWeight,
-                "新手包负重占用低于上限一半（" + startWeight + "/" + hero.Bag.MaxWeight + "）");
-
-            int heaviest = 0;
-            foreach (ItemDef def in db.Items.All) if (def.Weight > heaviest) heaviest = def.Weight;
-            Check(startWeight + heaviest <= hero.Bag.MaxWeight,
-                "新手包(" + startWeight + ") + 最重掉落物(" + heaviest + ") 不超过负重上限(" + hero.Bag.MaxWeight + ")");
 
             int baseDc = hero.MinDc;
             int swordIdx = hero.Bag.IndexOf("wp_wood");
@@ -291,7 +279,42 @@ namespace SimplyCQ.EditorTools
                 lootWorld.PlaceEntity(picker, ground.Pos);
                 lootWorld.Step(new List<Intent>());
                 Check(picked == 1 && picker.Bag.IndexOf("mat_hide") >= 0, "踩上去把兽皮捡进背包");
-                Check(picker.Bag.WeightOf(db.Items) > 0, "背包重量随拾取增长");
+            }
+
+            // 移除负重后，唯一的拾取门槛是背包满 —— 这条路必须有提示，不能静默失败
+            {
+                World fullWorld = new World(arena, 515u, new EventBus());
+                fullWorld.Systems.Add(new LootSystem(db.Items));
+
+                Entity full = db.CreatePlayer();
+                full.Pos = arena.Spawn;
+                full.HomePos = full.Pos;
+                fullWorld.Spawn(full);
+                fullWorld.Player = full;
+
+                ItemDef hideDef2 = db.Items.Get("mat_hide");
+                if (hideDef2 != null)
+                {
+                    full.Bag.Add(hideDef2, Inventory.SlotCount * 99);
+                    Check(full.Bag.FreeSpaceFor(hideDef2) == 0, "把背包塞满（" + full.Bag.UsedSlots + " 格）");
+
+                    int refused = 0;
+                    fullWorld.Events.Subscribe<PickupRefused>(delegate(PickupRefused e) { refused++; });
+
+                    Entity overflow = new Entity();
+                    overflow.Kind = EntityKind.GroundItem;
+                    overflow.DefId = "mat_hide";
+                    overflow.SpriteId = "mat_hide";
+                    overflow.BlocksTile = false;
+                    overflow.Count = 1;
+                    overflow.Pos = full.Pos;
+                    overflow.HomePos = full.Pos;
+                    fullWorld.Spawn(overflow);
+                    fullWorld.Step(new List<Intent>());
+
+                    Check(refused == 1, "背包满时拒绝拾取并给出提示（" + refused + "）");
+                    Check(fullWorld.GroundItemAt(full.Pos) != null, "背包满时东西留在原地，不会被吞");
+                }
             }
 
             // 键盘操作的成败取决于 Player Settings，这里用编译期宏直接断言，

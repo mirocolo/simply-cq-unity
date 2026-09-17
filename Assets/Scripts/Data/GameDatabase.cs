@@ -150,7 +150,6 @@ namespace SimplyCQ.Data
             e.ExpToNextLevel = LevelCurve.ExpToNext(e.Level, t);
 
             e.Bag = new Inventory();
-            e.Bag.MaxWeight = Balance.playerMaxWeight;
             e.Gear = new Equipment();
 
             // 送一套新手装备，进游戏就能立刻看到换装对属性的影响

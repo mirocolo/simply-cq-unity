@@ -33,7 +33,6 @@ namespace SimplyCQ.Data
             def.Type = ParseType(dto.type);
             def.Slot = ParseSlot(dto.slot);
             def.MaxStack = dto.maxStack > 0 ? dto.maxStack : (def.Type == ItemType.Equip ? 1 : 99);
-            def.Weight = dto.weight > 0 ? dto.weight : 1;
             def.Price = dto.price;
             def.LevelReq = dto.levelReq > 0 ? dto.levelReq : 1;
             def.ClassReq = dto.classReq;

@@ -341,13 +341,13 @@ namespace SimplyCQ.Unity
                 if (p.Bag.IndexOf("mat_hide") < 0)
                 {
                     fail++;
-                    Debug.LogError("[SimplyCQ] 自检失败：踩到物品没捡起来（负重 "
-                        + p.Bag.WeightOf(_database.Items) + "/" + p.Bag.MaxWeight + "）");
+                    Debug.LogError("[SimplyCQ] 自检失败：踩到物品没捡起来（背包 "
+                        + p.Bag.UsedSlots + "/" + Inventory.SlotCount + " 格）");
                 }
                 else
                 {
-                    Debug.Log("[SimplyCQ] 自检 ok：踩到物品进背包了（负重 "
-                        + p.Bag.WeightOf(_database.Items) + "/" + p.Bag.MaxWeight + "）");
+                    Debug.Log("[SimplyCQ] 自检 ok：踩到物品进背包了（背包 "
+                        + p.Bag.UsedSlots + "/" + Inventory.SlotCount + " 格）");
                 }
             }
 

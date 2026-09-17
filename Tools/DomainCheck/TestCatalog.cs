@@ -22,33 +22,32 @@ namespace DomainCheck
         }
 
         public ItemDef Equip(string id, EquipSlot slot, int minDc, int maxDc, int ac,
-                             int weight = 10, int levelReq = 1, int bonusHp = 0)
+                             int levelReq = 1, int bonusHp = 0)
         {
             ItemDef d = new ItemDef();
             d.Id = id; d.Name = id; d.SpriteId = id;
             d.Type = ItemType.Equip; d.Slot = slot; d.MaxStack = 1;
             d.MinDc = minDc; d.MaxDc = maxDc; d.Ac = ac;
-            d.Weight = weight; d.LevelReq = levelReq; d.BonusHp = bonusHp;
+            d.LevelReq = levelReq; d.BonusHp = bonusHp;
             _byId[id] = d;
             return d;
         }
 
-        public ItemDef Potion(string id, int healHp, int weight = 1)
+        public ItemDef Potion(string id, int healHp)
         {
             ItemDef d = new ItemDef();
             d.Id = id; d.Name = id; d.SpriteId = id;
             d.Type = ItemType.Consumable; d.MaxStack = 99;
-            d.HealHp = healHp; d.Weight = weight;
+            d.HealHp = healHp;
             _byId[id] = d;
             return d;
         }
 
-        public ItemDef Material(string id, int weight = 3)
+        public ItemDef Material(string id)
         {
             ItemDef d = new ItemDef();
             d.Id = id; d.Name = id; d.SpriteId = id;
             d.Type = ItemType.Material; d.MaxStack = 99;
-            d.Weight = weight;
             _byId[id] = d;
             return d;
         }

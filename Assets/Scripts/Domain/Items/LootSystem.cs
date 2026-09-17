@@ -68,10 +68,9 @@ namespace SimplyCQ.Domain
                 Refuse(world, player, item, "没有背包");
                 return;
             }
-            if (!player.Bag.CanAdd(def, item.Count, _catalog))
+            if (!player.Bag.CanAdd(def, item.Count))
             {
-                bool noRoom = player.Bag.FreeSpaceFor(def) < item.Count;
-                Refuse(world, player, item, noRoom ? "背包满了" : "负重不够");
+                Refuse(world, player, item, "背包满了");
                 return;
             }
 

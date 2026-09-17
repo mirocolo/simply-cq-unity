@@ -681,13 +681,12 @@ namespace DomainCheck
 
         // ---------------------------------------------------------------- M3 物品 / 背包 / 装备
 
-        private static Entity MakeFullPlayer(TestCatalog catalog, TilePos pos, int maxWeight = 60)
+        private static Entity MakeFullPlayer(TestCatalog catalog, TilePos pos)
         {
             Entity e = MakeEntity(EntityKind.Player, pos);
             e.Level = 1;
             e.BaseMinDc = 5; e.BaseMaxDc = 9; e.BaseAc = 2; e.BaseMaxHp = 120;
             e.Bag = new Inventory();
-            e.Bag.MaxWeight = maxWeight;
             e.Gear = new Equipment();
             e.ExpToNextLevel = 1000;
             e.AttackInterval = 10;
@@ -715,18 +714,16 @@ namespace DomainCheck
         {
             Console.WriteLine("[背包]");
             TestCatalog cat = new TestCatalog();
-            cat.Material("hide", 3);
-            cat.Potion("pot", 30, 1);
+            cat.Material("hide");
+            cat.Potion("pot", 30);
 
             Inventory bag = new Inventory();
-            bag.MaxWeight = 60;
             ItemDef hide = cat.Get("hide");
 
             Check(bag.Add(hide, 5) == 5, "放入 5 个可堆叠物品");
             Check(bag.UsedSlots == 1, "堆叠进同一格（用了 " + bag.UsedSlots + " 格）");
             bag.Add(hide, 10);
             Check(bag.At(0).Count == 15, "继续叠加到 15（实际 " + bag.At(0).Count + "）");
-            Check(bag.WeightOf(cat) == 45, "重量 = 15 x 3（实际 " + bag.WeightOf(cat) + "）");
             Check(bag.RemoveById("hide", 5) == 5, "按 id 移除 5 个");
             Check(bag.At(0).Count == 10, "移除后剩 10 个");
 
@@ -745,11 +742,11 @@ namespace DomainCheck
         {
             Console.WriteLine("[装备与属性聚合]");
             TestCatalog cat = new TestCatalog();
-            cat.Equip("sword1", EquipSlot.Weapon, 2, 4, 0, 20);
-            cat.Equip("sword2", EquipSlot.Weapon, 6, 10, 0, 25);
-            cat.Equip("armour1", EquipSlot.Armour, 0, 0, 3, 15, 1, 20);
-            cat.Equip("relic", EquipSlot.Weapon, 50, 60, 0, 1, 99);
-            cat.Material("junk", 0);
+            cat.Equip("sword1", EquipSlot.Weapon, 2, 4, 0);
+            cat.Equip("sword2", EquipSlot.Weapon, 6, 10, 0);
+            cat.Equip("armour1", EquipSlot.Armour, 0, 0, 3, 1, 20);
+            cat.Equip("relic", EquipSlot.Weapon, 50, 60, 0, 99);
+            cat.Material("junk");
 
             GameMap map = OpenMap(8);
             World world = new World(map, 1u, new EventBus());
@@ -802,16 +799,16 @@ namespace DomainCheck
 
         private static void TestItemPickup()
         {
-            Console.WriteLine("[物品拾取与负重]");
+            Console.WriteLine("[物品拾取]");
             TestCatalog cat = new TestCatalog();
-            cat.Material("rock", 10);
-            cat.Material("heavy", 60);
+            cat.Material("rock");
+            cat.Material("heavy");
 
             GameMap map = OpenMap(12);
             World world = new World(map, 7u, new EventBus());
             world.Systems.Add(new LootSystem(cat));
 
-            Entity p = MakeFullPlayer(cat, new TilePos(5, 5), 60);
+            Entity p = MakeFullPlayer(cat, new TilePos(5, 5));
             world.Spawn(p);
             world.Player = p;
 
@@ -822,22 +819,38 @@ namespace DomainCheck
             Check(world.GroundItemAt(new TilePos(6, 5)) == null, "地面上的东西消失了");
             Check(world.GroundItemCount == 0, "地面物计数归零");
 
-            int refused = 0;
-            world.Events.Subscribe<PickupRefused>(delegate(PickupRefused e) { refused++; });
+            // 已经没有负重机制：多重都捡得起来
             world.Spawn(MakeGroundItem(new TilePos(7, 5), "heavy", 2));
             world.PlaceEntity(p, new TilePos(7, 5));
             world.Step(new List<Intent>());
-            Check(refused == 1, "捡不动时给了一次提示（实际 " + refused + "）");
-            Check(world.GroundItemAt(new TilePos(7, 5)) != null, "太重的东西留在地上");
-            Check(p.Bag.IndexOf("heavy") == -1, "确实没进背包");
-
-            for (int i = 0; i < 8; i++) world.Step(new List<Intent>());
-            Check(refused == 1, "提示有节流，不会每 tick 刷屏（实际 " + refused + "）");
+            Check(p.Bag.IndexOf("heavy") >= 0, "没有负重限制，再重也捡得起来");
 
             world.Spawn(MakeGroundItem(new TilePos(9, 5), "not_in_table", 1));
             world.PlaceEntity(p, new TilePos(9, 5));
             world.Step(new List<Intent>());
             Check(world.GroundItemAt(new TilePos(9, 5)) != null, "表里没有的物品不会被吞掉");
+
+            // 唯一的拾取门槛：背包满了
+            World fullWorld = new World(OpenMap(12), 8u, new EventBus());
+            fullWorld.Systems.Add(new LootSystem(cat));
+            Entity filler = MakeFullPlayer(cat, new TilePos(5, 5));
+            fullWorld.Spawn(filler);
+            fullWorld.Player = filler;
+
+            ItemDef rock = cat.Get("rock");
+            filler.Bag.Add(rock, Inventory.SlotCount * 99);
+            Check(filler.Bag.FreeSpaceFor(rock) == 0, "把背包彻底塞满（" + filler.Bag.UsedSlots + " 格）");
+
+            int refused = 0;
+            fullWorld.Events.Subscribe<PickupRefused>(delegate(PickupRefused e) { refused++; });
+            Entity overflow = MakeGroundItem(new TilePos(5, 5), "rock", 1);
+            fullWorld.Spawn(overflow);
+            fullWorld.Step(new List<Intent>());
+
+            Check(refused == 1, "背包满时拒绝拾取并给出提示（实际 " + refused + "）");
+            Check(fullWorld.GroundItemAt(new TilePos(5, 5)) != null, "背包满时东西留在原地，不会被吞");
+            for (int i = 0; i < 8; i++) fullWorld.Step(new List<Intent>());
+            Check(refused == 1, "提示有节流，不会每 tick 刷屏（实际 " + refused + "）");
         }
 
         private static void TestDropRoller()
@@ -906,7 +919,7 @@ namespace DomainCheck
         {
             Console.WriteLine("[闭环：击杀 -> 掉装 -> 捡起 -> 穿上 -> 变强]");
             TestCatalog cat = new TestCatalog();
-            cat.Equip("sword", EquipSlot.Weapon, 10, 10, 0, 5);
+            cat.Equip("sword", EquipSlot.Weapon, 10, 10, 0);
 
             GameMap map = OpenMap(20);
             CombatTuning t = new CombatTuning();
@@ -929,7 +942,7 @@ namespace DomainCheck
             };
 
             Simulation sim = new Simulation(map, 9u, factory, t, cat);
-            Entity p = MakeFullPlayer(cat, new TilePos(9, 10), 200);
+            Entity p = MakeFullPlayer(cat, new TilePos(9, 10));
             sim.World.Spawn(p);
             sim.World.Player = p;
 
