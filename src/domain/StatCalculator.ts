@@ -135,15 +135,16 @@ export class StatCalculator {
   static applyEquipment(
     baseStats: EntityStats, 
     equipped: Partial<Record<EquipSlot, ItemInstance>>,
-    slotEnhancements?: Partial<Record<EquipSlot, number>>
+    slotEnhancements?: Partial<Record<EquipSlot, number>>,
+    codexStats?: { minDC?: number; maxDC?: number; minAC?: number; maxAC?: number; maxHp?: number; critRate?: number }
   ): EntityStats {
-    let addMinDC = 0;
-    let addMaxDC = 0;
-    let addMinAC = 0;
-    let addMaxAC = 0;
-    let addHp = 0;
+    let addMinDC = codexStats?.minDC || 0;
+    let addMaxDC = codexStats?.maxDC || 0;
+    let addMinAC = codexStats?.minAC || 0;
+    let addMaxAC = codexStats?.maxAC || 0;
+    let addHp = codexStats?.maxHp || 0;
     let addMp = 0;
-    let addCritBonus = 0;
+    let addCritBonus = (codexStats?.critRate || 0) * 100;
     let addHasteBonus = 0;
     let addLifestealBonus = 0;
     let addLuck = 0;

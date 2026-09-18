@@ -631,5 +631,32 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
       { defId: 'r_hushen', chance: 0.60 },
       { defId: 'r_xingyun', chance: 0.60 }
     ]
+  },
+  'm_treasure_goblin': {
+    templateId: 'm_treasure_goblin',
+    name: '盗宝地精',
+    level: 25,
+    hp: 4000,
+    mp: 0,
+    minDC: 0,
+    maxDC: 0,
+    minAC: 6,
+    maxAC: 12,
+    critRate: 0,
+    haste: 40,
+    baseAttackInterval: 10,
+    goldDrop: [50000, 150000],
+    expReward: 6000,
+    respawnTicks: 300,
+    color: '#f59e0b',
+    icon: '💰',
+    lootTable: [
+      { defId: 'pot_hp_large', chance: 1.0, minCount: 3, maxCount: 6 },
+      { defId: 'pot_mp_large', chance: 1.0, minCount: 3, maxCount: 6 },
+      { defId: 'mat_iron_ore', chance: 1.0, minCount: 8, maxCount: 16 },
+      { defId: 'mat_pure_iron', chance: 0.8, minCount: 2, maxCount: 5 },
+      { defId: 'mat_god_stone', chance: 0.35, minCount: 1, maxCount: 2 },
+      { defId: 'pot_liaoshang', chance: 0.5, minCount: 1, maxCount: 2 }
+    ]
   }
 };

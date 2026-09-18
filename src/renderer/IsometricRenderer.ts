@@ -111,6 +111,7 @@ export class IsometricRenderer {
     ctx.translate(-camX, -camY);
 
     this.renderTiles(ctx, world, camX, camY, width, height);
+    this.renderAOEWarnings(ctx, world.aoeWarnings);
 
     const renderList: Array<{
       depthY: number;
@@ -427,6 +428,57 @@ export class IsometricRenderer {
     ctx.restore();
   }
 
+  private renderAOEWarnings(ctx: CanvasRenderingContext2D, warnings: import('../types/affix').TelegraphedAOE[]): void {
+    if (!warnings || warnings.length === 0) return;
+
+    for (const aoe of warnings) {
+      const pos = this.gridToScreen(aoe.center.x, aoe.center.y);
+      const radiusX = (aoe.radius + 0.5) * this.TILE_WIDTH;
+      const radiusY = (aoe.radius + 0.5) * this.TILE_HEIGHT;
+      const progress = Math.min(1.0, aoe.currentTick / aoe.durationTicks);
+      const pulse = 0.22 + 0.12 * Math.sin(this.animFrame * 0.25);
+
+      ctx.save();
+      ctx.translate(pos.x, pos.y);
+
+      // 半透明背景填充
+      ctx.fillStyle = aoe.color ? `${aoe.color}33` : `rgba(239, 68, 68, ${pulse})`;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, radiusX, radiusY, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 外周红色警戒线
+      ctx.strokeStyle = aoe.color || '#ef4444';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, radiusX, radiusY, 0, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // 内圈收缩警示圈
+      const shrinkX = Math.max(2, (1 - progress) * radiusX);
+      const shrinkY = Math.max(2, (1 - progress) * radiusY);
+      ctx.strokeStyle = '#facc15';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([6, 4]);
+      ctx.beginPath();
+      ctx.ellipse(0, 0, shrinkX, shrinkY, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // 中心倒计时与技能名称标签
+      const remainingSec = Math.max(0, (aoe.durationTicks - aoe.currentTick) * 0.1).toFixed(1);
+      ctx.font = 'bold 12px "SimSun", "Songti SC", serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#facc15';
+      ctx.shadowColor = '#000000';
+      ctx.shadowBlur = 4;
+      ctx.fillText(`⚠️${aoe.skillName} ${remainingSec}s`, 0, -radiusY * 0.4);
+      ctx.shadowBlur = 0;
+
+      ctx.restore();
+    }
+  }
+
   private renderEntity(
     ctx: CanvasRenderingContext2D,
     ent: Entity,
@@ -443,6 +495,20 @@ export class IsometricRenderer {
     ctx.beginPath();
     ctx.ellipse(0, 0, 16 * scale, 8 * scale, 0, 0, Math.PI * 2);
     ctx.fill();
+
+    // 变异精英怪/地精 脚下特色光环
+    if (ent.affixes && ent.affixes.length > 0) {
+      ctx.save();
+      const auraColor = ent.color || '#facc15';
+      ctx.strokeStyle = auraColor;
+      ctx.lineWidth = 2.5;
+      ctx.shadowColor = auraColor;
+      ctx.shadowBlur = 10;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 20 * scale, 10 * scale, (this.animFrame * 0.05) % (Math.PI * 2), 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
 
     if (isSelected) {
       ctx.strokeStyle = '#ef4444';
@@ -476,6 +542,19 @@ export class IsometricRenderer {
     const barH = 4;
     const barY = -42 * scale;
 
+    // 首领限时玄金护盾条
+    if (ent.shieldHp && ent.shieldHp > 0 && ent.maxShieldHp) {
+      const shieldRatio = Math.min(1.0, ent.shieldHp / ent.maxShieldHp);
+      const sBarY = barY - 6;
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(-barW / 2, sBarY, barW, 3);
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(-barW / 2, sBarY, barW, 3);
+      ctx.fillStyle = '#facc15';
+      ctx.fillRect(-barW / 2, sBarY, barW * shieldRatio, 3);
+    }
+
     ctx.fillStyle = '#0f172a';
     ctx.fillRect(-barW / 2, barY, barW, barH);
     ctx.strokeStyle = '#000000';
@@ -486,12 +565,26 @@ export class IsometricRenderer {
     ctx.fillStyle = ent.isPlayer ? '#22c55e' : (ent.isBoss ? '#dc2626' : '#ea580c');
     ctx.fillRect(-barW / 2, barY, barW * hpRatio, barH);
 
+    // 破盾瘫痪虚弱旋转晕眩星标
+    if (ent.isWeakened) {
+      ctx.save();
+      ctx.font = '14px sans-serif';
+      ctx.textAlign = 'center';
+      const starAngle = (this.animFrame * 0.12) % (Math.PI * 2);
+      const offX = Math.cos(starAngle) * 16 * scale;
+      const offY = Math.sin(starAngle) * 6 * scale;
+      ctx.fillText('💫', offX, barY - 14 + offY);
+      ctx.restore();
+    }
+
     ctx.font = ent.isBoss ? 'bold 12px "SimSun", "Songti SC", serif' : '11px "SimSun", "Songti SC", serif';
     ctx.textAlign = 'center';
     ctx.fillStyle = ent.invincibleTicks && ent.invincibleTicks > 0 ? '#38bdf8' : (ent.isPlayer ? '#fef08a' : (ent.isBoss ? '#f87171' : (ent.isElite ? '#fde047' : '#e2e8f0')));
     ctx.shadowColor = '#000000';
     ctx.shadowBlur = 3;
-    const displayName = ent.invincibleTicks && ent.invincibleTicks > 0 ? `🛡️[无敌] ${ent.name}` : ent.name;
+    const displayName = ent.invincibleTicks && ent.invincibleTicks > 0 
+      ? `🛡️[无敌] ${ent.name}` 
+      : (ent.shieldHp && ent.shieldHp > 0 ? `🛡️[金身] ${ent.name}` : (ent.isWeakened ? `💫[瘫痪] ${ent.name}` : ent.name));
     ctx.fillText(displayName, 0, barY - 4);
     ctx.shadowBlur = 0;
 

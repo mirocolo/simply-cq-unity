@@ -33,6 +33,10 @@ import {
   EnhancementResonance 
 } from './definitions/enhancement';
 import { MAP_DEFINITIONS } from './definitions/maps';
+import { MUTABLE_AFFIX_TYPES, AFFIX_DEFINITIONS } from './definitions/affixes';
+import { TelegraphedAOE, MonsterAffixType } from '../types/affix';
+import { BountyTask, MonsterCodexDef } from '../types/codex';
+import { MONSTER_CODEX_DEFINITIONS, generateBounties } from './definitions/codex';
 
 const DIR_OFFSETS: Record<Direction8, { x: number; y: number }> = {
   0: { x: 0, y: -1 },
@@ -99,6 +103,13 @@ export class GameWorld {
   comboTimer = 0;
   isBerserk = false;
 
+  // 首领技能 AOE 预警圈
+  aoeWarnings: TelegraphedAOE[] = [];
+  // 百妖封魔录与悬赏令
+  monsterKills: Record<string, number> = {};
+  codexClaimedTiers: Record<string, number[]> = {};
+  activeBounties: BountyTask[] = [];
+
   damagePopups: DamagePopup[] = [];
   battleLogs: BattleLog[] = [];
   currentTick = 0;
@@ -110,6 +121,7 @@ export class GameWorld {
     this.player = this.createPlayer();
     this.skills = Object.values(SKILL_DEFINITIONS).map(s => ({ ...s }));
     this.initStartingInventory();
+    this.activeBounties = generateBounties();
     this.spawnMonstersForMap();
   }
 
@@ -122,6 +134,149 @@ export class GameWorld {
       if (it && it.specialEffect === effect) return true;
     }
     return false;
+  }
+
+  /**
+   * 汇总所有已激活的百妖封魔录里程碑全属性加成
+   */
+  getCodexStatsBonus(): { minDC: number; maxDC: number; minAC: number; maxAC: number; maxHp: number; critRate: number } {
+    let minDC = 0;
+    let maxDC = 0;
+    let minAC = 0;
+    let maxAC = 0;
+    let maxHp = 0;
+    let critRate = 0;
+
+    for (const [tmplId, tiers] of Object.entries(this.codexClaimedTiers)) {
+      const def = MONSTER_CODEX_DEFINITIONS[tmplId];
+      if (!def) continue;
+      for (const idx of tiers) {
+        const ms = def.milestones[idx];
+        if (ms) {
+          minDC += ms.minDC || 0;
+          maxDC += ms.maxDC || 0;
+          minAC += ms.minAC || 0;
+          maxAC += ms.maxAC || 0;
+          maxHp += ms.maxHp || 0;
+          critRate += ms.critRate || 0;
+        }
+      }
+    }
+    return { minDC, maxDC, minAC, maxAC, maxHp, critRate };
+  }
+
+  /**
+   * 领取百妖封魔录里程碑成就奖励
+   */
+  claimCodexReward(templateId: string, milestoneIdx: number): boolean {
+    const codex = MONSTER_CODEX_DEFINITIONS[templateId];
+    if (!codex) return false;
+    const milestone = codex.milestones[milestoneIdx];
+    if (!milestone) return false;
+    const kills = this.monsterKills[templateId] || 0;
+    if (kills < milestone.kills) return false;
+
+    if (!this.codexClaimedTiers[templateId]) {
+      this.codexClaimedTiers[templateId] = [];
+    }
+    if (this.codexClaimedTiers[templateId].includes(milestoneIdx)) return false;
+
+    this.codexClaimedTiers[templateId].push(milestoneIdx);
+    this.recalculatePlayerStats();
+    this.onSound?.('levelup');
+    this.addDamagePopup(this.player.gridPos, `📖封魔突破·${milestone.label}!`, '#fbbf24', true);
+    this.addBattleLog(`【百妖封魔录】成功达成 [${codex.name}·${milestone.label}]！获得全属性永久飞跃！`, 'system');
+    return true;
+  }
+
+  /**
+   * 领取悬赏令奖励
+   */
+  claimBounty(bountyId: string): boolean {
+    const bounty = this.activeBounties.find(b => b.id === bountyId);
+    if (!bounty || !bounty.completed || bounty.claimed) return false;
+    bounty.claimed = true;
+    this.player.stats.gold += bounty.rewardGold;
+    this.autoStats.goldGained += bounty.rewardGold;
+    if (bounty.rewardIronOre > 0) {
+      const it = DropSystem.createItemInstance('mat_iron_ore', undefined, bounty.rewardIronOre);
+      if (it) this.addItemToInventory(it);
+    }
+    if (bounty.rewardPureIron > 0) {
+      const it = DropSystem.createItemInstance('mat_pure_iron', undefined, bounty.rewardPureIron);
+      if (it) this.addItemToInventory(it);
+    }
+    if (bounty.rewardGodStone > 0) {
+      const it = DropSystem.createItemInstance('mat_god_stone', undefined, bounty.rewardGodStone);
+      if (it) this.addItemToInventory(it);
+    }
+    this.onSound?.('coin');
+    this.addDamagePopup(this.player.gridPos, `💰悬赏金 +${bounty.rewardGold}!`, '#facc15', true);
+    this.addBattleLog(`【悬赏交令】除魔大捷！完成 [${bounty.targetName}]，领取奖励：金币 +${bounty.rewardGold}，强化玄铁神石已存入背包！`, 'system');
+    return true;
+  }
+
+  /**
+   * 刷新悬赏令任务
+   */
+  refreshBounties(): void {
+    this.activeBounties = generateBounties();
+    this.addBattleLog('【悬赏令刷新】万象除魔悬赏令已发布新委派，勇士速速前往封魔录(K)查验！', 'system');
+  }
+
+  /**
+   * 累积怪物击杀数并推进悬赏任务进度
+   */
+  recordMonsterKill(templateId: string): void {
+    this.monsterKills[templateId] = (this.monsterKills[templateId] || 0) + 1;
+    for (const b of this.activeBounties) {
+      if (b.templateId === templateId && !b.completed) {
+        b.currentKills++;
+        if (b.currentKills >= b.requiredKills) {
+          b.completed = true;
+          this.addBattleLog(`【悬赏达成】[${b.targetName}] 目标数已达成！速在封魔录(K)中领取赏金与矿石！`, 'system');
+        }
+      }
+    }
+  }
+
+  /**
+   * 盗宝地精受击喷射金币与药水战利品
+   */
+  private burstGoblinHitLoot(goblin: Entity): void {
+    const goldDrop = Math.floor(Math.random() * 8000) + 3000;
+    this.player.stats.gold += goldDrop;
+    this.autoStats.goldGained += goldDrop;
+    this.addDamagePopup(goblin.gridPos, `💰金币 +${goldDrop}!`, '#facc15');
+
+    if (Math.random() < 0.35) {
+      const pot = DropSystem.createItemInstance('pot_hp_large');
+      if (pot) {
+        this.groundItems.push({
+          id: `goblin_drop_${this.currentTick}_${Math.random().toString(36).slice(2, 6)}`,
+          item: pot,
+          gridPos: { ...goblin.gridPos },
+          dropTick: this.currentTick,
+          beamColor: null,
+          burstOrigin: { x: goblin.gridPos.x, y: goblin.gridPos.y },
+          burstProgress: 0
+        });
+      }
+    }
+  }
+
+  recalculatePlayerStats(): void {
+    const prevGold = this.player.stats.gold;
+    const prevExp = this.player.stats.exp;
+    const prevHp = this.player.stats.hp;
+    const prevMp = this.player.stats.mp;
+    const base = StatCalculator.getBaseStatsForLevel(this.player.stats.level, this.player.stats.ascensionTier || 0);
+    const codexBonus = this.getCodexStatsBonus();
+    this.player.stats = StatCalculator.applyEquipment(base, this.equipped, this.slotEnhancements, codexBonus);
+    this.player.stats.hp = Math.min(this.player.stats.maxHp, prevHp);
+    this.player.stats.mp = Math.min(this.player.stats.maxMp, prevMp);
+    this.player.stats.gold = prevGold;
+    this.player.stats.exp = prevExp;
   }
 
   canAscend(): boolean {
@@ -154,8 +309,7 @@ export class GameWorld {
     }
 
     // 重算人物四维与战力
-    const base = StatCalculator.getBaseStatsForLevel(this.player.stats.level, nextTier);
-    this.player.stats = StatCalculator.applyEquipment(base, this.equipped, this.slotEnhancements);
+    this.recalculatePlayerStats();
     this.player.stats.hp = this.player.stats.maxHp;
     this.player.stats.mp = this.player.stats.maxMp;
 
@@ -170,19 +324,6 @@ export class GameWorld {
       'system'
     );
     return true;
-  }
-
-  recalculatePlayerStats(): void {
-    const prevGold = this.player.stats.gold;
-    const prevExp = this.player.stats.exp;
-    const prevHp = this.player.stats.hp;
-    const prevMp = this.player.stats.mp;
-    const base = StatCalculator.getBaseStatsForLevel(this.player.stats.level, this.player.stats.ascensionTier || 0);
-    this.player.stats = StatCalculator.applyEquipment(base, this.equipped, this.slotEnhancements);
-    this.player.stats.hp = Math.min(this.player.stats.maxHp, prevHp);
-    this.player.stats.mp = Math.min(this.player.stats.maxMp, prevMp);
-    this.player.stats.gold = prevGold;
-    this.player.stats.exp = prevExp;
   }
 
   updateMonstersForAscension(): void {
@@ -301,26 +442,61 @@ export class GameWorld {
         const finalDcMult = template.isBoss ? (1 + (bossGrowthFactor - 1) * 0.5) * dcMult : dcMult;
         const finalAcMult = template.isBoss ? acMult * 1.5 : acMult;
         const scaledHp = Math.floor(template.hp * finalHpMult);
+
+        const monsterAffixes: MonsterAffixType[] = [];
+        let monsterName = template.name;
+        let monsterColor = template.color;
+
+        // 非首领怪 12% 概率附加变异词缀
+        if (!template.isBoss && Math.random() < 0.12) {
+          const chosen = MUTABLE_AFFIX_TYPES[Math.floor(Math.random() * MUTABLE_AFFIX_TYPES.length)];
+          monsterAffixes.push(chosen);
+          const affixDef = AFFIX_DEFINITIONS[chosen];
+          if (affixDef) {
+            monsterName = `【${affixDef.name}】${template.name}`;
+            monsterColor = affixDef.auraColor;
+          }
+        }
+
+        let finalMinDC = Math.floor(template.minDC * finalDcMult);
+        let finalMaxDC = Math.floor(template.maxDC * finalDcMult);
+        let finalHaste = template.haste;
+        let initialShield = 0;
+
+        for (const af of monsterAffixes) {
+          const def = AFFIX_DEFINITIONS[af];
+          if (!def) continue;
+          if (def.dcMult) {
+            finalMinDC = Math.floor(finalMinDC * (1 + def.dcMult));
+            finalMaxDC = Math.floor(finalMaxDC * (1 + def.dcMult));
+          }
+          if (def.hasteBonus) finalHaste += def.hasteBonus;
+          if (af === 'shielded') {
+            initialShield = Math.floor(scaledHp * 0.30);
+          }
+        }
+
         const stats = {
           ...baseStats,
           hp: scaledHp,
           maxHp: scaledHp,
           mp: template.mp,
           maxMp: template.mp,
-          minDC: Math.floor(template.minDC * finalDcMult),
-          maxDC: Math.floor(template.maxDC * finalDcMult),
+          minDC: finalMinDC,
+          maxDC: finalMaxDC,
           minAC: Math.floor(template.minAC * finalAcMult),
           maxAC: Math.floor(template.maxAC * finalAcMult),
           critRate: template.critRate,
-          haste: template.haste,
+          haste: finalHaste,
           baseAttackInterval: template.baseAttackInterval,
           effectiveAttackInterval: template.baseAttackInterval,
-          combatPower: Math.floor((template.minDC + template.maxDC) * 2 + template.hp * 0.3)
+          combatPower: Math.floor((finalMinDC + finalMaxDC) * 2 + scaledHp * 0.3)
         };
 
         this.monsters.push({
           id: `monster_${idGen++}`,
-          name: template.name,
+          templateId: template.templateId,
+          name: monsterName,
           isPlayer: false,
           gridPos: { x: gx, y: gy },
           spawnOrigin: { x: gx, y: gy },
@@ -333,12 +509,68 @@ export class GameWorld {
           state: 'idle',
           stateTicks: 0,
           isBoss: template.isBoss,
-          isElite: template.isElite,
+          isElite: template.isElite || monsterAffixes.length > 0,
+          affixes: monsterAffixes.length > 0 ? monsterAffixes : undefined,
+          shieldHp: initialShield > 0 ? initialShield : undefined,
+          maxShieldHp: initialShield > 0 ? initialShield : undefined,
           maxRespawnTicks: template.respawnTicks,
-          color: template.color,
+          color: monsterColor,
           icon: template.icon,
           hitStunTicks: 0
         });
+      }
+    }
+
+    // 每个位面生成 1 只盗宝地精 (高阶位面必刷，低阶位面35%概率)
+    if (map.tier >= 1 || Math.random() < 0.35) {
+      const goblinTmpl = MONSTER_TEMPLATES['m_treasure_goblin'];
+      if (goblinTmpl) {
+        const gx = Math.min(this.MAP_WIDTH - 4, Math.max(4, Math.floor(Math.random() * (this.MAP_WIDTH - 8)) + 4));
+        const gy = Math.min(this.MAP_HEIGHT - 4, Math.max(4, Math.floor(Math.random() * (this.MAP_HEIGHT - 8)) + 4));
+        if (this.isWalkable(gx, gy)) {
+          this.monsters.push({
+            id: `goblin_${idGen++}`,
+            templateId: goblinTmpl.templateId,
+            name: '💰盗宝地精',
+            isPlayer: false,
+            isGoblin: true,
+            affixes: ['treasure_goblin'],
+            gridPos: { x: gx, y: gy },
+            spawnOrigin: { x: gx, y: gy },
+            targetGridPos: null,
+            moveProgress: 0,
+            direction: Math.floor(Math.random() * 8) as Direction8,
+            stats: {
+              ...StatCalculator.getBaseStatsForLevel(goblinTmpl.level),
+              hp: goblinTmpl.hp,
+              maxHp: goblinTmpl.hp,
+              mp: 0,
+              maxMp: 0,
+              minDC: 0,
+              maxDC: 0,
+              minAC: 8,
+              maxAC: 16,
+              critRate: 0,
+              haste: goblinTmpl.haste,
+              baseAttackInterval: goblinTmpl.baseAttackInterval,
+              effectiveAttackInterval: goblinTmpl.baseAttackInterval,
+              combatPower: 600,
+              gold: 0,
+              exp: 0,
+              maxExp: 1000
+            },
+            targetEntityId: null,
+            lastAttackTick: -100,
+            state: 'idle',
+            stateTicks: 0,
+            isBoss: false,
+            isElite: true,
+            maxRespawnTicks: goblinTmpl.respawnTicks,
+            color: goblinTmpl.color,
+            icon: goblinTmpl.icon,
+            hitStunTicks: 0
+          });
+        }
       }
     }
   }
@@ -556,6 +788,34 @@ export class GameWorld {
       }
     }
 
+    // 推进首领技能 AOE 预警圈
+    for (let i = this.aoeWarnings.length - 1; i >= 0; i--) {
+      const aoe = this.aoeWarnings[i];
+      aoe.currentTick++;
+      if (aoe.currentTick >= aoe.durationTicks) {
+        this.aoeWarnings.splice(i, 1);
+        const dist = PathFinder.chebyshevDistance(this.player.gridPos, aoe.center);
+        if (dist <= aoe.radius && this.player.state !== 'dead') {
+          let dmg = aoe.damage;
+          if (this.player.shieldAegisTicks && this.player.shieldAegisTicks > 0) {
+            dmg = Math.max(1, Math.floor(dmg * 0.60));
+          }
+          this.player.stats.hp = Math.max(0, this.player.stats.hp - dmg);
+          this.screenShake = 16;
+          this.onSound?.('crit');
+          this.addDamagePopup(this.player.gridPos, `💥${aoe.skillName} -${dmg}!`, aoe.color || '#ef4444', true);
+          this.addBattleLog(`【致命轰击】避让不及！你受到 ${aoe.skillName} 的毁灭打击，受到 -${dmg} 点巨额伤害！`, 'system');
+          if (this.player.stats.hp <= 0) {
+            const boss = this.monsters.find(m => m.id === aoe.bossId) || this.player;
+            this.handleEntityDeath(this.player, boss);
+          }
+        } else if (dist <= aoe.radius + 2) {
+          this.addDamagePopup(this.player.gridPos, '💨走位闪避!', '#22c55e', true);
+          this.addBattleLog(`【绝妙身法】你成功在 ${aoe.skillName} 轰炸前撤离危险圈！`, 'system');
+        }
+      }
+    }
+
     // 挂机 AI 逻辑
     if (this.autoConfig.enabled && this.player.state !== 'dead') {
       this.autoStats.activeTimeSeconds += 0.1;
@@ -568,7 +828,8 @@ export class GameWorld {
         this.autoConfig,
         this.currentTick,
         this.isWalkable,
-        this.currentMap.portals
+        this.currentMap.portals,
+        this.aoeWarnings
       );
 
       if (decision.type === 'move' && decision.targetPos) {
@@ -602,7 +863,7 @@ export class GameWorld {
         if (m.respawnTicks !== undefined && m.respawnTicks > 0) {
           m.respawnTicks--;
           if (m.respawnTicks <= 0) {
-            const tmpl = Object.values(MONSTER_TEMPLATES).find(t => t.name === m.name);
+            const tmpl = m.templateId ? MONSTER_TEMPLATES[m.templateId] : Object.values(MONSTER_TEMPLATES).find(t => t.name === m.name);
             if (tmpl && tmpl.isBoss && !this.mapManager.isBossReady(tmpl.templateId, this.currentTick)) {
               m.respawnTicks = 30; // 延后 3 秒再检测
               continue;
@@ -628,6 +889,13 @@ export class GameWorld {
             }
             m.stats.hp = m.stats.maxHp;
             m.hasBeenAttackedByPlayer = false;
+            m.isBossEnraged = false;
+            (m as any).shieldTriggered = false;
+            m.shieldHp = undefined;
+            m.maxShieldHp = undefined;
+            m.shieldTicks = undefined;
+            m.isWeakened = false;
+            m.weakenTicks = 0;
             if (m.spawnOrigin) {
               m.gridPos = { ...m.spawnOrigin };
             }
@@ -642,6 +910,45 @@ export class GameWorld {
       if (m.isBoss) {
         m.bossSkillTimer = (m.bossSkillTimer || 0) + 1;
 
+        // 破盾瘫痪虚弱状态倒计时
+        if (m.isWeakened) {
+          if (m.weakenTicks && m.weakenTicks > 0) {
+            m.weakenTicks--;
+            if (m.weakenTicks <= 0) {
+              m.isWeakened = false;
+              this.addBattleLog(`【首领苏醒】${m.name} 从虚弱瘫痪中复苏！`, 'system');
+            }
+          }
+          continue; // 瘫痪期间无法移动和施法
+        }
+
+        // 限时破盾机制：生命低于 40% 且未触发过
+        if (!m.shieldHp && !m.maxShieldHp && m.stats.hp < m.stats.maxHp * 0.40 && !(m as any).shieldTriggered) {
+          (m as any).shieldTriggered = true;
+          m.shieldHp = Math.floor(m.stats.maxHp * 0.25);
+          m.maxShieldHp = m.shieldHp;
+          m.shieldTicks = 60; // 6秒限时破盾
+          this.screenShake = 10;
+          this.addDamagePopup(m.gridPos, '🛡️首领玄金护盾!', '#facc15', true);
+          this.addBattleLog(`【首领金身】${m.name} 凝聚神圣玄金护盾 (${m.shieldHp})！限时 6 秒全力破盾，否则引发全屏毁灭冲击！`, 'system');
+        }
+
+        if (m.shieldTicks && m.shieldTicks > 0) {
+          m.shieldTicks--;
+          if (m.shieldTicks <= 0 && m.shieldHp && m.shieldHp > 0) {
+            m.shieldHp = 0;
+            this.screenShake = 20;
+            this.onSound?.('crit');
+            const burstDmg = Math.floor(this.player.stats.maxHp * 0.35);
+            this.player.stats.hp = Math.max(0, this.player.stats.hp - burstDmg);
+            this.addDamagePopup(this.player.gridPos, `💥金身引爆 -${burstDmg}!`, '#ef4444', true);
+            this.addBattleLog(`【金身引爆】未能限时击破 ${m.name} 的护盾，引发爆裂冲击！受到 -${burstDmg} 伤害！`, 'system');
+            if (this.player.stats.hp <= 0) {
+              this.handleEntityDeath(this.player, m);
+            }
+          }
+        }
+
         // 绝境狂暴 (生命低于 45%)
         if (!m.isBossEnraged && m.stats.hp < m.stats.maxHp * 0.45) {
           m.isBossEnraged = true;
@@ -653,57 +960,83 @@ export class GameWorld {
           this.screenShake = 10;
         }
 
-        // 沃玛教主：【狂雷天降】(每7秒向玩家降下雷电轰击)
-        if (m.name.includes('沃玛教主') && m.bossSkillTimer >= 65) {
+        // 首领技能 AOE 预警机制
+        if (m.bossSkillTimer >= 65) {
           const dist = PathFinder.chebyshevDistance(m.gridPos, this.player.gridPos);
-          if (dist <= 8 && this.player.state !== 'dead') {
+          if (dist <= 12 && this.player.state !== 'dead') {
             m.bossSkillTimer = 0;
-            let lightningDmg = Math.floor(m.stats.maxDC * 1.2);
-            // 前期伤害保护：至多扣除玩家当前最大生命的 35% (绝不一击秒杀新手)
-            if (this.player.stats.level < 35) {
-              lightningDmg = Math.min(lightningDmg, Math.floor(this.player.stats.maxHp * 0.35));
-            }
-            if (this.player.shieldAegisTicks && this.player.shieldAegisTicks > 0) {
-              lightningDmg = Math.max(1, Math.floor(lightningDmg * 0.60));
-            }
-            this.player.stats.hp = Math.max(0, this.player.stats.hp - lightningDmg);
-            this.addDamagePopup(this.player.gridPos, `⚡狂雷 -${lightningDmg}!`, '#38bdf8', true);
-            this.screenShake = 12;
-            this.onSound?.('crit');
-            this.addBattleLog(`【沃玛狂雷】教主引动九天神雷狂轰而下，造成 -${lightningDmg} 点雷电重创！`, 'system');
-            if (this.player.stats.hp <= 0) {
-              this.handleEntityDeath(this.player, m);
-            }
-          }
-        }
+            let skillName = '【九霄天劫】';
+            let radius = 2;
+            let aoeColor = '#a855f7';
+            let rawDmg = Math.floor(m.stats.maxDC * 1.3);
 
-        // 赤月恶魔：【赤月地刺】(每8秒召唤全屏尖锐地刺与恶魔剧毒)
-        if (m.name.includes('赤月恶魔') && m.bossSkillTimer >= 75) {
-          const dist = PathFinder.chebyshevDistance(m.gridPos, this.player.gridPos);
-          if (dist <= 10 && this.player.state !== 'dead') {
-            m.bossSkillTimer = 0;
-            let spikeDmg = Math.floor(m.stats.maxDC * 1.3);
-            // 前期伤害保护：至多扣除玩家当前最大生命的 40% (绝不秒杀)
-            if (this.player.stats.level < 45) {
-              spikeDmg = Math.min(spikeDmg, Math.floor(this.player.stats.maxHp * 0.40));
+            if (m.name.includes('沃玛教主')) {
+              skillName = '【狂雷天降】';
+              radius = 2;
+              aoeColor = '#38bdf8';
+            } else if (m.name.includes('赤月恶魔')) {
+              skillName = '【赤月地刺】';
+              radius = 3;
+              aoeColor = '#dc2626';
+            } else if (m.name.includes('祖玛教主')) {
+              skillName = '【幽冥烈焰】';
+              radius = 2;
+              aoeColor = '#ea580c';
+            } else if (m.name.includes('黄泉教主')) {
+              skillName = '【黄泉冥海】';
+              radius = 3;
+              aoeColor = '#2563eb';
+            } else if (m.name.includes('魔龙教主')) {
+              skillName = '【太古龙炎】';
+              radius = 3;
+              aoeColor = '#f97316';
             }
-            if (this.player.shieldAegisTicks && this.player.shieldAegisTicks > 0) {
-              spikeDmg = Math.max(1, Math.floor(spikeDmg * 0.60));
+
+            if (this.player.stats.level < 35) {
+              rawDmg = Math.min(rawDmg, Math.floor(this.player.stats.maxHp * 0.35));
             }
-            this.player.stats.hp = Math.max(0, this.player.stats.hp - spikeDmg);
-            this.player.poisonTicks = 40; // 持续中毒 4秒
-            this.addDamagePopup(this.player.gridPos, `🗡️地刺 -${spikeDmg}!`, '#b91c1c', true);
-            this.screenShake = 16;
-            this.onSound?.('crit');
-            this.addBattleLog(`【赤月地刺】恶魔召唤全屏尖锐地刺破土而出，造成 -${spikeDmg} 穿透伤害并附加恶魔剧毒！`, 'system');
-            if (this.player.stats.hp <= 0) {
-              this.handleEntityDeath(this.player, m);
-            }
+
+            this.aoeWarnings.push({
+              id: `aoe_${this.currentTick}_${Math.random().toString(36).slice(2, 6)}`,
+              bossId: m.id,
+              skillName,
+              center: { ...this.player.gridPos },
+              radius,
+              currentTick: 0,
+              durationTicks: 15,
+              damage: rawDmg,
+              color: aoeColor
+            });
+            this.addBattleLog(`【危险预警】${m.name} 正在施放 ${skillName}！地面已出现红色预警圈，1.5 秒后轰击！`, 'system');
           }
         }
       }
 
       if ((m.state === 'idle' || m.state === 'walking') && (!m.hitStunTicks || m.hitStunTicks <= 0)) {
+        // 盗宝地精四处逃窜躲避玩家
+        if (m.isGoblin || m.affixes?.includes('treasure_goblin')) {
+          const distToPlayer = PathFinder.chebyshevDistance(m.gridPos, this.player.gridPos);
+          if (distToPlayer <= 6 && !m.targetGridPos) {
+            const dx = Math.sign(m.gridPos.x - this.player.gridPos.x);
+            const dy = Math.sign(m.gridPos.y - this.player.gridPos.y);
+            const escapeDirs = [
+              { x: dx, y: dy },
+              { x: dx, y: 0 },
+              { x: 0, y: dy },
+              { x: -dy, y: dx }
+            ];
+            for (const d of escapeDirs) {
+              const nx = m.gridPos.x + d.x;
+              const ny = m.gridPos.y + d.y;
+              if (this.isWalkable(nx, ny)) {
+                this.startEntityMove(m, { x: nx, y: ny });
+                break;
+              }
+            }
+          }
+          continue;
+        }
+
         // 低等级保护机制：若玩家等级显著低于Boss等级（差8级以上），且玩家未主动攻击过Boss，Boss不主动索敌追杀新手！
         if (m.isBoss && this.player.stats.level < m.stats.level - 8 && !m.hasBeenAttackedByPlayer) {
           if (Math.random() < 0.05 && !m.targetGridPos && m.spawnOrigin) {
@@ -968,8 +1301,43 @@ export class GameWorld {
       return;
     }
 
-    const phantomDamage = Math.max(1, Math.floor(result.damage * 0.70));
-    target.stats.hp = Math.max(0, target.stats.hp - phantomDamage);
+    let phantomDamage = Math.max(1, Math.floor(result.damage * 0.70));
+    if (target.isWeakened) {
+      phantomDamage = Math.floor(phantomDamage * 1.50);
+    }
+
+    if (target.shieldHp && target.shieldHp > 0) {
+      const absorb = Math.min(target.shieldHp, phantomDamage);
+      target.shieldHp -= absorb;
+      this.addDamagePopup(target.gridPos, `🛡️护盾 -${absorb}`, '#facc15');
+      if (target.shieldHp <= 0) {
+        target.shieldHp = 0;
+        target.shieldTicks = 0;
+        if (target.isBoss) {
+          target.isWeakened = true;
+          target.weakenTicks = 50;
+          this.screenShake = 16;
+          this.onSound?.('crit');
+          this.addDamagePopup(target.gridPos, '💫破盾大捷·首领瘫痪!', '#22c55e', true);
+          this.addBattleLog(`【破盾大捷】残影连斩击碎 ${target.name} 的护盾！首领陷入 5 秒虚弱瘫痪！`, 'system');
+        }
+      }
+    } else {
+      target.stats.hp = Math.max(0, target.stats.hp - phantomDamage);
+    }
+
+    if (target.affixes?.includes('thorns') && attacker.isPlayer && phantomDamage > 0) {
+      const reflect = Math.max(1, Math.floor(phantomDamage * 0.25));
+      attacker.stats.hp = Math.max(0, attacker.stats.hp - reflect);
+      this.addDamagePopup(attacker.gridPos, `🌵反伤 -${reflect}`, '#10b981');
+      if (attacker.stats.hp <= 0) {
+        this.handleEntityDeath(attacker, target);
+      }
+    }
+
+    if (target.isGoblin || target.affixes?.includes('treasure_goblin')) {
+      this.burstGoblinHitLoot(target);
+    }
 
     // 受击物理反馈：轻微硬直与击退
     target.hitStunTicks = 2;
@@ -1024,6 +1392,9 @@ export class GameWorld {
     }
 
     let finalDamage = result.damage;
+    if (target.isWeakened) {
+      finalDamage = Math.floor(finalDamage * 1.50);
+    }
 
     // 护身戒指神威：受到伤害的 80% 优先由 MP 抵扣
     if (target.isPlayer && this.hasSpecialEffect('protect') && target.stats.mp > 0) {
@@ -1062,6 +1433,65 @@ export class GameWorld {
       }
     }
 
+    // 护盾抵扣逻辑
+    if (target.shieldHp && target.shieldHp > 0) {
+      const absorb = Math.min(target.shieldHp, finalDamage);
+      target.shieldHp -= absorb;
+      finalDamage -= absorb;
+      this.addDamagePopup(target.gridPos, `🛡️护盾 -${absorb}`, '#facc15');
+      if (target.shieldHp <= 0) {
+        target.shieldHp = 0;
+        target.shieldTicks = 0;
+        if (target.isBoss) {
+          target.isWeakened = true;
+          target.weakenTicks = 50;
+          this.screenShake = 16;
+          this.onSound?.('crit');
+          this.addDamagePopup(target.gridPos, '💫破盾大捷·首领瘫痪!', '#22c55e', true);
+          this.addBattleLog(`【破盾大捷】成功击碎 ${target.name} 的护盾！首领陷入 5 秒虚弱瘫痪，受击伤害暴增且必定暴击！`, 'system');
+        }
+      }
+    }
+
+    // 反伤词缀
+    if (target.affixes?.includes('thorns') && attacker.isPlayer && finalDamage > 0) {
+      const reflect = Math.max(1, Math.floor(finalDamage * 0.25));
+      attacker.stats.hp = Math.max(0, attacker.stats.hp - reflect);
+      this.addDamagePopup(attacker.gridPos, `🌵反伤 -${reflect}`, '#10b981');
+      if (attacker.stats.hp <= 0) {
+        this.handleEntityDeath(attacker, target);
+      }
+    }
+
+    // 盗宝地精受击大爆
+    if (target.isGoblin || target.affixes?.includes('treasure_goblin')) {
+      this.burstGoblinHitLoot(target);
+    }
+
+    // 嗜血词缀
+    if (attacker.affixes?.includes('vampiric') && finalDamage > 0) {
+      const vHeal = Math.floor(finalDamage * 0.35);
+      attacker.stats.hp = Math.min(attacker.stats.maxHp, attacker.stats.hp + vHeal);
+      this.addDamagePopup(attacker.gridPos, `+${vHeal}`, '#dc2626', false, true);
+    }
+
+    // 冰霜词缀
+    if (attacker.affixes?.includes('frost') && target.isPlayer) {
+      target.frostTicks = 30;
+      this.addDamagePopup(target.gridPos, '❄️极寒迟缓!', '#38bdf8');
+    }
+
+    // 虚空闪烁词缀
+    if (target.affixes?.includes('teleport') && target.stats.hp < target.stats.maxHp * 0.50 && Math.random() < 0.25) {
+      const nx = Math.min(this.MAP_WIDTH - 3, Math.max(2, target.gridPos.x + Math.floor((Math.random() - 0.5) * 8)));
+      const ny = Math.min(this.MAP_HEIGHT - 3, Math.max(2, target.gridPos.y + Math.floor((Math.random() - 0.5) * 8)));
+      if (this.isWalkable(nx, ny)) {
+        target.gridPos = { x: nx, y: ny };
+        target.targetGridPos = null;
+        this.addDamagePopup(target.gridPos, '🌀虚空闪烁!', '#a855f7', true);
+      }
+    }
+
     target.stats.hp = Math.max(0, target.stats.hp - finalDamage);
 
     // 受击物理反馈：怪物受击硬直与微击退 (5转开天斩觉醒造成击晕)
@@ -1079,12 +1509,12 @@ export class GameWorld {
         this.screenShake = 15;
       } else if (isFire) {
         this.screenShake = 14;
-      } else if (result.isCrit) {
+      } else if (result.isCrit || target.isWeakened) {
         this.screenShake = 8;
       } else {
         this.screenShake = Math.max(this.screenShake, 3);
       }
-      this.onSound?.((isFire || isSun || isHeaven || result.isCrit) ? 'crit' : 'hit');
+      this.onSound?.((isFire || isSun || isHeaven || result.isCrit || target.isWeakened) ? 'crit' : 'hit');
     }
 
     // 飘字
@@ -1092,16 +1522,17 @@ export class GameWorld {
     if (isSun) color = '#fbbf24';
     else if (isHeaven) color = '#a855f7';
     else if (isFire) color = '#f97316';
-    else if (result.isCrit) color = '#ef4444';
+    else if (result.isCrit || target.isWeakened) color = '#ef4444';
     else if (isCleave) color = '#38bdf8';
 
     let text = `-${finalDamage}`;
     if (isSun) text = `☀️逐日 -${finalDamage}!`;
     else if (isHeaven) text = `🌟开天 -${finalDamage}!`;
     else if (isFire) text = `烈火 -${finalDamage}!`;
+    else if (target.isWeakened) text = `💥瘫痪暴击 -${finalDamage}!`;
     else if (result.isCrit) text = `暴击 -${finalDamage}!`;
 
-    this.addDamagePopup(target.gridPos, text, color, result.isCrit || isFire || isHeaven || isSun);
+    this.addDamagePopup(target.gridPos, text, color, result.isCrit || isFire || isHeaven || isSun || target.isWeakened);
 
     // 玩家稀有吸血判定 (出厂2% + 装备累加)
     if (attacker.isPlayer && attacker.stats.lifestealRate > 0 && finalDamage > 0) {
@@ -1122,11 +1553,14 @@ export class GameWorld {
     deadEntity.respawnTicks = deadEntity.maxRespawnTicks || 60;
 
     if (!deadEntity.isPlayer) {
-      const tmpl = Object.values(MONSTER_TEMPLATES).find(t => t.name === deadEntity.name);
+      const tmpl = deadEntity.templateId 
+        ? MONSTER_TEMPLATES[deadEntity.templateId] 
+        : Object.values(MONSTER_TEMPLATES).find(t => t.name === deadEntity.name);
       if (tmpl) {
         if (tmpl.isBoss) {
           this.mapManager.recordBossDeath(tmpl.templateId, tmpl.respawnTicks || 300, this.currentTick);
         }
+        this.recordMonsterKill(tmpl.templateId);
 
         const minG = tmpl.goldDrop[0];
         const maxG = tmpl.goldDrop[1];
@@ -1966,7 +2400,10 @@ export class GameWorld {
       slotEnhancements: this.slotEnhancements,
       slotEnhancePity: this.slotEnhancePity,
       currentMapId: this.mapManager.currentMapId,
-      unlockedMaps: Array.from(this.mapManager.unlockedMaps)
+      unlockedMaps: Array.from(this.mapManager.unlockedMaps),
+      monsterKills: this.monsterKills,
+      codexClaimedTiers: this.codexClaimedTiers,
+      activeBounties: this.activeBounties
     });
   }
 
@@ -1983,6 +2420,13 @@ export class GameWorld {
     this.autoConfig = { ...this.autoConfig, ...saved.autoConfig };
     this.slotEnhancements = saved.slotEnhancements || {};
     this.slotEnhancePity = saved.slotEnhancePity || {};
+    this.monsterKills = saved.monsterKills || {};
+    this.codexClaimedTiers = saved.codexClaimedTiers || {};
+    if (saved.activeBounties && saved.activeBounties.length > 0) {
+      this.activeBounties = saved.activeBounties;
+    } else {
+      this.activeBounties = generateBounties();
+    }
 
     if (saved.currentMapId) {
       this.mapManager.importState({
@@ -2022,7 +2466,8 @@ export class GameWorld {
     this.updateMonstersForAscension();
 
     const base = StatCalculator.getBaseStatsForLevel(this.player.stats.level, this.player.stats.ascensionTier || 0);
-    this.player.stats = StatCalculator.applyEquipment(base, this.equipped, this.slotEnhancements);
+    const codexBonus = this.getCodexStatsBonus();
+    this.player.stats = StatCalculator.applyEquipment(base, this.equipped, this.slotEnhancements, codexBonus);
     this.player.stats.hp = saved.player.hp || this.player.stats.maxHp;
     this.player.stats.mp = saved.player.mp || this.player.stats.maxMp;
 

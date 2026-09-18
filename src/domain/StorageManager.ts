@@ -20,6 +20,9 @@ export interface SaveData {
   slotEnhancePity?: Partial<Record<EquipSlot, number>>;
   currentMapId?: string;
   unlockedMaps?: string[];
+  monsterKills?: Record<string, number>;
+  codexClaimedTiers?: Record<string, number[]>;
+  activeBounties?: import('../types/codex').BountyTask[];
 }
 
 export interface OfflineReward {

@@ -192,22 +192,22 @@
 
       <!-- 右翼尾：经典青铜刻字菜单操作按钮 -->
       <div class="flex flex-col gap-1.5">
-        <div class="flex gap-2">
+        <div class="flex gap-1.5">
           <button 
             @click="$emit('openModal', 'character')"
-            class="w-16 py-1.5 bg-gradient-to-b from-[#3a2f23] to-[#1e1710] hover:from-[#4d3e2d] hover:to-[#2c2217] text-[#f3c258] border-2 border-[#6d563a] rounded text-xs font-bold transition-all shadow-md active:scale-95"
+            class="w-14 py-1.5 bg-gradient-to-b from-[#3a2f23] to-[#1e1710] hover:from-[#4d3e2d] hover:to-[#2c2217] text-[#f3c258] border-2 border-[#6d563a] rounded text-xs font-bold transition-all shadow-md active:scale-95"
           >
             人物(C)
           </button>
           <button 
             @click="$emit('openModal', 'inventory')"
-            class="w-16 py-1.5 bg-gradient-to-b from-[#3a2f23] to-[#1e1710] hover:from-[#4d3e2d] hover:to-[#2c2217] text-[#f3c258] border-2 border-[#6d563a] rounded text-xs font-bold transition-all shadow-md active:scale-95"
+            class="w-14 py-1.5 bg-gradient-to-b from-[#3a2f23] to-[#1e1710] hover:from-[#4d3e2d] hover:to-[#2c2217] text-[#f3c258] border-2 border-[#6d563a] rounded text-xs font-bold transition-all shadow-md active:scale-95"
           >
             包裹(B)
           </button>
           <button 
             @click="$emit('openModal', 'special_ring')"
-            class="w-16 py-1.5 bg-gradient-to-b from-[#4a361e] to-[#241a0d] hover:from-[#614827] hover:to-[#362713] text-[#fde047] border-2 border-[#8c6d3b] rounded text-xs font-black transition-all shadow-[0_0_8px_rgba(251,191,36,0.25)] active:scale-95 flex items-center justify-center gap-0.5"
+            class="w-14 py-1.5 bg-gradient-to-b from-[#4a361e] to-[#241a0d] hover:from-[#614827] hover:to-[#362713] text-[#fde047] border-2 border-[#8c6d3b] rounded text-xs font-black transition-all shadow-[0_0_8px_rgba(251,191,36,0.25)] active:scale-95 flex items-center justify-center gap-0.5"
             title="查看与镶嵌六大特戒 (按 R)"
           >
             <span>💍</span>
@@ -215,11 +215,19 @@
           </button>
           <button 
             @click="$emit('openModal', 'world_map')"
-            class="w-16 py-1.5 bg-gradient-to-b from-[#1e293b] to-[#0f172a] hover:from-[#334155] hover:to-[#1e293b] text-[#38bdf8] border-2 border-[#38bdf8]/60 rounded text-xs font-black transition-all shadow-[0_0_8px_rgba(56,189,248,0.25)] active:scale-95 flex items-center justify-center gap-0.5"
+            class="w-14 py-1.5 bg-gradient-to-b from-[#1e293b] to-[#0f172a] hover:from-[#334155] hover:to-[#1e293b] text-[#38bdf8] border-2 border-[#38bdf8]/60 rounded text-xs font-black transition-all shadow-[0_0_8px_rgba(56,189,248,0.25)] active:scale-95 flex items-center justify-center gap-0.5"
             title="查看九州十界万象星图 (按 M)"
           >
             <span>🗺️</span>
             <span>星图(M)</span>
+          </button>
+          <button 
+            @click="$emit('openModal', 'codex')"
+            class="w-14 py-1.5 bg-gradient-to-b from-[#312e81] to-[#1e1b4b] hover:from-[#3730a3] hover:to-[#2e1065] text-[#c084fc] border-2 border-[#818cf8]/60 rounded text-xs font-black transition-all shadow-[0_0_8px_rgba(192,132,252,0.25)] active:scale-95 flex items-center justify-center gap-0.5"
+            title="百妖封魔录与万象悬赏令 (按 K)"
+          >
+            <span>📖</span>
+            <span>封魔(K)</span>
           </button>
         </div>
 

@@ -123,6 +123,7 @@ export interface EntityStats {
 export interface Entity {
   id: string;
   name: string;
+  templateId?: string;
   isPlayer: boolean;
   gridPos: GridCoord;
   targetGridPos: GridCoord | null;
@@ -135,6 +136,13 @@ export interface Entity {
   stateTicks: number;
   isBoss?: boolean;
   isElite?: boolean;
+  affixes?: import('./affix').MonsterAffixType[];
+  shieldHp?: number;
+  maxShieldHp?: number;
+  shieldTicks?: number;
+  isWeakened?: boolean;
+  weakenTicks?: number;
+  isGoblin?: boolean;
   respawnTicks?: number;
   maxRespawnTicks?: number;
   spawnOrigin?: GridCoord;
@@ -146,6 +154,7 @@ export interface Entity {
   // 技能与增益效果
   shieldAegisTicks?: number; // 护体神盾持续时间
   poisonTicks?: number; // 中毒持续时间
+  frostTicks?: number; // 极寒减速时间
   isBossEnraged?: boolean; // Boss生命低狂暴
   bossSkillTimer?: number; // Boss技能施放计时
   reviveCooldownTicks?: number; // 复活特戒冷却 (900 ticks = 90秒)

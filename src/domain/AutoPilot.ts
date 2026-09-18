@@ -33,7 +33,8 @@ export class AutoPilot {
     config: AutoPilotConfig,
     currentTick: number,
     isWalkable: (x: number, y: number) => boolean,
-    portals?: PortalDef[]
+    portals?: PortalDef[],
+    aoeWarnings?: import('../types/affix').TelegraphedAOE[]
   ): AutoPilotAction {
     if (!config.enabled || player.state === 'dead') {
       return { type: 'none' };
@@ -42,6 +43,30 @@ export class AutoPilot {
     // 1. 手操让位检测 (1200ms 内有玩家手操则不自动干预)
     if (Date.now() - this.lastManualTimestamp < 1200) {
       return { type: 'none' };
+    }
+
+    // 1.5 紧急走位躲避首领 AOE 红圈预警
+    if (aoeWarnings && aoeWarnings.length > 0) {
+      const dangerAOE = aoeWarnings.find(aoe => PathFinder.chebyshevDistance(player.gridPos, aoe.center) <= aoe.radius);
+      if (dangerAOE) {
+        const directions = [
+          { x: 0, y: -1 }, { x: 1, y: -1 }, { x: 1, y: 0 }, { x: 1, y: 1 },
+          { x: 0, y: 1 }, { x: -1, y: 1 }, { x: -1, y: 0 }, { x: -1, y: -1 }
+        ];
+        const sortedDirs = directions.sort((a, b) => {
+          const distA = PathFinder.chebyshevDistance({ x: player.gridPos.x + a.x, y: player.gridPos.y + a.y }, dangerAOE.center);
+          const distB = PathFinder.chebyshevDistance({ x: player.gridPos.x + b.x, y: player.gridPos.y + b.y }, dangerAOE.center);
+          return distB - distA;
+        });
+
+        for (const dir of sortedDirs) {
+          const nx = player.gridPos.x + dir.x;
+          const ny = player.gridPos.y + dir.y;
+          if (isWalkable(nx, ny) && PathFinder.chebyshevDistance({ x: nx, y: ny }, dangerAOE.center) > dangerAOE.radius) {
+            return { type: 'move', targetPos: { x: nx, y: ny } };
+          }
+        }
+      }
     }
 
     // 2. 自动喝药判定 (每 0.6 秒 / 6 ticks 最多喝一次，提高急救响应)

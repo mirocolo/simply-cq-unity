@@ -103,6 +103,13 @@
       @close="activeModal = null"
     />
 
+    <!-- 模态弹窗：百妖封魔录与万象悬赏令 (K) -->
+    <MonsterCodexModal 
+      v-if="activeModal === 'codex'"
+      :world="world"
+      @close="activeModal = null"
+    />
+
     <!-- 模态弹窗：离线挂机收益结算 -->
     <OfflineRewardModal 
       v-if="offlineReward"
@@ -131,13 +138,14 @@ import OfflineRewardModal from './components/OfflineRewardModal.vue';
 import SpecialRingModal from './components/SpecialRingModal.vue';
 import WorldMapModal from './components/WorldMapModal.vue';
 import EnhanceModal from './components/EnhanceModal.vue';
+import MonsterCodexModal from './components/MonsterCodexModal.vue';
 
 const world = reactive(new GameWorld()) as GameWorld;
 const renderer = new IsometricRenderer();
 const sound = new SoundEffects();
 
 const selectedTargetId = ref<string | null>(null);
-const activeModal = ref<'character' | 'inventory' | 'autopilot' | 'settings' | 'special_ring' | 'world_map' | 'enhance' | null>(null);
+const activeModal = ref<'character' | 'inventory' | 'autopilot' | 'settings' | 'special_ring' | 'world_map' | 'enhance' | 'codex' | null>(null);
 const offlineReward = ref<OfflineReward | null>(null);
 
 const isSoundOn = ref(true);
@@ -331,6 +339,8 @@ const handleKeyDown = (e: KeyboardEvent) => {
     openModal('world_map');
   } else if (key === 'U') {
     openModal('enhance');
+  } else if (key === 'K') {
+    openModal('codex');
   } else if (key === 'L') {
     openModal('autopilot');
   } else if (key === 'O' || e.key === 'Escape') {
