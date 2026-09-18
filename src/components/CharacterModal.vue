@@ -1,0 +1,197 @@
+<template>
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 select-none">
+    <!-- 人物主面板容器 -->
+    <div class="relative w-full max-w-xl legend-box p-4 rounded-lg flex flex-col gap-3 animate-fadeIn text-zinc-200">
+      <!-- 弹窗标题 -->
+      <div class="flex items-center justify-between border-b border-legend-border pb-2">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">👤</span>
+          <span class="text-base font-bold text-gold-gradient">人物属性与装备</span>
+        </div>
+        <button 
+          @click="$emit('close')"
+          class="text-zinc-400 hover:text-white px-2 py-0.5 rounded hover:bg-zinc-800 text-lg font-bold"
+        >
+          ✕
+        </button>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- 左半部：经典纸娃娃装备位 -->
+        <div class="bg-zinc-950/80 p-3 rounded-lg border border-legend-border flex flex-col justify-between">
+          <div class="text-center text-xs font-bold text-amber-400/90 mb-2">
+            【武林尊者 · 战神之躯】
+          </div>
+
+          <div class="grid grid-cols-3 gap-2 items-center">
+            <!-- 左侧 4 槽位 -->
+            <div class="flex flex-col gap-2">
+              <div 
+                v-for="slotKey in leftSlots" 
+                :key="slotKey.key"
+                @click="handleSlotClick(slotKey.key)"
+                class="relative w-14 h-14 bg-zinc-900 rounded border-2 flex flex-col items-center justify-center cursor-pointer transition-all hover:scale-105"
+                :class="getSlotBorderClass(equipped[slotKey.key])"
+                :title="getSlotTitle(slotKey.key)"
+              >
+                <span class="text-2xl">{{ equipped[slotKey.key]?.icon || slotKey.placeholder }}</span>
+                <span class="text-[9px] text-zinc-400">{{ slotKey.name }}</span>
+                <span 
+                  v-if="equipped[slotKey.key]"
+                  class="absolute -bottom-1 -right-1 text-[9px] px-1 rounded bg-black/80 font-bold"
+                  :class="getQualityTextClass(equipped[slotKey.key]!.quality)"
+                >
+                  {{ equipped[slotKey.key]?.name.slice(0, 2) }}
+                </span>
+              </div>
+            </div>
+
+            <!-- 中央人物形象投影 -->
+            <div class="flex flex-col items-center justify-center py-2">
+              <div class="relative w-20 h-28 bg-gradient-to-b from-amber-950/20 to-black rounded-full border border-legend-border flex items-center justify-center shadow-gold-glow">
+                <span class="text-5xl">🛡️</span>
+              </div>
+              <span class="mt-2 text-xs font-bold text-amber-300">Lv.{{ player.stats.level }} 战士</span>
+            </div>
+
+            <!-- 右侧 4 槽位 -->
+            <div class="flex flex-col gap-2 items-end">
+              <div 
+                v-for="slotKey in rightSlots" 
+                :key="slotKey.key"
+                @click="handleSlotClick(slotKey.key)"
+                class="relative w-14 h-14 bg-zinc-900 rounded border-2 flex flex-col items-center justify-center cursor-pointer transition-all hover:scale-105"
+                :class="getSlotBorderClass(equipped[slotKey.key])"
+                :title="getSlotTitle(slotKey.key)"
+              >
+                <span class="text-2xl">{{ equipped[slotKey.key]?.icon || slotKey.placeholder }}</span>
+                <span class="text-[9px] text-zinc-400">{{ slotKey.name }}</span>
+                <span 
+                  v-if="equipped[slotKey.key]"
+                  class="absolute -bottom-1 -right-1 text-[9px] px-1 rounded bg-black/80 font-bold"
+                  :class="getQualityTextClass(equipped[slotKey.key]!.quality)"
+                >
+                  {{ equipped[slotKey.key]?.name.slice(0, 2) }}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div class="text-[10px] text-zinc-500 text-center mt-2">
+            点击已穿戴装备可直接卸下退回背包
+          </div>
+        </div>
+
+        <!-- 右半部：数值与战力汇总明细 -->
+        <div class="bg-zinc-950/80 p-4 rounded-lg border border-legend-border flex flex-col justify-between">
+          <!-- 战力大字标题 -->
+          <div class="bg-amber-950/30 border border-amber-900/60 p-2.5 rounded-lg flex items-center justify-between shadow-inner">
+            <span class="text-xs text-amber-200 font-bold">综合战斗力</span>
+            <span class="text-gold-gradient text-2xl font-black tracking-wider text-gold-glow">
+              {{ player.stats.combatPower.toLocaleString() }}
+            </span>
+          </div>
+
+          <!-- 详细数值列表 -->
+          <div class="flex flex-col gap-2 my-2 text-xs divide-y divide-zinc-800/80">
+            <div class="flex justify-between py-1">
+              <span class="text-zinc-400">生命上限 (HP):</span>
+              <span class="font-bold text-red-400">{{ player.stats.hp }} / {{ player.stats.maxHp }}</span>
+            </div>
+            <div class="flex justify-between py-1">
+              <span class="text-zinc-400">魔法上限 (MP):</span>
+              <span class="font-bold text-blue-400">{{ player.stats.mp }} / {{ player.stats.maxMp }}</span>
+            </div>
+            <div class="flex justify-between py-1">
+              <span class="text-zinc-400">物理攻击 (DC):</span>
+              <span class="font-bold text-yellow-400">{{ player.stats.minDC }} - {{ player.stats.maxDC }}</span>
+            </div>
+            <div class="flex justify-between py-1">
+              <span class="text-zinc-400">物理防御 (AC):</span>
+              <span class="font-bold text-emerald-400">{{ player.stats.minAC }} - {{ player.stats.maxAC }}</span>
+            </div>
+            <div class="flex justify-between py-1">
+              <span class="text-zinc-400">暴击率 (Crit):</span>
+              <span class="font-bold text-rose-400">{{ (player.stats.critRate * 100).toFixed(1) }}%</span>
+            </div>
+            <div class="flex justify-between py-1">
+              <span class="text-zinc-400">暴击伤害 (Mult):</span>
+              <span class="font-bold text-rose-400">150%</span>
+            </div>
+            <div class="flex justify-between py-1">
+              <span class="text-zinc-400">攻速急速 (Haste):</span>
+              <span class="font-bold text-cyan-400">
+                +{{ player.stats.haste }} ({{ (player.stats.effectiveAttackInterval * 0.1).toFixed(2) }}s/刀)
+              </span>
+            </div>
+          </div>
+
+          <div class="text-[11px] text-zinc-500 bg-zinc-900/60 p-2 rounded border border-zinc-800">
+            💡 提示：穿戴高品质狂风首饰可大幅削减出刀间隔，达到极速挥砍手感！
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { Entity, EquipSlot, ItemInstance, ItemQuality } from '../types/game';
+
+const props = defineProps<{
+  player: Entity;
+  equipped: Partial<Record<EquipSlot, ItemInstance>>;
+}>();
+
+const emit = defineEmits<{
+  (e: 'close'): void;
+  (e: 'unequip', slot: EquipSlot): void;
+}>();
+
+const leftSlots: { key: EquipSlot; name: string; placeholder: string }[] = [
+  { key: 'weapon', name: '武器', placeholder: '🗡️' },
+  { key: 'necklace', name: '项链', placeholder: '📿' },
+  { key: 'bracelet_l', name: '左手镯', placeholder: '⭕' },
+  { key: 'ring_l', name: '左戒指', placeholder: '💍' },
+];
+
+const rightSlots: { key: EquipSlot; name: string; placeholder: string }[] = [
+  { key: 'helmet', name: '头盔', placeholder: '🪖' },
+  { key: 'armor', name: '重甲', placeholder: '🥋' },
+  { key: 'bracelet_r', name: '右手镯', placeholder: '⭕' },
+  { key: 'ring_r', name: '右戒指', placeholder: '💍' },
+];
+
+const handleSlotClick = (slot: EquipSlot) => {
+  if (props.equipped[slot]) {
+    emit('unequip', slot);
+  }
+};
+
+const getSlotBorderClass = (item?: ItemInstance) => {
+  if (!item) return 'border-zinc-800 hover:border-zinc-600';
+  switch (item.quality) {
+    case 4: return 'border-orange-500 shadow-orange-glow';
+    case 3: return 'border-purple-500 shadow-purple-glow';
+    case 2: return 'border-blue-500 shadow-blue-glow';
+    case 1: return 'border-green-500';
+    default: return 'border-slate-400';
+  }
+};
+
+const getQualityTextClass = (quality: ItemQuality) => {
+  switch (quality) {
+    case 4: return 'text-orange-400';
+    case 3: return 'text-purple-400';
+    case 2: return 'text-blue-400';
+    case 1: return 'text-green-400';
+    default: return 'text-slate-300';
+  }
+};
+
+const getSlotTitle = (slot: EquipSlot) => {
+  const item = props.equipped[slot];
+  if (!item) return '空槽位';
+  return `${item.name} (点击卸下)`;
+};
+</script>
