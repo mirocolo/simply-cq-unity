@@ -115,8 +115,12 @@
               <span class="font-bold text-rose-400">{{ (player.stats.critRate * 100).toFixed(1) }}%</span>
             </div>
             <div class="flex justify-between py-1">
-              <span class="text-zinc-400">暴击伤害 (Mult):</span>
-              <span class="font-bold text-rose-400">150%</span>
+              <span class="text-zinc-400">暴击伤害 (Crit Dmg):</span>
+              <span class="font-bold text-rose-400">{{ (player.stats.critMult * 100).toFixed(0) }}%</span>
+            </div>
+            <div class="flex justify-between py-1">
+              <span class="text-zinc-400">物理闪避 (Dodge):</span>
+              <span class="font-bold text-sky-400">{{ (player.stats.dodgeRate * 100).toFixed(1) }}% (触发MISS)</span>
             </div>
             <div class="flex justify-between py-1">
               <span class="text-zinc-400">攻速急速 (Haste):</span>
@@ -126,8 +130,20 @@
             </div>
           </div>
 
-          <div class="text-[11px] text-zinc-500 bg-zinc-900/60 p-2 rounded border border-zinc-800">
-            💡 提示：穿戴高品质狂风首饰可大幅削减出刀间隔，达到极速挥砍手感！
+          <!-- 等级境界里程碑特权卡片 -->
+          <div class="bg-gradient-to-r from-amber-950/50 via-yellow-950/30 to-black p-2.5 rounded-lg border border-amber-600/40 flex flex-col gap-1.5 shadow-md">
+            <div class="flex items-center justify-between text-xs font-bold text-amber-300">
+              <span class="flex items-center gap-1">
+                <span>👑</span>
+                <span>等级境界特权</span>
+              </span>
+              <span class="text-gold-gradient font-black text-sm">【{{ currentMilestone.title }}】</span>
+            </div>
+            <div class="text-[10px] text-zinc-300 grid grid-cols-3 gap-1 pt-1 border-t border-amber-900/40 text-center font-mono">
+              <span class="bg-black/60 p-1 rounded border border-zinc-800">急速 +{{ currentMilestone.haste }}</span>
+              <span class="bg-black/60 p-1 rounded border border-zinc-800">暴击 +{{ (currentMilestone.critRate * 100).toFixed(0) }}%</span>
+              <span class="bg-black/60 p-1 rounded border border-zinc-800">闪避 +{{ (currentMilestone.dodgeRate * 100).toFixed(0) }}%</span>
+            </div>
           </div>
         </div>
       </div>
@@ -136,12 +152,18 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
 import { Entity, EquipSlot, ItemInstance, ItemQuality } from '../types/game';
+import { StatCalculator } from '../domain/StatCalculator';
 
 const props = defineProps<{
   player: Entity;
   equipped: Partial<Record<EquipSlot, ItemInstance>>;
 }>();
+
+const currentMilestone = computed(() => {
+  return StatCalculator.getLevelMilestone(props.player.stats.level);
+});
 
 const emit = defineEmits<{
   (e: 'close'): void;

@@ -85,6 +85,7 @@ export interface EntityStats {
   critRate: number;
   critMult: number;
   haste: number;
+  dodgeRate: number;
   baseAttackInterval: number; // 默认 4~5 ticks
   effectiveAttackInterval: number;
   combatPower: number;

@@ -4,6 +4,7 @@ export interface CombatResult {
   damage: number;
   isCrit: boolean;
   isHit: boolean;
+  isDodge?: boolean;
   skillUsed?: SkillDef;
   isCleave?: boolean;
 }
@@ -23,6 +24,19 @@ export class CombatSystem {
     skill?: SkillDef,
     isSecondaryCleave = false
   ): CombatResult {
+    // 0. 目标物理闪避判定 (触发闪避造成 0 伤害并判定 MISS)
+    const dodgeRate = defender.stats.dodgeRate || 0;
+    if (Math.random() < dodgeRate) {
+      return {
+        damage: 0,
+        isCrit: false,
+        isHit: false,
+        isDodge: true,
+        skillUsed: skill,
+        isCleave: isSecondaryCleave
+      };
+    }
+
     // 1. 基础攻击力投掷 (DC 浮动)
     const rawDC = this.randomBetween(attacker.stats.minDC, attacker.stats.maxDC);
 

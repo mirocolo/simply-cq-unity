@@ -429,6 +429,12 @@ export class GameWorld {
     const isFire = skill?.id === 'fire_slash';
     const result = CombatSystem.calculateAttack(attacker, target, skill, isCleave);
 
+    // 目标物理闪避成功：伤害为 0，飘出灰色 MISS 字体，无受击硬直
+    if (result.isDodge) {
+      this.addDamagePopup(target.gridPos, 'MISS', '#94a3b8', false);
+      return;
+    }
+
     target.stats.hp = Math.max(0, target.stats.hp - result.damage);
 
     // 受击物理反馈：怪物受击硬直与微击退
@@ -520,8 +526,18 @@ export class GameWorld {
 
       this.onSound?.('levelup');
       this.screenShake = 10;
-      this.addDamagePopup(this.player.gridPos, `升级! Lv.${this.player.stats.level}`, '#facc15', true);
-      this.addBattleLog(`【升级】金芒贯顶！升至 Lv.${this.player.stats.level}，战力飙升至 ${this.player.stats.combatPower}！`, 'system');
+
+      const milestone = StatCalculator.getLevelMilestone(this.player.stats.level);
+      if (this.player.stats.level % 5 === 0) {
+        this.addDamagePopup(this.player.gridPos, `境界突破【${milestone.title}】!`, '#f59e0b', true);
+        this.addBattleLog(
+          `【境界突破】恭喜大侠突破 Lv.${this.player.stats.level}，晋升境界【${milestone.title}】！急速+${milestone.haste}，暴击+${(milestone.critRate * 100).toFixed(0)}%，闪避+${(milestone.dodgeRate * 100).toFixed(0)}%！`,
+          'system'
+        );
+      } else {
+        this.addDamagePopup(this.player.gridPos, `升级! Lv.${this.player.stats.level}`, '#facc15', true);
+        this.addBattleLog(`【升级】金芒贯顶！升至 Lv.${this.player.stats.level}，战力飙升至 ${this.player.stats.combatPower}！`, 'system');
+      }
     }
   }
 
