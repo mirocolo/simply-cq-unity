@@ -262,12 +262,19 @@ export class StatCalculator {
   }
 
   /**
-   * 计算单件装备战力评分
+   * 计算单件装备战力评分 (深度计入阶数、特戒神技、幸运、倍攻、破甲与套装)
    */
   static getItemCombatPower(item: ItemInstance): number {
     if (item.type !== 'equipment') return 0;
     const midDC = (item.minDC + item.maxDC) / 2;
     const midAC = (item.minAC + item.maxAC) / 2;
+    const tierBonus = (item.tier || 0) * 1500;
+    const specialBonus = item.specialEffect ? 2500 : 0;
+    const setBonus = item.setName ? 600 : 0;
+    const luckBonus = (item.luck || 0) * 800 + (item.specialEffect === 'luck' ? 2400 : 0);
+    const damageMultBonus = (item.damageMultRatio || 0) * 5000;
+    const defenseIgnoreBonus = (item.defenseIgnoreRate || 0) * 3000;
+
     return Math.floor(
       midDC * 3.8 +
       midAC * 2.8 +
@@ -275,8 +282,14 @@ export class StatCalculator {
       (item.maxMp || 0) * 0.25 +
       (item.critBonus || 0) * 15 +
       (item.hasteBonus || 0) * 12 +
-      (item.lifestealBonus || 0) * 35 +
-      (item.quality || 0) * 25
+      (item.lifestealBonus || 0) * 45 +
+      (item.quality || 0) * 35 +
+      tierBonus +
+      specialBonus +
+      setBonus +
+      luckBonus +
+      damageMultBonus +
+      defenseIgnoreBonus
     );
   }
 }

@@ -78,8 +78,43 @@
             </div>
           </div>
 
-          <div class="text-[10px] text-zinc-500 text-center mt-2">
-            点击已穿戴装备可直接卸下退回背包
+          <!-- 六大特戒独立法阵插槽 -->
+          <div class="mt-3 pt-2 border-t border-zinc-800 flex flex-col gap-1.5">
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] font-bold text-amber-300 flex items-center gap-1">
+                <span>💍</span>
+                <span>至尊六大特戒法阵</span>
+              </span>
+              <button 
+                @click="$emit('openSpecialRing')"
+                class="text-[10px] text-yellow-400 hover:text-yellow-300 flex items-center gap-0.5 hover:underline font-mono"
+              >
+                <span>进入特戒神殿(R)</span>
+                <span>➔</span>
+              </button>
+            </div>
+
+            <div class="grid grid-cols-6 gap-1.5">
+              <div 
+                v-for="sRing in specialRingSlots" 
+                :key="sRing.key"
+                @click="handleSlotClick(sRing.key)"
+                class="relative w-full aspect-square rounded border-2 flex flex-col items-center justify-center cursor-pointer transition-all hover:scale-105"
+                :class="equipped[sRing.key] ? 'border-amber-400 bg-amber-950/40 shadow-[0_0_8px_rgba(245,158,11,0.3)]' : 'border-zinc-800 bg-zinc-950/60 opacity-60'"
+                :title="equipped[sRing.key] ? `${equipped[sRing.key]?.name} (点击卸下)` : `${sRing.name} (未激活)`"
+              >
+                <span class="text-base">{{ equipped[sRing.key]?.icon || sRing.placeholder }}</span>
+                <span class="text-[8px] text-zinc-400 truncate max-w-full px-0.5">{{ sRing.name }}</span>
+                <span 
+                  v-if="equipped[sRing.key]"
+                  class="absolute -top-0.5 -right-0.5 w-2 h-2 bg-emerald-400 rounded-full"
+                ></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="text-[10px] text-zinc-500 text-center mt-1">
+            点击已穿戴装备/特戒可直接卸下退回背包
           </div>
         </div>
 
@@ -284,6 +319,7 @@ const emit = defineEmits<{
   (e: 'close'): void;
   (e: 'unequip', slot: EquipSlot): void;
   (e: 'ascend'): void;
+  (e: 'openSpecialRing'): void;
 }>();
 
 const leftSlots: { key: EquipSlot; name: string; placeholder: string }[] = [
@@ -298,6 +334,15 @@ const rightSlots: { key: EquipSlot; name: string; placeholder: string }[] = [
   { key: 'armor', name: '重甲', placeholder: '🥋' },
   { key: 'bracelet_r', name: '右手镯', placeholder: '⭕' },
   { key: 'ring_r', name: '右戒指', placeholder: '💍' },
+];
+
+const specialRingSlots: { key: EquipSlot; name: string; placeholder: string }[] = [
+  { key: 'special_paralyze', name: '麻痹', placeholder: '⚡' },
+  { key: 'special_revive', name: '复活', placeholder: '💖' },
+  { key: 'special_protect', name: '护身', placeholder: '🛡️' },
+  { key: 'special_wind', name: '狂风', placeholder: '🌪️' },
+  { key: 'special_luck', name: '幸运', placeholder: '🎲' },
+  { key: 'special_greed', name: '贪婪', placeholder: '💰' },
 ];
 
 const handleSlotClick = (slot: EquipSlot) => {

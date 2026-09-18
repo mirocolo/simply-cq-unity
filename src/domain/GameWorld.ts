@@ -78,7 +78,7 @@ export class GameWorld {
   battleLogs: BattleLog[] = [];
   currentTick = 0;
 
-  onSound?: (name: 'swing' | 'hit' | 'crit' | 'coin' | 'potion' | 'levelup' | 'fire' | 'phantom') => void;
+  onSound?: (name: 'swing' | 'hit' | 'crit' | 'coin' | 'potion' | 'levelup' | 'fire' | 'phantom' | 'paralyze' | 'revive') => void;
   onSlashVFX?: (gridPos: GridCoord, dir: Direction8, isFire: boolean, haste: number, isPhantom?: boolean) => void;
 
   constructor() {
@@ -169,15 +169,26 @@ export class GameWorld {
 
   updateMonstersForAscension(): void {
     const tier = this.player.stats.ascensionTier || 0;
-    const hpMult = 1 + tier * 1.5;
-    const dcMult = 1 + tier * 0.4;
+    const playerLevel = this.player.stats.level || 1;
+    const bossGrowthFactor = playerLevel < 25 
+      ? 1 
+      : Math.max(1, (playerLevel / 20) ** 1.35);
+    const hpMult = 1 + (tier ** 1.25) * 2.5;
+    const dcMult = 1 + (tier ** 1.1) * 0.7;
+    const acMult = 1 + tier * 0.5;
+
     for (const m of this.monsters) {
       const tmpl = Object.values(MONSTER_TEMPLATES).find(t => t.name === m.name);
       if (tmpl) {
-        m.stats.maxHp = Math.floor(tmpl.hp * hpMult);
+        const finalHpMult = tmpl.isBoss ? bossGrowthFactor * hpMult : hpMult;
+        const finalDcMult = tmpl.isBoss ? (1 + (bossGrowthFactor - 1) * 0.5) * dcMult : dcMult;
+        const finalAcMult = tmpl.isBoss ? acMult * 1.5 : acMult;
+        m.stats.maxHp = Math.floor(tmpl.hp * finalHpMult);
         m.stats.hp = m.stats.maxHp;
-        m.stats.minDC = Math.floor(tmpl.minDC * dcMult);
-        m.stats.maxDC = Math.floor(tmpl.maxDC * dcMult);
+        m.stats.minDC = Math.floor(tmpl.minDC * finalDcMult);
+        m.stats.maxDC = Math.floor(tmpl.maxDC * finalDcMult);
+        m.stats.minAC = Math.floor(tmpl.minAC * finalAcMult);
+        m.stats.maxAC = Math.floor(tmpl.maxAC * finalAcMult);
       }
     }
   }
@@ -247,10 +258,13 @@ export class GameWorld {
 
     const tier = this.player?.stats?.ascensionTier || 0;
     const playerLevel = this.player?.stats?.level || 1;
-    // Boss 随玩家等级动态成长 (未成长阶段处于低难度)
-    const bossGrowthFactor = Math.max(1, (playerLevel / 20) ** 1.05);
-    const hpMult = 1 + tier * 1.5;
-    const dcMult = 1 + tier * 0.4;
+    // Boss 随玩家等级动态成长 (未成长阶段处于低难度，30级以上与高转阶位面难度适当拉升)
+    const bossGrowthFactor = playerLevel < 25 
+      ? 1 
+      : Math.max(1, (playerLevel / 20) ** 1.35);
+    const hpMult = 1 + (tier ** 1.25) * 2.5;
+    const dcMult = 1 + (tier ** 1.1) * 0.7;
+    const acMult = 1 + tier * 0.5;
 
     let idGen = 1;
     for (const dist of monsterDistributions) {
@@ -266,7 +280,8 @@ export class GameWorld {
 
         const baseStats = StatCalculator.getBaseStatsForLevel(template.level);
         const finalHpMult = template.isBoss ? bossGrowthFactor * hpMult : hpMult;
-        const finalDcMult = template.isBoss ? (1 + (bossGrowthFactor - 1) * 0.35) * dcMult : dcMult;
+        const finalDcMult = template.isBoss ? (1 + (bossGrowthFactor - 1) * 0.5) * dcMult : dcMult;
+        const finalAcMult = template.isBoss ? acMult * 1.5 : acMult;
         const scaledHp = Math.floor(template.hp * finalHpMult);
         const stats = {
           ...baseStats,
@@ -276,8 +291,8 @@ export class GameWorld {
           maxMp: template.mp,
           minDC: Math.floor(template.minDC * finalDcMult),
           maxDC: Math.floor(template.maxDC * finalDcMult),
-          minAC: template.minAC,
-          maxAC: template.maxAC,
+          minAC: Math.floor(template.minAC * finalAcMult),
+          maxAC: Math.floor(template.maxAC * finalAcMult),
           critRate: template.critRate,
           haste: template.haste,
           baseAttackInterval: template.baseAttackInterval,
@@ -426,16 +441,22 @@ export class GameWorld {
             m.state = 'idle';
             const tier = this.player.stats.ascensionTier || 0;
             const playerLevel = this.player.stats.level || 1;
-            const bossGrowthFactor = Math.max(1, (playerLevel / 20) ** 1.05);
-            const hpMult = 1 + tier * 1.5;
-            const dcMult = 1 + tier * 0.4;
+            const bossGrowthFactor = playerLevel < 25 
+              ? 1 
+              : Math.max(1, (playerLevel / 20) ** 1.35);
+            const hpMult = 1 + (tier ** 1.25) * 2.5;
+            const dcMult = 1 + (tier ** 1.1) * 0.7;
+            const acMult = 1 + tier * 0.5;
             const tmpl = Object.values(MONSTER_TEMPLATES).find(t => t.name === m.name);
             if (tmpl) {
               const finalHpMult = tmpl.isBoss ? bossGrowthFactor * hpMult : hpMult;
-              const finalDcMult = tmpl.isBoss ? (1 + (bossGrowthFactor - 1) * 0.35) * dcMult : dcMult;
+              const finalDcMult = tmpl.isBoss ? (1 + (bossGrowthFactor - 1) * 0.5) * dcMult : dcMult;
+              const finalAcMult = tmpl.isBoss ? acMult * 1.5 : acMult;
               m.stats.maxHp = Math.floor(tmpl.hp * finalHpMult);
               m.stats.minDC = Math.floor(tmpl.minDC * finalDcMult);
               m.stats.maxDC = Math.floor(tmpl.maxDC * finalDcMult);
+              m.stats.minAC = Math.floor(tmpl.minAC * finalAcMult);
+              m.stats.maxAC = Math.floor(tmpl.maxAC * finalAcMult);
             }
             m.stats.hp = m.stats.maxHp;
             m.hasBeenAttackedByPlayer = false;
@@ -842,11 +863,12 @@ export class GameWorld {
       }
     }
 
-    // 麻痹戒指神威：攻击时 25% 几率石化麻痹敌人 2.5 秒
+    // 麻痹戒指神威：攻击时 25% 几率石化麻痹敌人 3 秒
     if (attacker.isPlayer && !target.isPlayer && this.hasSpecialEffect('paralyze')) {
       if (Math.random() < 0.25) {
-        target.hitStunTicks = 25;
+        target.hitStunTicks = 30;
         this.addDamagePopup(target.gridPos, '⚡石化麻痹!', '#eab308', true);
+        this.onSound?.('paralyze');
       }
     }
 
@@ -967,7 +989,8 @@ export class GameWorld {
         deadEntity.stats.hp = deadEntity.stats.maxHp;
         deadEntity.stats.mp = deadEntity.stats.maxMp;
         deadEntity.reviveCooldownTicks = 900; // 90秒
-        this.onSound?.('levelup');
+        deadEntity.invincibleTicks = 30; // 3秒无敌金身
+        this.onSound?.('revive');
         this.screenShake = 16;
         this.addDamagePopup(deadEntity.gridPos, '💖特戒复活涅槃!', '#ec4899', true);
         this.addBattleLog('【特戒复活】受到致命伤害触发【复活戒指】至尊神威！免除阵亡，生命与魔法全满恢复！', 'system');
@@ -1052,6 +1075,11 @@ export class GameWorld {
           const countText = drop.item.count > 1 ? ` x${drop.item.count}` : '';
           this.addBattleLog(`拾取战利品 [${drop.item.name}]${countText}`, 'drop', drop.item.quality);
 
+          // 拾取后自动穿戴最适合自己的装备 (即刻智能换装)
+          if (drop.item.type === 'equipment' && drop.item.slot) {
+            this.tryAutoEquipIfBetter(drop.item);
+          }
+
           // 挂机智能回收：若开启了自动回收弱装，且背包容量已达 35 格以上
           if (this.autoConfig.enabled && this.autoConfig.autoRecycleWeaker && this.inventory.length >= 35) {
             this.recycleWeakerOrEqualItems();
@@ -1059,6 +1087,58 @@ export class GameWorld {
         }
       }
     }
+  }
+
+  /**
+   * 拾取后自动穿戴最适合自己的装备 (智能即刻替换)
+   */
+  tryAutoEquipIfBetter(item: ItemInstance): boolean {
+    if (item.type !== 'equipment' || !item.slot) return false;
+    // 等级要求高于人物等级则暂不自动穿戴
+    if (item.levelReq && item.levelReq > this.player.stats.level) return false;
+
+    const itemPower = StatCalculator.getItemCombatPower(item);
+
+    // 1. 双槽位手镯比对
+    if (item.slot === 'bracelet_l' || item.slot === 'bracelet_r') {
+      const p1 = this.equipped['bracelet_l'] ? StatCalculator.getItemCombatPower(this.equipped['bracelet_l']!) : -1;
+      const p2 = this.equipped['bracelet_r'] ? StatCalculator.getItemCombatPower(this.equipped['bracelet_r']!) : -1;
+      const weakerPower = Math.min(p1, p2);
+      if (itemPower > weakerPower) {
+        this.equipItem(item);
+        this.onSound?.('levelup');
+        this.addBattleLog(`【神装自动换装】拾获更优手镯 [${item.name}]，已自动替换穿戴！`, 'system');
+        return true;
+      }
+      return false;
+    }
+
+    // 2. 双槽位常规戒指比对
+    if (item.slot === 'ring_l' || item.slot === 'ring_r') {
+      const p1 = this.equipped['ring_l'] ? StatCalculator.getItemCombatPower(this.equipped['ring_l']!) : -1;
+      const p2 = this.equipped['ring_r'] ? StatCalculator.getItemCombatPower(this.equipped['ring_r']!) : -1;
+      const weakerPower = Math.min(p1, p2);
+      if (itemPower > weakerPower) {
+        this.equipItem(item);
+        this.onSound?.('levelup');
+        this.addBattleLog(`【神装自动换装】拾获更优戒指 [${item.name}]，已自动替换穿戴！`, 'system');
+        return true;
+      }
+      return false;
+    }
+
+    // 3. 单槽位 (武器、衣服、头盔、项链、以及6大特戒)
+    const currentEquip = this.equipped[item.slot];
+    const currentPower = currentEquip ? StatCalculator.getItemCombatPower(currentEquip) : -1;
+    if (itemPower > currentPower) {
+      this.equipItem(item);
+      this.onSound?.('levelup');
+      const prefix = item.slot.startsWith('special_') ? '【特戒觉醒】' : '【神装自动换装】';
+      this.addBattleLog(`${prefix}拾获更优装备 [${item.name}]，已自动替换穿戴！`, 'system');
+      return true;
+    }
+
+    return false;
   }
 
   useItem(item: ItemInstance): boolean {
@@ -1138,8 +1218,12 @@ export class GameWorld {
     let replacedCount = 0;
     const playerLevel = this.player.stats.level;
 
-    // 1. 单槽位比对优化: weapon, armor, helmet, necklace
-    const singleSlots: EquipSlot[] = ['weapon', 'armor', 'helmet', 'necklace'];
+    // 1. 单槽位比对优化: weapon, armor, helmet, necklace 以及 6 大专属特戒
+    const singleSlots: EquipSlot[] = [
+      'weapon', 'armor', 'helmet', 'necklace',
+      'special_paralyze', 'special_revive', 'special_protect',
+      'special_wind', 'special_luck', 'special_greed'
+    ];
     for (const slot of singleSlots) {
       const current = this.equipped[slot];
       const currentPower = current ? StatCalculator.getItemCombatPower(current) : -1;
@@ -1321,47 +1405,81 @@ export class GameWorld {
 
   /**
    * 一键回收战力小于等于身上穿戴装备的同部位冗余装备
-   * (严格按同位置比对：保留可能换上的更强神装，精准熔炼弱于同位置穿戴的一切冗余装备)
+   * (严格按同位置比对：保留可能换上的更强神装，绝对豁免特戒、极品橙装与高阶潜力装)
    */
   recycleWeakerOrEqualItems(): { gold: number; exp: number; count: number } {
     let gainedGold = 0;
     let gainedExp = 0;
     let count = 0;
 
-    // 标记需要保留在背包的极品神装 (避免误熔比身上更好的提升件)
+    // 标记需要保留在背包的极品神装 (避免误熔比身上更好的提升件或特戒)
     const keepIndices = new Set<number>();
 
-    // 1. 单槽位优化比对: weapon, armor, helmet, necklace
+    // 1. 全局豁免保护：所有特戒、橙色传说装备、高阶潜力装备、等级暂未达到的备用装
+    for (let i = 0; i < this.inventory.length; i++) {
+      const it = this.inventory[i];
+      if (it.type !== 'equipment' || !it.slot) {
+        keepIndices.add(i);
+        continue;
+      }
+
+      // 绝对豁免所有特戒 (带 specialEffect 或 slot 以 special_ 开头)
+      if (it.specialEffect || it.slot.startsWith('special_')) {
+        keepIndices.add(i);
+        continue;
+      }
+
+      // 绝对豁免橙色传说神装 (baseQuality/quality >= 4)
+      if (it.quality >= 4) {
+        keepIndices.add(i);
+        continue;
+      }
+
+      // 绝对豁免当前等级暂未达到的高级神装 (未来可穿戴)
+      if (it.levelReq && it.levelReq > this.player.stats.level) {
+        keepIndices.add(i);
+        continue;
+      }
+
+      // 绝对豁免高于身上穿戴部位阶数的高阶潜力装备
+      const currentEquipped = this.equipped[it.slot];
+      if (currentEquipped && it.tier > currentEquipped.tier) {
+        keepIndices.add(i);
+        continue;
+      }
+    }
+
+    // 2. 单槽位优化比对: weapon, armor, helmet, necklace
     const singleSlots: EquipSlot[] = ['weapon', 'armor', 'helmet', 'necklace'];
     for (const slot of singleSlots) {
       const equippedItem = this.equipped[slot];
       const equippedPower = equippedItem ? StatCalculator.getItemCombatPower(equippedItem) : -1;
 
-      // 找出背包内属于该部位的所有装备并按战力降序排序
+      // 找出背包内属于该部位且符合当前等级的所有装备
       const candidates: { index: number; power: number }[] = [];
       for (let i = 0; i < this.inventory.length; i++) {
         const it = this.inventory[i];
-        if (it.type === 'equipment' && it.slot === slot) {
+        if (it.type === 'equipment' && it.slot === slot && (!it.levelReq || it.levelReq <= this.player.stats.level)) {
           candidates.push({ index: i, power: StatCalculator.getItemCombatPower(it) });
         }
       }
       candidates.sort((a, b) => b.power - a.power);
 
-      // 若背包内存在比身上该部位更强 (或该部位未穿戴时最强) 的装备，仅保留最强 1 件，其余皆为冗余
-      if (candidates.length > 0) {
-        if (candidates[0].power > equippedPower) {
-          keepIndices.add(candidates[0].index);
+      // 若背包内存在比身上更强的装备，保留所有更强者
+      for (const cand of candidates) {
+        if (cand.power > equippedPower) {
+          keepIndices.add(cand.index);
         }
       }
     }
 
-    // 2. 双槽位手镯比对优化: bracelets (bracelet_l, bracelet_r)
+    // 3. 双槽位手镯比对优化: bracelets (bracelet_l, bracelet_r)
     this.markKeepForDualSlots(['bracelet_l', 'bracelet_r'], keepIndices);
 
-    // 3. 双槽位戒指比对优化: rings (ring_l, ring_r)
+    // 4. 双槽位戒指比对优化: rings (ring_l, ring_r)
     this.markKeepForDualSlots(['ring_l', 'ring_r'], keepIndices);
 
-    // 4. 执行回收：所有装备类型中，未被保留的均 <= 身上同位置或同部位已有更优选，全部熔炼！
+    // 5. 执行回收：所有装备类型中，未被保留的均 <= 身上同位置或同部位已有更优选，全部熔炼！
     for (let i = this.inventory.length - 1; i >= 0; i--) {
       const item = this.inventory[i];
       if (item.type !== 'equipment' || !item.slot) continue;
@@ -1383,7 +1501,7 @@ export class GameWorld {
         'system'
       );
     } else {
-      this.addBattleLog('【智能回收】背包中无弱于身上的同部位冗余装备，极品神装已妥善保留！', 'system');
+      this.addBattleLog('【智能回收】背包中无弱于身上的同部位冗余装备，极品与特戒已妥善保留！', 'system');
     }
 
     return { gold: gainedGold, exp: gainedExp, count };
@@ -1402,17 +1520,19 @@ export class GameWorld {
     // 身上佩戴两件的战力从大到小
     const equippedPowers = [Math.max(p1, p2), Math.min(p1, p2)];
 
-    // 背包内所有该类型装备从大到小排序
+    // 背包内所有该类型且符合穿戴等级的装备从大到小排序
     const candidates: { index: number; power: number }[] = [];
     for (let i = 0; i < this.inventory.length; i++) {
       const it = this.inventory[i];
       if (it.type === 'equipment' && isMatchingSlot(it.slot)) {
-        candidates.push({ index: i, power: StatCalculator.getItemCombatPower(it) });
+        if (!it.levelReq || it.levelReq <= this.player.stats.level) {
+          candidates.push({ index: i, power: StatCalculator.getItemCombatPower(it) });
+        }
       }
     }
     candidates.sort((a, b) => b.power - a.power);
 
-    // candidates[0] 需高于身上较弱的一件才能替代
+    // candidates[0] 需高于身上较弱的一件才能替代较弱者
     // candidates[1] 需高于身上较强的一件才能将身上两件全部替代
     if (candidates.length > 0 && candidates[0].power > equippedPowers[1]) {
       keepIndices.add(candidates[0].index);

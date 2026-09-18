@@ -38,6 +38,19 @@
       @close="activeModal = null"
       @unequip="handleUnequip"
       @ascend="handleAscend"
+      @openSpecialRing="openModal('special_ring')"
+    />
+
+    <!-- 模态弹窗：至尊六大特戒神殿 (R) -->
+    <SpecialRingModal 
+      v-if="activeModal === 'special_ring'"
+      :player="world.player"
+      :equipped="world.equipped"
+      :inventory="world.inventory"
+      @close="activeModal = null"
+      @equip="handleEquipSpecialRing"
+      @unequip="handleUnequip"
+      @oneKeyEquip="handleOneKeyEquip"
     />
 
     <!-- 模态弹窗：40格随身包裹 (B) -->
@@ -97,13 +110,14 @@ import InventoryModal from './components/InventoryModal.vue';
 import AutoPilotModal from './components/AutoPilotModal.vue';
 import SettingsModal from './components/SettingsModal.vue';
 import OfflineRewardModal from './components/OfflineRewardModal.vue';
+import SpecialRingModal from './components/SpecialRingModal.vue';
 
 const world = reactive(new GameWorld()) as GameWorld;
 const renderer = new IsometricRenderer();
 const sound = new SoundEffects();
 
 const selectedTargetId = ref<string | null>(null);
-const activeModal = ref<'character' | 'inventory' | 'autopilot' | 'settings' | null>(null);
+const activeModal = ref<'character' | 'inventory' | 'autopilot' | 'settings' | 'special_ring' | null>(null);
 const offlineReward = ref<OfflineReward | null>(null);
 
 const isSoundOn = ref(true);
@@ -119,6 +133,8 @@ world.onSound = (name) => {
     case 'crit': sound.playCrit(); break;
     case 'fire': sound.playFire(); break;
     case 'phantom': sound.playPhantom(); break;
+    case 'paralyze': sound.playParalyze(); break;
+    case 'revive': sound.playRevive(); break;
     case 'coin': sound.playCoin(); break;
     case 'potion': sound.playPotion(); break;
     case 'levelup': sound.playLevelUp(); break;
@@ -149,6 +165,11 @@ const openModal = (name: string) => {
 
 const handleUnequip = (slot: EquipSlot) => {
   world.unequipItem(slot);
+};
+
+const handleEquipSpecialRing = (item: ItemInstance) => {
+  world.equipItem(item);
+  sound.playLevelUp();
 };
 
 const handleAscend = () => {
@@ -277,6 +298,8 @@ const handleKeyDown = (e: KeyboardEvent) => {
     openModal('inventory');
   } else if (key === 'C') {
     openModal('character');
+  } else if (key === 'R') {
+    openModal('special_ring');
   } else if (key === 'L') {
     openModal('autopilot');
   } else if (key === 'O' || e.key === 'Escape') {

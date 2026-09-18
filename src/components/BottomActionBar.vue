@@ -205,6 +205,14 @@
           >
             包裹(B)
           </button>
+          <button 
+            @click="$emit('openModal', 'special_ring')"
+            class="w-16 py-1.5 bg-gradient-to-b from-[#4a361e] to-[#241a0d] hover:from-[#614827] hover:to-[#362713] text-[#fde047] border-2 border-[#8c6d3b] rounded text-xs font-black transition-all shadow-[0_0_8px_rgba(251,191,36,0.25)] active:scale-95 flex items-center justify-center gap-0.5"
+            title="查看与镶嵌六大特戒 (按 R)"
+          >
+            <span>💍</span>
+            <span>特戒(R)</span>
+          </button>
         </div>
 
         <div class="flex gap-2">
@@ -219,6 +227,12 @@
             class="w-16 py-1.5 bg-gradient-to-b from-[#3a2f23] to-[#1e1710] hover:from-[#4d3e2d] hover:to-[#2c2217] text-[#f3c258] border-2 border-[#6d563a] rounded text-xs font-bold transition-all shadow-md active:scale-95"
           >
             设置(O)
+          </button>
+          <button 
+            @click="$emit('toggleSound')"
+            class="w-16 py-1.5 bg-gradient-to-b from-[#3a2f23] to-[#1e1710] hover:from-[#4d3e2d] hover:to-[#2c2217] text-[#f3c258] border-2 border-[#6d563a] rounded text-xs font-bold transition-all shadow-md active:scale-95"
+          >
+            {{ isSoundOn ? '🔊 声音' : '🔇 静音' }}
           </button>
         </div>
       </div>

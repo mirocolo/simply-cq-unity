@@ -89,13 +89,13 @@ export class DropSystem {
   }
 
   /**
-   * 击杀怪物大爆：带大爆喷泉与初速度散落，以及高阶位面保底机制
+   * 击杀怪物大爆：带大爆喷泉与初速度散落，以及高阶位面保底与阶数锁止机制
    */
   static rollMonsterDrops(
     monster: MonsterTemplate, 
     deathPos: { x: number; y: number },
     currentTick: number,
-    minTier = 0
+    playerTier = 0
   ): GroundItem[] {
     const dropped: GroundItem[] = [];
 
@@ -117,9 +117,15 @@ export class DropSystem {
 
         const item = this.createItemInstance(loot.defId, quality, count);
         if (item) {
-          // 智能阶数保底：绝不掉落低于当前位面阶数的低阶装备 (木剑/布衣彻底淘汰)
-          if (minTier > 0 && item.type === 'equipment' && item.tier < minTier) {
-            continue;
+          // 严格阶数锁止：绝不掉落高于人物飞升阶数的装备！
+          if (item.type === 'equipment') {
+            if (item.tier > playerTier) {
+              continue; // 越阶装备坚决禁止掉落
+            }
+            // 阶数保底过滤：飞升后淘汰过于落后的低阶垃圾装备 (例如2转不再掉0阶)
+            if (playerTier > 0 && item.tier < Math.max(0, playerTier - 1)) {
+              continue;
+            }
           }
 
           const off = offsets[offsetIdx % offsets.length];
@@ -138,18 +144,18 @@ export class DropSystem {
       }
     }
 
-    // 高阶飞升位面专属掉落 (动态掉落当前阶数的高级装备与套装)
-    if (minTier > 0 && (monster.isBoss || monster.isElite || Math.random() < 0.20)) {
+    // 高阶飞升位面专属掉落 (动态掉落不高于当前阶数的高级装备与套装)
+    if (playerTier > 0 && (monster.isBoss || monster.isElite || Math.random() < 0.25)) {
       const tierEquipDefs = Object.values(ITEM_DEFINITIONS).filter(
-        d => d.type === 'equipment' && d.tier === minTier
+        d => d.type === 'equipment' && d.tier <= playerTier && d.tier >= Math.max(0, playerTier - 1)
       );
       if (tierEquipDefs.length > 0) {
-        const rollChance = monster.isBoss ? 0.85 : (monster.isElite ? 0.45 : 0.20);
+        const rollChance = monster.isBoss ? 0.88 : (monster.isElite ? 0.50 : 0.25);
         if (Math.random() < rollChance) {
           const randomDef = tierEquipDefs[Math.floor(Math.random() * tierEquipDefs.length)];
           const quality = this.rollQuality(monster.isBoss, monster.isElite);
           const bonusItem = this.createItemInstance(randomDef.id, quality, 1);
-          if (bonusItem) {
+          if (bonusItem && bonusItem.tier <= playerTier) {
             const off = offsets[offsetIdx % offsets.length];
             offsetIdx++;
             dropped.push({

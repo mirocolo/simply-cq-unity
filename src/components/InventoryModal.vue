@@ -316,9 +316,15 @@ const getSlotName = (slot?: EquipSlot) => {
     bracelet_l: '手镯',
     bracelet_r: '手镯',
     ring_l: '戒指',
-    ring_r: '戒指'
+    ring_r: '戒指',
+    special_paralyze: '麻痹特戒',
+    special_revive: '复活特戒',
+    special_protect: '护身特戒',
+    special_wind: '狂风特戒',
+    special_luck: '幸运特戒',
+    special_greed: '贪婪特戒'
   };
-  return names[slot];
+  return names[slot] || '饰品';
 };
 
 const getDiffText = (type: 'dc' | 'ac') => {

@@ -22,7 +22,13 @@ export type EquipSlot =
   | 'bracelet_l' 
   | 'bracelet_r' 
   | 'ring_l' 
-  | 'ring_r';
+  | 'ring_r'
+  | 'special_paralyze'
+  | 'special_revive'
+  | 'special_protect'
+  | 'special_wind'
+  | 'special_luck'
+  | 'special_greed';
 
 export type ItemType = 'equipment' | 'potion';
 
