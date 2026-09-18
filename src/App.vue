@@ -117,14 +117,15 @@ world.onSound = (name) => {
     case 'hit': sound.playHit(); break;
     case 'crit': sound.playCrit(); break;
     case 'fire': sound.playFire(); break;
+    case 'phantom': sound.playPhantom(); break;
     case 'coin': sound.playCoin(); break;
     case 'potion': sound.playPotion(); break;
     case 'levelup': sound.playLevelUp(); break;
   }
 };
 
-world.onSlashVFX = (gridPos, dir, isFire, haste) => {
-  renderer.addSlashVFX(gridPos, dir, isFire, haste);
+world.onSlashVFX = (gridPos, dir, isFire, haste, isPhantom) => {
+  renderer.addSlashVFX(gridPos, dir, isFire, haste, isPhantom);
 };
 
 const selectedMonster = computed(() => {

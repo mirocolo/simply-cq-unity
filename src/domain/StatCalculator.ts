@@ -39,6 +39,14 @@ export class StatCalculator {
     const haste = milestone.haste;
     const dodgeRate = milestone.dodgeRate;
 
+    const baseAttackInterval = 4; // 默认加快至 4 ticks (400ms 一刀，爽快节奏！)
+    const effectiveAttackInterval = Math.max(
+      2,
+      Math.floor((baseAttackInterval * 100) / (100 + haste))
+    );
+    const overflowHaste = Math.max(0, haste - 34);
+    const phantomStrikeRate = overflowHaste > 0 ? Number((overflowHaste * 0.015).toFixed(3)) : 0;
+
     return {
       level,
       hp: baseHp,
@@ -53,8 +61,9 @@ export class StatCalculator {
       critMult,
       haste,
       dodgeRate,
-      baseAttackInterval: 4, // 默认加快至 4 ticks (400ms 一刀，爽快节奏！)
-      effectiveAttackInterval: 4,
+      baseAttackInterval,
+      effectiveAttackInterval,
+      phantomStrikeRate,
       combatPower: 0,
       gold: 0,
       exp: 0,
@@ -105,6 +114,11 @@ export class StatCalculator {
       Math.floor((baseStats.baseAttackInterval * 100) / (100 + haste))
     );
 
+    // 攻速溢出转化机制 (方案 A: 风雷残影·连击斩)
+    // 当急速超出 34 点 (已达到极限 0.20s/刀)，每 1 点溢出急速转化为 1.5% 残影连击率
+    const overflowHaste = Math.max(0, haste - 34);
+    const phantomStrikeRate = overflowHaste > 0 ? Number((overflowHaste * 0.015).toFixed(3)) : 0;
+
     const midDC = (minDC + maxDC) / 2;
     const midAC = (minAC + maxAC) / 2;
     const combatPower = Math.floor(
@@ -116,6 +130,7 @@ export class StatCalculator {
       (critMult - 1) * 200 +
       dodgeRate * 1400 +
       haste * 12 +
+      phantomStrikeRate * 2000 +
       baseStats.level * 35
     );
 
@@ -134,6 +149,7 @@ export class StatCalculator {
       haste,
       dodgeRate,
       effectiveAttackInterval,
+      phantomStrikeRate,
       combatPower
     };
   }

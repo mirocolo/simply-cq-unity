@@ -88,6 +88,7 @@ export interface EntityStats {
   dodgeRate: number;
   baseAttackInterval: number; // 默认 4~5 ticks
   effectiveAttackInterval: number;
+  phantomStrikeRate: number; // 攻速溢出转化的风雷残影连击率 (0 ~ 1.0+)
   combatPower: number;
   gold: number;
   exp: number;

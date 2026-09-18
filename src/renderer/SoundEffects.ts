@@ -145,6 +145,33 @@ export class SoundEffects {
   }
 
   /**
+   * 风雷残影连击 (极速电光剑鸣与重影破空)
+   */
+  playPhantom(): void {
+    if (!this.enabled) return;
+    const ctx = this.getContext();
+    if (!ctx) return;
+
+    [880, 1320].forEach((freq, idx) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(freq, ctx.currentTime + idx * 0.04);
+      osc.frequency.exponentialRampToValueAtTime(220, ctx.currentTime + idx * 0.04 + 0.1);
+
+      gain.gain.setValueAtTime(this.volume * 0.5, ctx.currentTime + idx * 0.04);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + idx * 0.04 + 0.1);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(ctx.currentTime + idx * 0.04);
+      osc.stop(ctx.currentTime + idx * 0.04 + 0.11);
+    });
+  }
+
+  /**
    * 金币大爆叮当清脆响
    */
   playCoin(): void {

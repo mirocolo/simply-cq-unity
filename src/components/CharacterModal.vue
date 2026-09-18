@@ -125,7 +125,17 @@
             <div class="flex justify-between py-1">
               <span class="text-zinc-400">攻速急速 (Haste):</span>
               <span class="font-bold text-cyan-400">
-                +{{ player.stats.haste }} ({{ (player.stats.effectiveAttackInterval * 0.1).toFixed(2) }}s/刀)
+                +{{ player.stats.haste }} ({{ (player.stats.effectiveAttackInterval * 0.1).toFixed(2) }}s/刀{{ player.stats.haste >= 34 ? ' · 极速MAX' : '' }})
+              </span>
+            </div>
+            <!-- 攻速溢出转化为风雷残影连击 -->
+            <div v-if="player.stats.haste > 34" class="flex justify-between py-1 bg-gradient-to-r from-amber-950/60 to-yellow-900/30 px-1.5 rounded border border-amber-500/50">
+              <span class="text-amber-300 font-bold flex items-center gap-1">
+                <span>⚡</span>
+                <span>风雷残影连击:</span>
+              </span>
+              <span class="font-black text-amber-400 font-mono">
+                {{ (player.stats.phantomStrikeRate * 100).toFixed(1) }}% <span class="text-[10px] text-zinc-400">(溢出+{{ player.stats.haste - 34 }})</span>
               </span>
             </div>
           </div>

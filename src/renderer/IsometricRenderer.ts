@@ -6,6 +6,7 @@ interface SlashAnimation {
   gridY: number;
   dir: Direction8;
   isFire: boolean;
+  isPhantom?: boolean;
   progress: number;
   maxTicks: number;
 }
@@ -46,13 +47,14 @@ export class IsometricRenderer {
     };
   }
 
-  addSlashVFX(gridPos: { x: number; y: number }, dir: Direction8, isFire: boolean, haste: number): void {
+  addSlashVFX(gridPos: { x: number; y: number }, dir: Direction8, isFire: boolean, haste: number, isPhantom = false): void {
     const maxTicks = Math.max(3, Math.floor(7 * 100 / (100 + haste)));
     this.slashes.push({
       gridX: gridPos.x,
       gridY: gridPos.y,
       dir,
       isFire,
+      isPhantom,
       progress: 0,
       maxTicks
     });
@@ -647,12 +649,30 @@ export class IsometricRenderer {
     const sweepAngle = (sweepProgress - 0.5) * (Math.PI * 0.75); // 顺劈更宽扇面
 
     ctx.beginPath();
-    ctx.arc(20, 0, 42, sweepAngle - 0.8, sweepAngle + 0.8);
-    ctx.strokeStyle = slash.isFire ? '#f97316' : '#38bdf8';
-    ctx.lineWidth = slash.isFire ? 8 : 5;
-    ctx.shadowColor = slash.isFire ? '#ea580c' : '#0284c7';
-    ctx.shadowBlur = 16;
-    ctx.stroke();
+    ctx.arc(20, 0, slash.isPhantom ? 44 : 42, sweepAngle - 0.8, sweepAngle + 0.8);
+    if (slash.isPhantom) {
+      // 外层金芒
+      ctx.strokeStyle = '#facc15';
+      ctx.lineWidth = 6;
+      ctx.shadowColor = '#38bdf8';
+      ctx.shadowBlur = 18;
+      ctx.stroke();
+
+      // 内层青色电芒残影
+      ctx.beginPath();
+      ctx.arc(20, 0, 38, sweepAngle - 0.7, sweepAngle + 0.7);
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 3;
+      ctx.shadowColor = '#67e8f9';
+      ctx.shadowBlur = 10;
+      ctx.stroke();
+    } else {
+      ctx.strokeStyle = slash.isFire ? '#f97316' : '#38bdf8';
+      ctx.lineWidth = slash.isFire ? 8 : 5;
+      ctx.shadowColor = slash.isFire ? '#ea580c' : '#0284c7';
+      ctx.shadowBlur = 16;
+      ctx.stroke();
+    }
 
     ctx.restore();
   }

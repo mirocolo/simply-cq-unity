@@ -65,8 +65,8 @@ export class GameWorld {
   battleLogs: BattleLog[] = [];
   currentTick = 0;
 
-  onSound?: (name: 'swing' | 'hit' | 'crit' | 'coin' | 'potion' | 'levelup' | 'fire') => void;
-  onSlashVFX?: (gridPos: GridCoord, dir: Direction8, isFire: boolean, haste: number) => void;
+  onSound?: (name: 'swing' | 'hit' | 'crit' | 'coin' | 'potion' | 'levelup' | 'fire' | 'phantom') => void;
+  onSlashVFX?: (gridPos: GridCoord, dir: Direction8, isFire: boolean, haste: number, isPhantom?: boolean) => void;
 
   constructor() {
     this.initMapObstacles();
@@ -420,9 +420,79 @@ export class GameWorld {
           if (cleaveHits >= 2) break; // 一刀最多砍3个
         }
       }
+
+      // 3. 【风雷残影·连击斩】(攻速溢出极限转化，触发瞬间双刀/多重影袭)
+      this.triggerPhantomStrikes(attacker, primaryTarget);
     }
 
     return true;
+  }
+
+  /**
+   * 攻速溢出转化机制：触发【风雷残影·连击斩】(双刀或多重影袭)
+   */
+  private triggerPhantomStrikes(attacker: Entity, primaryTarget: Entity): void {
+    const rate = attacker.stats.phantomStrikeRate || 0;
+    if (rate <= 0) return;
+
+    // 溢出连击判定：满 1.0 必出第一道残影，超出部分概率触发第二道残影 (三重斩)
+    const guaranteedHits = Math.floor(rate);
+    const extraChance = rate - guaranteedHits;
+    let hitCount = guaranteedHits + (Math.random() < extraChance ? 1 : 0);
+    if (hitCount <= 0) return;
+
+    hitCount = Math.min(3, hitCount); // 单刀最高追击 3 段
+
+    for (let i = 0; i < hitCount; i++) {
+      // 优先原目标；若原目标已阵亡，自动顺延追击身旁存活小怪 (残影追魂)
+      let target: Entity | null = primaryTarget.state !== 'dead' ? primaryTarget : null;
+      if (!target) {
+        target = this.monsters.find(m => 
+          m.state !== 'dead' && 
+          PathFinder.chebyshevDistance(attacker.gridPos, m.gridPos) <= 1
+        ) || null;
+      }
+      if (!target) break;
+
+      this.applyPhantomHit(attacker, target, i + 1);
+    }
+  }
+
+  /**
+   * 结算单段残影连斩伤害与视听反馈
+   */
+  private applyPhantomHit(attacker: Entity, target: Entity, _hitIndex: number): void {
+    // 残影斩击造成约 70% 伤害，支持独立暴击与闪避判定
+    const result = CombatSystem.calculateAttack(attacker, target, undefined, false);
+    if (result.isDodge) {
+      this.addDamagePopup(target.gridPos, 'MISS', '#94a3b8', false);
+      return;
+    }
+
+    const phantomDamage = Math.max(1, Math.floor(result.damage * 0.70));
+    target.stats.hp = Math.max(0, target.stats.hp - phantomDamage);
+
+    // 受击物理反馈：轻微硬直与击退
+    target.hitStunTicks = 2;
+    const kx = Math.sign(target.gridPos.x - attacker.gridPos.x) * 4;
+    const ky = Math.sign(target.gridPos.y - attacker.gridPos.y) * 3;
+    target.knockbackOffset = { x: kx, y: ky };
+
+    // 播放残影剑鸣音效与青金残影刀光
+    this.onSound?.('phantom');
+    this.onSlashVFX?.(attacker.gridPos, attacker.direction, false, attacker.stats.haste, true);
+    this.screenShake = Math.max(this.screenShake, 5);
+
+    // 飘字：金色高亮 ⚡连击 / ⚡残影暴击
+    const text = result.isCrit ? `⚡残影暴击 -${phantomDamage}!` : `⚡连击 -${phantomDamage}!`;
+    this.addDamagePopup(target.gridPos, text, '#facc15', true);
+
+    // 积累连斩怒气
+    this.comboCount++;
+
+    if (target.stats.hp <= 0) {
+      this.handleEntityDeath(target, attacker);
+    }
   }
 
   private applyHitToEntity(attacker: Entity, target: Entity, skill: SkillDef | undefined, isCleave: boolean): void {
