@@ -121,9 +121,21 @@ export interface Entity {
   // 打击物理反馈
   hitStunTicks?: number; // 受击硬直与泛红倒计时
   knockbackOffset?: { x: number; y: number }; // 受击微后退位移
+  // 技能与增益效果
+  shieldAegisTicks?: number; // 护体神盾持续时间
+  poisonTicks?: number; // 中毒持续时间
+  isBossEnraged?: boolean; // Boss生命低狂暴
+  bossSkillTimer?: number; // Boss技能施放计时
 }
 
-export type SkillId = 'basic_slash' | 'power_slash' | 'assassinate' | 'fire_slash';
+export type SkillId = 
+  | 'basic_slash' 
+  | 'power_slash' 
+  | 'assassinate' 
+  | 'shield_aegis' 
+  | 'fire_slash' 
+  | 'heaven_splitter' 
+  | 'sun_slash';
 
 export interface SkillDef {
   id: SkillId;

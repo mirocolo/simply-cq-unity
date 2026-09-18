@@ -48,21 +48,23 @@ export class CombatSystem {
     let attackPower = Math.floor(rawDC * skillMultiplier);
 
     // 3. 目标防御抵扣 (AC 浮动)
-    // 刺杀剑术无视防御；其他攻击扣减防御，保底留存
-    if (!skill || skill.id !== 'assassinate') {
+    // 刺杀剑术与开天斩无视目标护甲防御；其他攻击扣减防御
+    if (!skill || (skill.id !== 'assassinate' && skill.id !== 'heaven_splitter')) {
       const targetAC = this.randomBetween(defender.stats.minAC, defender.stats.maxAC);
       attackPower = Math.max(isSecondaryCleave ? 5 : 8, attackPower - targetAC);
     }
 
-    // 4. 暴击判定与倍率放大 (狂暴状态下额外提高 15% 暴击率)
-    const isCrit = Math.random() < attacker.stats.critRate;
+    // 4. 暴击判定与倍率放大 (逐日剑法必定暴击)
+    const isCrit = skill?.id === 'sun_slash' || Math.random() < attacker.stats.critRate;
     if (isCrit) {
       attackPower = Math.floor(attackPower * (attacker.stats.critMult || 1.6));
     }
 
-    // 烈火剑法大招保底翻倍
+    // 烈火剑法与逐日剑法特殊大招保底强化
     if (skill?.id === 'fire_slash') {
       attackPower = Math.floor(attackPower * 1.5);
+    } else if (skill?.id === 'sun_slash') {
+      attackPower = Math.floor(attackPower * 1.8);
     }
 
     const finalDamage = Math.max(1, attackPower);

@@ -102,10 +102,28 @@ export class AutoPilot {
     if (closest.dist <= 1) {
       let selectedSkill: SkillDef | undefined;
       if (config.autoSkill) {
-        const fire = skills.find(s => s.id === 'fire_slash' && s.currentCdTicks === 0 && player.stats.mp >= s.manaCost);
-        const assassinate = skills.find(s => s.id === 'assassinate' && s.currentCdTicks === 0 && player.stats.mp >= s.manaCost);
-        const power = skills.find(s => s.id === 'power_slash' && s.currentCdTicks === 0 && player.stats.mp >= s.manaCost);
-        selectedSkill = fire || assassinate || power;
+        // 1. 若受到威胁且护体神盾可用，优先开启护体神盾
+        const shield = skills.find(s => 
+          s.id === 'shield_aegis' && 
+          s.currentCdTicks === 0 && 
+          player.stats.mp >= s.manaCost && 
+          player.stats.level >= s.unlockLevel && 
+          (!player.shieldAegisTicks || player.shieldAegisTicks <= 0) && 
+          player.stats.hp < player.stats.maxHp * 0.85
+        );
+
+        // 2. 挑选最高伤害倍率的可用攻击技能 (逐日 > 烈火 > 开天 > 刺杀 > 攻杀)
+        const attackSkills = skills
+          .filter(s => 
+            s.id !== 'basic_slash' && 
+            s.id !== 'shield_aegis' && 
+            s.currentCdTicks === 0 && 
+            player.stats.mp >= s.manaCost && 
+            player.stats.level >= s.unlockLevel
+          )
+          .sort((a, b) => b.damageMult - a.damageMult);
+
+        selectedSkill = shield || attackSkills[0];
       }
 
       return {

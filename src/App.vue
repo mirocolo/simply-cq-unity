@@ -193,15 +193,27 @@ const handleUseMpPotion = () => {
 };
 
 const handleCastSkill = (skill: SkillDef) => {
+  if (world.player.stats.level < skill.unlockLevel) {
+    world.addBattleLog(`【技能未解锁】需要人物等级达到 Lv.${skill.unlockLevel}！`, 'system');
+    return;
+  }
   if (skill.currentCdTicks > 0) return;
   if (world.player.stats.mp < skill.manaCost) {
     world.addBattleLog('【法力不足】无法施展技能！', 'system');
     return;
   }
 
+  // 护体神盾为自身增益罡气，无需选中目标即可施展
+  if (skill.id === 'shield_aegis') {
+    world.autoPilot.recordManualAction();
+    world.executeAttack(world.player, world.player, skill);
+    return;
+  }
+
   let target = selectedMonster.value;
   if (!target) {
-    let minDist = 3;
+    const searchRange = skill.id === 'sun_slash' ? 5 : (skill.id === 'heaven_splitter' ? 4 : 3);
+    let minDist = searchRange;
     for (const m of world.monsters) {
       if (m.state === 'dead') continue;
       const d = Math.max(Math.abs(m.gridPos.x - world.player.gridPos.x), Math.abs(m.gridPos.y - world.player.gridPos.y));
@@ -215,6 +227,8 @@ const handleCastSkill = (skill: SkillDef) => {
   if (target) {
     world.autoPilot.recordManualAction();
     world.executeAttack(world.player, target, skill);
+  } else {
+    world.addBattleLog('【提示】前方暂无有效攻击目标！', 'system');
   }
 };
 
@@ -270,7 +284,7 @@ const handleKeyDown = (e: KeyboardEvent) => {
     handleUseHpPotion();
   } else if (key === 'W') {
     handleUseMpPotion();
-  } else if (e.key >= '1' && e.key <= '4') {
+  } else if (e.key >= '1' && e.key <= '7') {
     const idx = parseInt(e.key) - 1;
     if (world.skills[idx]) {
       handleCastSkill(world.skills[idx]);

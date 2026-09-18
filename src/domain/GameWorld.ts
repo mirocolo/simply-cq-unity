@@ -21,6 +21,17 @@ import { MONSTER_TEMPLATES } from './definitions/monsters';
 import { SKILL_DEFINITIONS } from './definitions/skills';
 import { StorageManager } from './StorageManager';
 
+const DIR_OFFSETS: Record<Direction8, { x: number; y: number }> = {
+  0: { x: 0, y: -1 },
+  1: { x: 1, y: -1 },
+  2: { x: 1, y: 0 },
+  3: { x: 1, y: 1 },
+  4: { x: 0, y: 1 },
+  5: { x: -1, y: 1 },
+  6: { x: -1, y: 0 },
+  7: { x: -1, y: -1 }
+};
+
 export class GameWorld {
   readonly MAP_WIDTH = 36;
   readonly MAP_HEIGHT = 36;
@@ -133,11 +144,11 @@ export class GameWorld {
 
   private spawnInitialMonsters(): void {
     const monsterDistributions = [
-      { templateId: 'm_scarecrow', count: 10, center: { x: 16, y: 16 }, radius: 6 },
-      { templateId: 'm_cat', count: 8, center: { x: 22, y: 16 }, radius: 5 },
-      { templateId: 'm_spider', count: 6, center: { x: 14, y: 24 }, radius: 5 },
-      { templateId: 'm_skeleton', count: 8, center: { x: 24, y: 25 }, radius: 6 },
-      { templateId: 'm_zombie', count: 5, center: { x: 10, y: 18 }, radius: 5 },
+      { templateId: 'm_scarecrow', count: 6, center: { x: 16, y: 16 }, radius: 6 },
+      { templateId: 'm_cat', count: 5, center: { x: 22, y: 16 }, radius: 5 },
+      { templateId: 'm_spider', count: 4, center: { x: 14, y: 24 }, radius: 5 },
+      { templateId: 'm_skeleton', count: 5, center: { x: 24, y: 25 }, radius: 6 },
+      { templateId: 'm_zombie', count: 4, center: { x: 10, y: 18 }, radius: 5 },
       { templateId: 'm_white_pig', count: 5, center: { x: 28, y: 10 }, radius: 6 }, // 增加至 5 只白野猪精英
       { templateId: 'm_wooma_boss', count: 2, center: { x: 28, y: 28 }, radius: 4 }, // 增加至 2 只沃玛教主首领
       { templateId: 'm_red_moon', count: 1, center: { x: 8, y: 28 }, radius: 3 }
@@ -222,6 +233,18 @@ export class GameWorld {
       }
     }
 
+    // 玩家护体神盾与中毒倒计时
+    if (this.player.shieldAegisTicks && this.player.shieldAegisTicks > 0) {
+      this.player.shieldAegisTicks--;
+    }
+    if (this.player.poisonTicks && this.player.poisonTicks > 0) {
+      this.player.poisonTicks--;
+      if (this.currentTick % 10 === 0 && this.player.state !== 'dead') {
+        this.player.stats.hp = Math.max(1, this.player.stats.hp - 18);
+        this.addDamagePopup(this.player.gridPos, '-18 毒', '#22c55e', false);
+      }
+    }
+
     // 掉落喷泉抛物线动画
     for (const drop of this.groundItems) {
       if (drop.burstProgress !== undefined && drop.burstProgress < 1.0) {
@@ -291,6 +314,63 @@ export class GameWorld {
       }
 
       this.updateEntityMovement(m);
+
+      // Boss 专属技能与狂暴机制
+      if (m.isBoss) {
+        m.bossSkillTimer = (m.bossSkillTimer || 0) + 1;
+
+        // 绝境狂暴 (生命低于 45%)
+        if (!m.isBossEnraged && m.stats.hp < m.stats.maxHp * 0.45) {
+          m.isBossEnraged = true;
+          m.stats.haste += 20;
+          m.stats.minDC = Math.floor(m.stats.minDC * 1.3);
+          m.stats.maxDC = Math.floor(m.stats.maxDC * 1.3);
+          this.addDamagePopup(m.gridPos, '🔥绝境狂暴!', '#ef4444', true);
+          this.addBattleLog(`【首领狂暴】${m.name} 陷入绝境狂暴！全身赤红，攻速与攻击力飙升！`, 'system');
+          this.screenShake = 10;
+        }
+
+        // 沃玛教主：【狂雷天降】(每7秒向玩家降下雷电轰击)
+        if (m.name.includes('沃玛教主') && m.bossSkillTimer >= 65) {
+          const dist = PathFinder.chebyshevDistance(m.gridPos, this.player.gridPos);
+          if (dist <= 8 && this.player.state !== 'dead') {
+            m.bossSkillTimer = 0;
+            let lightningDmg = Math.floor(m.stats.maxDC * 1.5);
+            if (this.player.shieldAegisTicks && this.player.shieldAegisTicks > 0) {
+              lightningDmg = Math.max(1, Math.floor(lightningDmg * 0.60));
+            }
+            this.player.stats.hp = Math.max(0, this.player.stats.hp - lightningDmg);
+            this.addDamagePopup(this.player.gridPos, `⚡狂雷 -${lightningDmg}!`, '#38bdf8', true);
+            this.screenShake = 12;
+            this.onSound?.('crit');
+            this.addBattleLog(`【沃玛狂雷】教主引动九天神雷狂轰而下，造成 -${lightningDmg} 点雷电重创！`, 'system');
+            if (this.player.stats.hp <= 0) {
+              this.handleEntityDeath(this.player, m);
+            }
+          }
+        }
+
+        // 赤月恶魔：【赤月地刺】(每8秒召唤全屏尖锐地刺与恶魔剧毒)
+        if (m.name.includes('赤月恶魔') && m.bossSkillTimer >= 75) {
+          const dist = PathFinder.chebyshevDistance(m.gridPos, this.player.gridPos);
+          if (dist <= 10 && this.player.state !== 'dead') {
+            m.bossSkillTimer = 0;
+            let spikeDmg = Math.floor(m.stats.maxDC * 1.8);
+            if (this.player.shieldAegisTicks && this.player.shieldAegisTicks > 0) {
+              spikeDmg = Math.max(1, Math.floor(spikeDmg * 0.60));
+            }
+            this.player.stats.hp = Math.max(0, this.player.stats.hp - spikeDmg);
+            this.player.poisonTicks = 40; // 持续中毒 4秒
+            this.addDamagePopup(this.player.gridPos, `🗡️地刺 -${spikeDmg}!`, '#b91c1c', true);
+            this.screenShake = 16;
+            this.onSound?.('crit');
+            this.addBattleLog(`【赤月地刺】恶魔召唤全屏尖锐地刺破土而出，造成 -${spikeDmg} 穿透伤害并附加恶魔剧毒！`, 'system');
+            if (this.player.stats.hp <= 0) {
+              this.handleEntityDeath(this.player, m);
+            }
+          }
+        }
+      }
 
       if ((m.state === 'idle' || m.state === 'walking') && (!m.hitStunTicks || m.hitStunTicks <= 0)) {
         const distToPlayer = PathFinder.chebyshevDistance(m.gridPos, this.player.gridPos);
@@ -364,6 +444,18 @@ export class GameWorld {
       return false;
     }
 
+    // 护体神盾 (自身玄金护盾，持续50 ticks = 5秒)
+    if (skill?.id === 'shield_aegis') {
+      attacker.stats.mp = Math.max(0, attacker.stats.mp - skill.manaCost);
+      skill.currentCdTicks = skill.cdTicks;
+      attacker.shieldAegisTicks = 50;
+      this.onSound?.('crit');
+      this.addDamagePopup(attacker.gridPos, '🛡️护体神盾!', '#38bdf8', true);
+      this.addBattleLog('【护体神盾】玄金罡气护体！受到伤害大幅降低 40% 并反震 40% 受击伤害！', 'system');
+      this.gainSkillProficiency(skill, 20);
+      return true;
+    }
+
     attacker.direction = PathFinder.getDirection(attacker.gridPos, primaryTarget.gridPos);
     attacker.lastAttackTick = this.currentTick;
     attacker.state = 'attacking';
@@ -374,11 +466,13 @@ export class GameWorld {
     }
 
     const isFire = skill?.id === 'fire_slash';
+    const isHeaven = skill?.id === 'heaven_splitter';
+    const isSun = skill?.id === 'sun_slash';
 
     // 音效与刀光
     if (attacker.isPlayer) {
-      this.onSound?.(isFire ? 'fire' : 'swing');
-      this.onSlashVFX?.(attacker.gridPos, attacker.direction, isFire, attacker.stats.haste);
+      this.onSound?.(isFire || isSun ? 'fire' : (isHeaven ? 'crit' : 'swing'));
+      this.onSlashVFX?.(attacker.gridPos, attacker.direction, isFire || isSun, attacker.stats.haste);
 
       // 释放技能获得熟练度 (主动技能 +15，基础普攻 +5)
       if (skill) {
@@ -402,26 +496,59 @@ export class GameWorld {
 
     const effectiveSkill = skill || (attacker.isPlayer ? this.skills.find(s => s.id === 'basic_slash') : undefined);
 
-    // 1. 主目标计算
-    this.applyHitToEntity(attacker, primaryTarget, effectiveSkill, false);
+    // 1. 直线贯穿神技处理：开天斩 (3格贯穿巨刃) 与 逐日剑法 (4格贯穿烈阳极光)
+    if (attacker.isPlayer && (isHeaven || isSun)) {
+      const maxRange = isSun ? 4 : 3;
+      const offset = DIR_OFFSETS[attacker.direction] || { x: 0, y: 1 };
+      const hitMonsters = new Set<string>();
 
-    // 2. 经典战士【半月弯刀】顺劈斩机制 (清怪极度爽快！顺劈身边最多2只额外小怪)
-    if (attacker.isPlayer) {
-      let cleaveHits = 0;
-      for (const other of this.monsters) {
-        if (other.id === primaryTarget.id || other.state === 'dead') continue;
-        const distToPlayer = PathFinder.chebyshevDistance(attacker.gridPos, other.gridPos);
-        const distToTarget = PathFinder.chebyshevDistance(primaryTarget.gridPos, other.gridPos);
-
-        // 目标邻近且在身前 1 格以内
-        if (distToPlayer <= 1 && distToTarget <= 2) {
-          this.applyHitToEntity(attacker, other, effectiveSkill, true);
-          cleaveHits++;
-          if (cleaveHits >= 2) break; // 一刀最多砍3个
+      for (let step = 1; step <= maxRange; step++) {
+        const checkPos = {
+          x: attacker.gridPos.x + offset.x * step,
+          y: attacker.gridPos.y + offset.y * step
+        };
+        for (const m of this.monsters) {
+          if (m.state !== 'dead' && m.gridPos.x === checkPos.x && m.gridPos.y === checkPos.y && !hitMonsters.has(m.id)) {
+            hitMonsters.add(m.id);
+            this.applyHitToEntity(attacker, m, effectiveSkill, false);
+          }
         }
       }
 
-      // 3. 【风雷残影·连击斩】(攻速溢出极限转化，触发瞬间双刀/多重影袭)
+      // 若所选主目标未在正前方格子上，也确保击中主目标
+      if (!hitMonsters.has(primaryTarget.id) && primaryTarget.state !== 'dead') {
+        this.applyHitToEntity(attacker, primaryTarget, effectiveSkill, false);
+      }
+
+      // 逐日剑法 100% 触发双重残影极速追击！
+      if (isSun) {
+        this.applyPhantomHit(attacker, primaryTarget, 1);
+        this.applyPhantomHit(attacker, primaryTarget, 2);
+      }
+    } else {
+      // 普通攻击/烈火/刺杀/攻杀：打主目标
+      this.applyHitToEntity(attacker, primaryTarget, effectiveSkill, false);
+
+      // 2. 经典战士【半月弯刀】顺劈斩机制 (清怪极度爽快！顺劈身边最多2只额外小怪)
+      if (attacker.isPlayer) {
+        let cleaveHits = 0;
+        for (const other of this.monsters) {
+          if (other.id === primaryTarget.id || other.state === 'dead') continue;
+          const distToPlayer = PathFinder.chebyshevDistance(attacker.gridPos, other.gridPos);
+          const distToTarget = PathFinder.chebyshevDistance(primaryTarget.gridPos, other.gridPos);
+
+          // 目标邻近且在身前 1 格以内
+          if (distToPlayer <= 1 && distToTarget <= 2) {
+            this.applyHitToEntity(attacker, other, effectiveSkill, true);
+            cleaveHits++;
+            if (cleaveHits >= 2) break; // 一刀最多砍3个
+          }
+        }
+      }
+    }
+
+    // 3. 【风雷残影·连击斩】(攻速溢出极限转化，触发瞬间双刀/多重影袭)
+    if (attacker.isPlayer && !isSun) {
       this.triggerPhantomStrikes(attacker, primaryTarget);
     }
 
@@ -506,6 +633,8 @@ export class GameWorld {
 
   private applyHitToEntity(attacker: Entity, target: Entity, skill: SkillDef | undefined, isCleave: boolean): void {
     const isFire = skill?.id === 'fire_slash';
+    const isHeaven = skill?.id === 'heaven_splitter';
+    const isSun = skill?.id === 'sun_slash';
     const result = CombatSystem.calculateAttack(attacker, target, skill, isCleave);
 
     // 目标物理闪避成功：伤害为 0，飘出灰色 MISS 字体，无受击硬直
@@ -514,38 +643,66 @@ export class GameWorld {
       return;
     }
 
-    target.stats.hp = Math.max(0, target.stats.hp - result.damage);
+    let finalDamage = result.damage;
+
+    // 护体神盾：受到伤害降低 40%，并将 40% 伤害反震攻击者
+    if (target.isPlayer && target.shieldAegisTicks && target.shieldAegisTicks > 0) {
+      const reduced = Math.max(1, Math.floor(finalDamage * 0.60));
+      const reflect = Math.max(1, Math.floor(finalDamage * 0.40));
+      finalDamage = reduced;
+
+      if (!attacker.isPlayer && attacker.state !== 'dead') {
+        attacker.stats.hp = Math.max(0, attacker.stats.hp - reflect);
+        this.addDamagePopup(attacker.gridPos, `🛡️反弹 -${reflect}`, '#38bdf8', false);
+        if (attacker.stats.hp <= 0) {
+          this.handleEntityDeath(attacker, target);
+        }
+      }
+    }
+
+    target.stats.hp = Math.max(0, target.stats.hp - finalDamage);
 
     // 受击物理反馈：怪物受击硬直与微击退
-    target.hitStunTicks = 3;
-    const kx = Math.sign(target.gridPos.x - attacker.gridPos.x) * 6;
-    const ky = Math.sign(target.gridPos.y - attacker.gridPos.y) * 4;
+    target.hitStunTicks = isSun ? 5 : (isHeaven ? 4 : 3);
+    const kx = Math.sign(target.gridPos.x - attacker.gridPos.x) * (isHeaven ? 10 : 6);
+    const ky = Math.sign(target.gridPos.y - attacker.gridPos.y) * (isHeaven ? 8 : 4);
     target.knockbackOffset = { x: kx, y: ky };
 
-    // 震屏力度 (暴击震屏 8px，烈火剑法震屏 14px，普通受击轻震 3px)
+    // 震屏力度 (逐日 18px, 开天 15px, 烈火 14px, 暴击 8px, 普通 3px)
     if (attacker.isPlayer) {
-      if (isFire) {
+      if (isSun) {
+        this.screenShake = 18;
+      } else if (isHeaven) {
+        this.screenShake = 15;
+      } else if (isFire) {
         this.screenShake = 14;
       } else if (result.isCrit) {
         this.screenShake = 8;
       } else {
         this.screenShake = Math.max(this.screenShake, 3);
       }
-      this.onSound?.(result.isCrit ? 'crit' : 'hit');
+      this.onSound?.((isFire || isSun || isHeaven || result.isCrit) ? 'crit' : 'hit');
     }
 
     // 飘字
     let color = '#ffffff';
-    if (isFire) color = '#f97316';
+    if (isSun) color = '#fbbf24';
+    else if (isHeaven) color = '#a855f7';
+    else if (isFire) color = '#f97316';
     else if (result.isCrit) color = '#ef4444';
     else if (isCleave) color = '#38bdf8';
 
-    const text = isFire ? `烈火 -${result.damage}!` : (result.isCrit ? `暴击 -${result.damage}!` : `-${result.damage}`);
-    this.addDamagePopup(target.gridPos, text, color, result.isCrit || isFire);
+    let text = `-${finalDamage}`;
+    if (isSun) text = `☀️逐日 -${finalDamage}!`;
+    else if (isHeaven) text = `🌟开天 -${finalDamage}!`;
+    else if (isFire) text = `烈火 -${finalDamage}!`;
+    else if (result.isCrit) text = `暴击 -${finalDamage}!`;
+
+    this.addDamagePopup(target.gridPos, text, color, result.isCrit || isFire || isHeaven || isSun);
 
     // 玩家稀有吸血判定 (出厂2% + 装备累加)
-    if (attacker.isPlayer && attacker.stats.lifestealRate > 0 && result.damage > 0) {
-      const heal = Math.max(1, Math.floor(result.damage * attacker.stats.lifestealRate));
+    if (attacker.isPlayer && attacker.stats.lifestealRate > 0 && finalDamage > 0) {
+      const heal = Math.max(1, Math.floor(finalDamage * attacker.stats.lifestealRate));
       if (attacker.stats.hp < attacker.stats.maxHp) {
         attacker.stats.hp = Math.min(attacker.stats.maxHp, attacker.stats.hp + heal);
         this.addDamagePopup(attacker.gridPos, `+${heal}`, '#22c55e', false, true);
@@ -1075,10 +1232,13 @@ export class GameWorld {
       skill.maxProficiency = Math.floor(skill.maxProficiency * 1.45);
 
       let bonusMult = 0.12;
-      if (skill.id === 'fire_slash') bonusMult = 0.25;
+      if (skill.id === 'sun_slash') bonusMult = 0.35;
+      else if (skill.id === 'heaven_splitter') bonusMult = 0.25;
+      else if (skill.id === 'fire_slash') bonusMult = 0.25;
       else if (skill.id === 'assassinate') bonusMult = 0.20;
       else if (skill.id === 'power_slash') bonusMult = 0.16;
       else if (skill.id === 'basic_slash') bonusMult = 0.10;
+      else if (skill.id === 'shield_aegis') bonusMult = 0.05;
 
       skill.damageMult = Number((skill.damageMult + bonusMult).toFixed(2));
       if (skill.cdTicks > 10) {

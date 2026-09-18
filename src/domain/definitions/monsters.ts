@@ -44,7 +44,7 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     baseAttackInterval: 10,
     goldDrop: [10, 30],
     expReward: 15,
-    respawnTicks: 40,
+    respawnTicks: 150, // 降低小怪刷新频率 (15秒复活)
     color: '#a16207',
     icon: '🌾',
     lootTable: [
@@ -68,7 +68,7 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     baseAttackInterval: 9,
     goldDrop: [25, 60],
     expReward: 35,
-    respawnTicks: 50,
+    respawnTicks: 180, // 降低小怪刷新频率 (18秒复活)
     color: '#ca8a04',
     icon: '🐱',
     lootTable: [
@@ -93,7 +93,7 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     baseAttackInterval: 8,
     goldDrop: [50, 120],
     expReward: 70,
-    respawnTicks: 60,
+    respawnTicks: 200, // 降低小怪刷新频率 (20秒复活)
     color: '#16a34a',
     icon: '🕷️',
     lootTable: [
@@ -118,7 +118,7 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     baseAttackInterval: 8,
     goldDrop: [120, 280],
     expReward: 160,
-    respawnTicks: 70,
+    respawnTicks: 220, // 降低小怪刷新频率 (22秒复活)
     color: '#94a3b8',
     icon: '💀',
     lootTable: [
@@ -145,7 +145,7 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     baseAttackInterval: 8,
     goldDrop: [250, 600],
     expReward: 350,
-    respawnTicks: 80,
+    respawnTicks: 240, // 降低小怪刷新频率 (24秒复活)
     color: '#7c3aed',
     icon: '🧟',
     lootTable: [
@@ -160,7 +160,7 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     templateId: 'm_white_pig',
     name: '★ 白野猪(精英)',
     level: 30,
-    hp: 4200, // 合理增加精英怪血量 (原 2000)
+    hp: 9500, // 精英怪大幅提升血量 (原 4200 -> 9500)
     mp: 0,
     minDC: 35,
     maxDC: 65,
@@ -188,7 +188,7 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     templateId: 'm_wooma_boss',
     name: '★★ 沃玛教主(首领)',
     level: 38,
-    hp: 13500, // 合理增加首领血量 (原 6000)
+    hp: 45000, // 首领大Boss巨额生命 (原 13500 -> 45000)
     mp: 1000,
     minDC: 65,
     maxDC: 120,
@@ -216,7 +216,7 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     templateId: 'm_red_moon',
     name: '★★★ 赤月恶魔(神话)',
     level: 45,
-    hp: 32000, // 合理增加神话Boss血量 (原 15000)
+    hp: 120000, // 神话级终极Boss超级生命 (原 32000 -> 120000)
     mp: 3000,
     minDC: 95,
     maxDC: 180,

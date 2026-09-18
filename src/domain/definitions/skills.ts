@@ -44,6 +44,20 @@ export const SKILL_DEFINITIONS: Record<string, SkillDef> = {
     unlockLevel: 19,
     currentCdTicks: 0
   },
+  'shield_aegis': {
+    id: 'shield_aegis',
+    name: '护体神盾',
+    icon: '🛡️',
+    desc: '凝聚玄金罡气护体，5秒内受到的所有伤害大幅减免 40%，并将 25% 伤害反震攻击者！',
+    level: 1,
+    proficiency: 0,
+    maxProficiency: 200,
+    damageMult: 1.0,
+    cdTicks: 120, // 12.0秒冷却
+    manaCost: 50,
+    unlockLevel: 22,
+    currentCdTicks: 0
+  },
   'fire_slash': {
     id: 'fire_slash',
     name: '烈火剑法',
@@ -56,6 +70,34 @@ export const SKILL_DEFINITIONS: Record<string, SkillDef> = {
     cdTicks: 70, // 7.0秒大招
     manaCost: 65,
     unlockLevel: 35,
+    currentCdTicks: 0
+  },
+  'heaven_splitter': {
+    id: 'heaven_splitter',
+    name: '开天斩',
+    icon: '🌟',
+    desc: '凝聚万钧天地之力化为开天金芒巨刃重劈，直线上造成大范围重斩并附带击退！',
+    level: 1,
+    proficiency: 0,
+    maxProficiency: 320,
+    damageMult: 2.6,
+    cdTicks: 50, // 5.0秒冷却
+    manaCost: 45,
+    unlockLevel: 28,
+    currentCdTicks: 0
+  },
+  'sun_slash': {
+    id: 'sun_slash',
+    name: '逐日剑法',
+    icon: '☀️',
+    desc: '战士终极必杀！化作烈阳极光贯穿全线，造成 3.8x 毁灭伤害，必定暴击并 100% 触发双重残影连击！',
+    level: 1,
+    proficiency: 0,
+    maxProficiency: 450,
+    damageMult: 3.8,
+    cdTicks: 85, // 8.5秒终极神技
+    manaCost: 80,
+    unlockLevel: 40,
     currentCdTicks: 0
   }
 };

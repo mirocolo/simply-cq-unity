@@ -103,32 +103,42 @@
         </div>
       </div>
 
-      <!-- 右翼中：经典 4 技能石雕卡槽 -->
-      <div class="flex items-center gap-2">
+      <!-- 右翼中：经典 7 技能石雕卡槽 -->
+      <div class="flex items-center gap-1.5">
         <div 
           v-for="(skill, index) in skills" 
           :key="skill.id"
           @click="$emit('castSkill', skill)"
-          class="relative w-14 h-14 bg-gradient-to-b from-[#211b15] to-[#120f0c] rounded border-2 border-[#5c4a34] hover:border-amber-400 flex flex-col items-center justify-center cursor-pointer transition-all active:scale-95 shadow-[0_4px_10px_rgba(0,0,0,0.8),inset_0_0_8px_rgba(0,0,0,0.9)] group"
+          class="relative w-12 h-12 bg-gradient-to-b from-[#211b15] to-[#120f0c] rounded border border-[#5c4a34] hover:border-amber-400 flex flex-col items-center justify-center cursor-pointer transition-all active:scale-95 shadow-[0_4px_10px_rgba(0,0,0,0.8),inset_0_0_8px_rgba(0,0,0,0.9)] group"
+          :class="{ 'opacity-50 grayscale hover:border-zinc-700': player.stats.level < skill.unlockLevel }"
         >
-          <span class="text-2xl">{{ skill.icon }}</span>
+          <span class="text-xl">{{ skill.icon }}</span>
           
           <!-- 快捷键编号 -->
-          <span class="absolute top-0.5 left-1 text-[10px] font-black text-amber-400 font-mono">
+          <span class="absolute top-0.5 left-1 text-[9px] font-black text-amber-400 font-mono">
             {{ index + 1 }}
           </span>
 
-          <!-- 技能等级金标 (支持无限升级) -->
-          <span class="absolute top-0.5 right-0.5 text-[8px] font-extrabold text-yellow-300 font-mono bg-black/80 px-1 rounded-bl leading-tight border-b border-l border-amber-600/40">
+          <!-- 技能等级金标 (支持无限升级) / 未解锁提示 -->
+          <span 
+            v-if="player.stats.level >= skill.unlockLevel"
+            class="absolute top-0.5 right-0.5 text-[8px] font-extrabold text-yellow-300 font-mono bg-black/80 px-0.5 rounded-bl leading-tight border-b border-l border-amber-600/40"
+          >
             Lv.{{ skill.level }}
           </span>
+          <span 
+            v-else
+            class="absolute top-0.5 right-0.5 text-[7px] font-bold text-zinc-400 font-mono bg-black/90 px-0.5 rounded-bl leading-tight border-b border-l border-zinc-700"
+          >
+            {{ skill.unlockLevel }}级
+          </span>
 
-          <span class="text-[9px] text-zinc-300 truncate max-w-[48px] leading-tight font-sans">
+          <span class="text-[8px] text-zinc-300 truncate max-w-[42px] leading-tight font-sans">
             {{ skill.name }}
           </span>
 
           <!-- 熟练度微型底槽进度条 -->
-          <div class="absolute bottom-0 left-0 right-0 h-1 bg-zinc-950 overflow-hidden" title="熟练度进度">
+          <div v-if="player.stats.level >= skill.unlockLevel" class="absolute bottom-0 left-0 right-0 h-1 bg-zinc-950 overflow-hidden" title="熟练度进度">
             <div 
               class="h-full bg-gradient-to-r from-amber-600 to-yellow-400 transition-all duration-300"
               :style="{ width: `${Math.min(100, ((skill.proficiency || 0) / (skill.maxProficiency || 100)) * 100)}%` }"
@@ -138,22 +148,23 @@
           <!-- 冷却遮罩 -->
           <div 
             v-if="skill.currentCdTicks > 0"
-            class="absolute inset-0 bg-black/80 rounded flex items-center justify-center text-xs font-bold text-amber-300 font-mono"
+            class="absolute inset-0 bg-black/80 rounded flex items-center justify-center text-[10px] font-bold text-amber-300 font-mono"
           >
             {{ (skill.currentCdTicks / 10).toFixed(1) }}s
           </div>
 
           <!-- 鼠标悬浮 Tooltip 技能详情卡 -->
-          <div class="absolute bottom-16 left-1/2 -translate-x-1/2 hidden group-hover:flex flex-col gap-1 w-44 p-2 bg-black/95 border border-amber-600/60 rounded shadow-2xl z-50 text-left pointer-events-none animate-fadeIn">
+          <div class="absolute bottom-14 left-1/2 -translate-x-1/2 hidden group-hover:flex flex-col gap-1 w-48 p-2 bg-black/95 border border-amber-600/60 rounded shadow-2xl z-50 text-left pointer-events-none animate-fadeIn">
             <div class="flex items-center justify-between border-b border-zinc-800 pb-1">
               <span class="text-xs font-bold text-amber-400">{{ skill.name }}</span>
-              <span class="text-[10px] text-yellow-300 font-mono font-bold">Lv.{{ skill.level }}</span>
+              <span v-if="player.stats.level >= skill.unlockLevel" class="text-[10px] text-yellow-300 font-mono font-bold">Lv.{{ skill.level }}</span>
+              <span v-else class="text-[10px] text-red-400 font-mono font-bold">Lv.{{ skill.unlockLevel }} 解锁</span>
             </div>
             <div class="text-[10px] text-zinc-300 flex flex-col gap-0.5">
               <span>伤害倍率: <b class="text-orange-400 font-mono">{{ skill.damageMult }}x</b></span>
               <span>冷却时间: <b class="text-amber-300 font-mono">{{ (skill.cdTicks * 0.1).toFixed(1) }}s</b></span>
               <span v-if="skill.manaCost > 0">法力消耗: <b class="text-cyan-400 font-mono">{{ skill.manaCost }} MP</b></span>
-              <span>熟练进度: <b class="text-emerald-400 font-mono">{{ skill.proficiency || 0 }}/{{ skill.maxProficiency }}</b></span>
+              <span v-if="player.stats.level >= skill.unlockLevel">熟练进度: <b class="text-emerald-400 font-mono">{{ skill.proficiency || 0 }}/{{ skill.maxProficiency }}</b></span>
             </div>
             <p class="text-[9px] text-zinc-400 italic border-t border-zinc-900 pt-1 leading-snug">
               {{ skill.desc }}
