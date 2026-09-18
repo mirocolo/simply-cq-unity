@@ -49,6 +49,7 @@
       @dropItem="handleDropItem"
       @oneKeyEquip="handleOneKeyEquip"
       @oneKeyRecycle="handleOneKeyRecycle"
+      @oneKeyRecycleWeaker="handleOneKeyRecycleWeaker"
     />
 
     <!-- 模态弹窗：智能挂机与收益看板 (L) -->
@@ -181,6 +182,10 @@ const handleOneKeyEquip = () => {
 
 const handleOneKeyRecycle = () => {
   world.recycleLowQualityItems();
+};
+
+const handleOneKeyRecycleWeaker = () => {
+  world.recycleWeakerOrEqualItems();
 };
 
 const handleUseHpPotion = () => {

@@ -641,6 +641,73 @@ export class GameWorld {
     return { gold: gainedGold, exp: gainedExp, count };
   }
 
+  /**
+   * 一键回收战力小于等于身上穿戴装备的同部位冗余装备
+   */
+  recycleWeakerOrEqualItems(): { gold: number; exp: number; count: number } {
+    let gainedGold = 0;
+    let gainedExp = 0;
+    let count = 0;
+
+    for (let i = this.inventory.length - 1; i >= 0; i--) {
+      const item = this.inventory[i];
+      if (item.type !== 'equipment' || !item.slot) continue;
+
+      const slot = item.slot;
+      const itemPower = StatCalculator.getItemCombatPower(item);
+      let shouldRecycle = false;
+
+      if (slot === 'ring_l' || slot === 'ring_r') {
+        const ring1 = this.equipped.ring_l;
+        const ring2 = this.equipped.ring_r;
+        if (ring1 && ring2) {
+          const minRingPower = Math.min(
+            StatCalculator.getItemCombatPower(ring1),
+            StatCalculator.getItemCombatPower(ring2)
+          );
+          if (itemPower <= minRingPower) shouldRecycle = true;
+        }
+      } else if (slot === 'bracelet_l' || slot === 'bracelet_r') {
+        const br1 = this.equipped.bracelet_l;
+        const br2 = this.equipped.bracelet_r;
+        if (br1 && br2) {
+          const minBrPower = Math.min(
+            StatCalculator.getItemCombatPower(br1),
+            StatCalculator.getItemCombatPower(br2)
+          );
+          if (itemPower <= minBrPower) shouldRecycle = true;
+        }
+      } else {
+        const currentEquip = this.equipped[slot];
+        if (currentEquip) {
+          const curPower = StatCalculator.getItemCombatPower(currentEquip);
+          if (itemPower <= curPower) shouldRecycle = true;
+        }
+      }
+
+      if (shouldRecycle) {
+        gainedGold += item.price;
+        gainedExp += Math.floor(item.price * 0.6);
+        count++;
+        this.inventory.splice(i, 1);
+      }
+    }
+
+    if (count > 0) {
+      this.player.stats.gold += gainedGold;
+      this.addExp(gainedExp);
+      this.onSound?.('coin');
+      this.addBattleLog(
+        `【智能回收】成功熔炼 ${count} 件弱于身上的同部位冗余装备，获得金币 +${gainedGold}，经验 +${gainedExp}！`,
+        'system'
+      );
+    } else {
+      this.addBattleLog('【智能回收】包裹中无弱于身上的冗余装备，已妥善保留极品神装！', 'system');
+    }
+
+    return { gold: gainedGold, exp: gainedExp, count };
+  }
+
   addDamagePopup(gridPos: GridCoord, text: string, color: string, isCrit = false, isHeal = false): void {
     this.damagePopups.push({
       id: `popup_${Date.now()}_${Math.random()}`,

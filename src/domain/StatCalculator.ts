@@ -101,4 +101,22 @@ export class StatCalculator {
       combatPower
     };
   }
+
+  /**
+   * 计算单件装备战力评分
+   */
+  static getItemCombatPower(item: ItemInstance): number {
+    if (item.type !== 'equipment') return 0;
+    const midDC = (item.minDC + item.maxDC) / 2;
+    const midAC = (item.minAC + item.maxAC) / 2;
+    return Math.floor(
+      midDC * 3.8 +
+      midAC * 2.8 +
+      (item.maxHp || 0) * 0.45 +
+      (item.maxMp || 0) * 0.25 +
+      (item.critBonus || 0) * 15 +
+      (item.hasteBonus || 0) * 10 +
+      (item.quality || 0) * 25
+    );
+  }
 }

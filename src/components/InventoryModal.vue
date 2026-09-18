@@ -66,6 +66,10 @@
                   {{ selectedItem.type === 'potion' ? '消耗品' : `部位: ${getSlotName(selectedItem.slot)}` }}
                   (Lv.{{ selectedItem.levelReq }})
                 </span>
+                <span v-if="selectedItem.type === 'equipment'" class="text-[11px] text-yellow-400 font-mono font-bold flex items-center gap-1">
+                  <span>战力评分:</span>
+                  <span class="text-amber-300 font-black">⚔️ {{ getItemPower(selectedItem) }}</span>
+                </span>
               </div>
             </div>
 
@@ -149,27 +153,37 @@
         </div>
       </div>
 
-      <!-- 底部操作栏：一键穿戴、一键回收 -->
+      <!-- 底部操作栏：一键穿戴、回收≤身上战力、回收白绿装 -->
       <div class="flex items-center justify-between border-t border-legend-border pt-2">
-        <div class="flex gap-2">
+        <div class="flex flex-wrap gap-2">
           <button 
             @click="$emit('oneKeyEquip')"
-            class="px-4 py-2 bg-gradient-to-r from-amber-700 to-yellow-600 hover:from-amber-600 hover:to-yellow-500 text-white font-bold rounded-lg text-xs shadow-gold-glow active:scale-95 transition-all flex items-center gap-1.5"
+            class="px-3.5 py-2 bg-gradient-to-r from-amber-700 to-yellow-600 hover:from-amber-600 hover:to-yellow-500 text-white font-bold rounded-lg text-xs shadow-gold-glow active:scale-95 transition-all flex items-center gap-1"
           >
             <span>⚡</span>
             <span>一键穿戴战力最高</span>
           </button>
 
           <button 
-            @click="$emit('oneKeyRecycle')"
-            class="px-4 py-2 bg-gradient-to-r from-emerald-800 to-teal-700 hover:from-emerald-700 hover:to-teal-600 text-white font-bold rounded-lg text-xs shadow active:scale-95 transition-all flex items-center gap-1.5"
+            @click="$emit('oneKeyRecycleWeaker')"
+            class="px-3.5 py-2 bg-gradient-to-r from-red-800 to-amber-700 hover:from-red-700 hover:to-amber-600 text-white font-bold rounded-lg text-xs shadow active:scale-95 transition-all flex items-center gap-1"
+            title="回收战力小于等于身上穿戴装备的同部位装备，妥善保留极品神装"
           >
             <span>♻️</span>
-            <span>一键回收白/绿装</span>
+            <span>一键回收≤身上战力</span>
+          </button>
+
+          <button 
+            @click="$emit('oneKeyRecycle')"
+            class="px-3 py-2 bg-gradient-to-r from-emerald-800 to-teal-700 hover:from-emerald-700 hover:to-teal-600 text-white font-bold rounded-lg text-xs shadow active:scale-95 transition-all flex items-center gap-1"
+            title="一键熔炼背包内所有白色普通、绿色优秀品质装备"
+          >
+            <span>🧹</span>
+            <span>回收白/绿装</span>
           </button>
         </div>
 
-        <span class="text-xs text-zinc-400">
+        <span class="text-xs text-zinc-400 shrink-0">
           容量: {{ inventory.length }} / 40
         </span>
       </div>
@@ -180,6 +194,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { EquipSlot, ItemInstance, ItemQuality } from '../types/game';
+import { StatCalculator } from '../domain/StatCalculator';
 
 const props = defineProps<{
   inventory: ItemInstance[];
@@ -192,7 +207,13 @@ const emit = defineEmits<{
   (e: 'dropItem', item: ItemInstance): void;
   (e: 'oneKeyEquip'): void;
   (e: 'oneKeyRecycle'): void;
+  (e: 'oneKeyRecycleWeaker'): void;
 }>();
+
+const getItemPower = (item?: ItemInstance | null) => {
+  if (!item) return 0;
+  return StatCalculator.getItemCombatPower(item);
+};
 
 const selectedItem = ref<ItemInstance | null>(props.inventory[0] || null);
 
