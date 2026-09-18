@@ -27,6 +27,10 @@ namespace SimplyCQ.Domain
             if (chance < t.HitMin) chance = t.HitMin;
             if (chance > 1f) chance = 1f;
 
+            // 暴击率 = 基础 + 装备词条（百分点）。封顶 75%：暴击全出就没意思了
+            float critChance = t.CritChance + attacker.CritBonus * 0.01f;
+            if (critChance > 0.75f) critChance = 0.75f;
+
             if (!rng.Chance(chance)) return result;   // Hit = false
 
             result.Hit = true;
@@ -36,7 +40,7 @@ namespace SimplyCQ.Domain
             int amount = raw - armor;
             if (amount < t.MinDamage) amount = t.MinDamage;
 
-            if (rng.Chance(t.CritChance))
+            if (rng.Chance(critChance))
             {
                 result.Crit = true;
                 amount = (int)(amount * t.CritMultiplier + 0.5f);

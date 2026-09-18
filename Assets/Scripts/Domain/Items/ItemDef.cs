@@ -52,6 +52,10 @@ namespace SimplyCQ.Domain
         public int Mc, Sc;
         public int Ac, Mac;
         public int BonusHp, BonusMp;
+        /// <summary>暴击率词条（百分点）。蓝以上装备才有，品质放大。</summary>
+        public int CritBonus;
+        /// <summary>攻速词条（急速点，间隔 = 基础×100/(100+急速)）。</summary>
+        public int HasteBonus;
 
         // ---- 消耗品 ----
         public int HealHp, HealMp;

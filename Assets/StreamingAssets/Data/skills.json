@@ -18,11 +18,11 @@
       "learnLevel": 1,
       "kind": "active",
       "target": "single",
-      "mp": 3,
-      "cooldownTicks": 18,
+      "mp": 4,
+      "cooldownTicks": 14,
       "range": 1,
-      "damageCoeff": 2.2,
-      "desc": "对身前的敌人造成 220% 伤害"
+      "damageCoeff": 2.6,
+      "desc": "对身前的敌人造成 260% 伤害（冷却 1.4 秒，挂机主力）"
     },
     {
       "id": "sk_thrust",
@@ -34,8 +34,8 @@
       "mp": 5,
       "cooldownTicks": 16,
       "range": 2,
-      "damageCoeff": 1.5,
-      "desc": "刺穿身前两格"
+      "damageCoeff": 1.8,
+      "desc": "刺穿身前两格，各造成 180% 伤害（打两个怪时收益最高）"
     },
     {
       "id": "sk_flame",
@@ -45,10 +45,10 @@
       "kind": "active",
       "target": "around",
       "mp": 9,
-      "cooldownTicks": 40,
+      "cooldownTicks": 28,
       "range": 1,
-      "damageCoeff": 1.8,
-      "desc": "以自身为中心的烈焰斩"
+      "damageCoeff": 2.2,
+      "desc": "以自身为中心的烈焰斩，周围敌人各受 220% 伤害"
     }
   ]
 }

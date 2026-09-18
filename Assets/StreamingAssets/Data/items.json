@@ -448,7 +448,8 @@
       "levelReq": 1,
       "minQuality": "green",
       "ac": 3,
-      "bonusMp": 6
+      "bonusMp": 6,
+      "hasteBonus": 3
     },
     {
       "id": "br_silver",
@@ -469,7 +470,8 @@
       "levelReq": 4,
       "minQuality": "green",
       "ac": 6,
-      "bonusMp": 12
+      "bonusMp": 12,
+      "hasteBonus": 3
     },
     {
       "id": "br_gold",
@@ -490,7 +492,8 @@
       "levelReq": 7,
       "minQuality": "green",
       "ac": 8,
-      "bonusMp": 16
+      "bonusMp": 16,
+      "hasteBonus": 3
     },
     {
       "id": "br_black",
@@ -501,7 +504,8 @@
       "levelReq": 7,
       "minQuality": "blue",
       "ac": 9,
-      "bonusMp": 20
+      "bonusMp": 20,
+      "hasteBonus": 6
     },
     {
       "id": "br_coldiron",
@@ -522,7 +526,8 @@
       "levelReq": 10,
       "minQuality": "green",
       "ac": 9,
-      "bonusMp": 20
+      "bonusMp": 20,
+      "hasteBonus": 3
     },
     {
       "id": "br_dragonbone",
@@ -543,7 +548,8 @@
       "levelReq": 13,
       "minQuality": "green",
       "ac": 11,
-      "bonusMp": 23
+      "bonusMp": 23,
+      "hasteBonus": 3
     },
     {
       "id": "he_cap",
@@ -682,7 +688,8 @@
       "minQuality": "green",
       "minDc": 1,
       "maxDc": 2,
-      "bonusHp": 8
+      "bonusHp": 8,
+      "hasteBonus": 3
     },
     {
       "id": "nk_fang",
@@ -705,7 +712,8 @@
       "minQuality": "green",
       "minDc": 3,
       "maxDc": 4,
-      "bonusHp": 18
+      "bonusHp": 18,
+      "hasteBonus": 3
     },
     {
       "id": "nk_jade",
@@ -717,7 +725,8 @@
       "minQuality": "blue",
       "minDc": 4,
       "maxDc": 5,
-      "bonusHp": 22
+      "bonusHp": 22,
+      "hasteBonus": 6
     },
     {
       "id": "nk_gold",
@@ -740,7 +749,8 @@
       "minQuality": "green",
       "minDc": 4,
       "maxDc": 6,
-      "bonusHp": 24
+      "bonusHp": 24,
+      "hasteBonus": 3
     },
     {
       "id": "nk_black",
@@ -752,7 +762,8 @@
       "minQuality": "blue",
       "minDc": 5,
       "maxDc": 7,
-      "bonusHp": 30
+      "bonusHp": 30,
+      "hasteBonus": 6
     },
     {
       "id": "nk_coldiron",
@@ -775,7 +786,8 @@
       "minQuality": "green",
       "minDc": 5,
       "maxDc": 7,
-      "bonusHp": 29
+      "bonusHp": 29,
+      "hasteBonus": 3
     },
     {
       "id": "nk_mithril_rare",
@@ -787,7 +799,8 @@
       "minQuality": "blue",
       "minDc": 6,
       "maxDc": 9,
-      "bonusHp": 36
+      "bonusHp": 36,
+      "hasteBonus": 6
     },
     {
       "id": "nk_dragonbone",
@@ -810,7 +823,8 @@
       "minQuality": "green",
       "minDc": 6,
       "maxDc": 8,
-      "bonusHp": 34
+      "bonusHp": 34,
+      "hasteBonus": 3
     },
     {
       "id": "nk_sky_rare",
@@ -822,7 +836,8 @@
       "minQuality": "blue",
       "minDc": 7,
       "maxDc": 10,
-      "bonusHp": 42
+      "bonusHp": 42,
+      "hasteBonus": 6
     },
     {
       "id": "rg_copper",
@@ -845,7 +860,8 @@
       "minQuality": "green",
       "minDc": 2,
       "maxDc": 2,
-      "bonusMp": 8
+      "bonusMp": 8,
+      "critBonus": 1
     },
     {
       "id": "rg_silver",
@@ -868,7 +884,8 @@
       "minQuality": "green",
       "minDc": 4,
       "maxDc": 5,
-      "bonusMp": 18
+      "bonusMp": 18,
+      "critBonus": 1
     },
     {
       "id": "rg_gem",
@@ -880,7 +897,8 @@
       "minQuality": "blue",
       "minDc": 4,
       "maxDc": 7,
-      "bonusMp": 22
+      "bonusMp": 22,
+      "critBonus": 2
     },
     {
       "id": "rg_gold",
@@ -903,7 +921,8 @@
       "minQuality": "green",
       "minDc": 5,
       "maxDc": 7,
-      "bonusMp": 25
+      "bonusMp": 25,
+      "critBonus": 1
     },
     {
       "id": "rg_black",
@@ -915,7 +934,8 @@
       "minQuality": "blue",
       "minDc": 6,
       "maxDc": 9,
-      "bonusMp": 31
+      "bonusMp": 31,
+      "critBonus": 2
     },
     {
       "id": "rg_coldiron",
@@ -938,7 +958,8 @@
       "minQuality": "green",
       "minDc": 6,
       "maxDc": 9,
-      "bonusMp": 30
+      "bonusMp": 30,
+      "critBonus": 1
     },
     {
       "id": "rg_mithril_rare",
@@ -950,7 +971,8 @@
       "minQuality": "blue",
       "minDc": 7,
       "maxDc": 11,
-      "bonusMp": 37
+      "bonusMp": 37,
+      "critBonus": 2
     },
     {
       "id": "rg_dragonbone",
@@ -973,7 +995,8 @@
       "minQuality": "green",
       "minDc": 7,
       "maxDc": 10,
-      "bonusMp": 35
+      "bonusMp": 35,
+      "critBonus": 1
     },
     {
       "id": "rg_sky_rare",
@@ -985,7 +1008,8 @@
       "minQuality": "blue",
       "minDc": 8,
       "maxDc": 13,
-      "bonusMp": 43
+      "bonusMp": 43,
+      "critBonus": 2
     },
     {
       "id": "wp_wood",
@@ -1006,7 +1030,8 @@
       "levelReq": 1,
       "minQuality": "green",
       "minDc": 3,
-      "maxDc": 4
+      "maxDc": 4,
+      "critBonus": 1
     },
     {
       "id": "wp_short",
@@ -1027,7 +1052,8 @@
       "levelReq": 4,
       "minQuality": "green",
       "minDc": 6,
-      "maxDc": 10
+      "maxDc": 10,
+      "critBonus": 1
     },
     {
       "id": "wp_silver",
@@ -1038,7 +1064,8 @@
       "levelReq": 4,
       "minQuality": "blue",
       "minDc": 8,
-      "maxDc": 12
+      "maxDc": 12,
+      "critBonus": 2
     },
     {
       "id": "wp_long",
@@ -1059,7 +1086,8 @@
       "levelReq": 7,
       "minQuality": "green",
       "minDc": 9,
-      "maxDc": 13
+      "maxDc": 13,
+      "critBonus": 1
     },
     {
       "id": "wp_black",
@@ -1070,7 +1098,8 @@
       "levelReq": 7,
       "minQuality": "blue",
       "minDc": 11,
-      "maxDc": 16
+      "maxDc": 16,
+      "critBonus": 2
     },
     {
       "id": "wp_coldiron",
@@ -1091,7 +1120,8 @@
       "levelReq": 10,
       "minQuality": "green",
       "minDc": 11,
-      "maxDc": 16
+      "maxDc": 16,
+      "critBonus": 1
     },
     {
       "id": "wp_mithril_rare",
@@ -1102,7 +1132,8 @@
       "levelReq": 10,
       "minQuality": "blue",
       "minDc": 13,
-      "maxDc": 20
+      "maxDc": 20,
+      "critBonus": 2
     },
     {
       "id": "wp_dragonbone",
@@ -1123,7 +1154,8 @@
       "levelReq": 13,
       "minQuality": "green",
       "minDc": 12,
-      "maxDc": 18
+      "maxDc": 18,
+      "critBonus": 1
     },
     {
       "id": "wp_sky_rare",
@@ -1134,7 +1166,8 @@
       "levelReq": 13,
       "minQuality": "blue",
       "minDc": 15,
-      "maxDc": 23
+      "maxDc": 23,
+      "critBonus": 2
     }
   ]
 }

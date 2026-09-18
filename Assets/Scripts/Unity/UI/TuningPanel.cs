@@ -184,7 +184,8 @@ namespace SimplyCQ.Unity
             Group hero = new Group();
             hero.Title = "玩家（立刻生效）";
             AddInt(hero, "走一格(tick)", () => Player().MoveSpeed, v => Player().MoveSpeed = Mathf.Max(1, Mathf.RoundToInt(v)), 1f);
-            AddInt(hero, "攻速(tick)", () => Player().AttackInterval, v => Player().AttackInterval = Mathf.Max(1, Mathf.RoundToInt(v)), 1f);
+            AddInt(hero, "攻速(tick)", () => Player().BaseAttackInterval,
+                v => { Player().BaseAttackInterval = Mathf.Max(1, Mathf.RoundToInt(v)); Recount(); }, 1f);
             AddInt(hero, "基础血上限", () => Player().BaseMaxHp, v => { Player().BaseMaxHp = Mathf.Max(1, Mathf.RoundToInt(v)); Recount(); }, 10f);
             AddInt(hero, "基础攻击下限", () => Player().BaseMinDc, v => { Player().BaseMinDc = Mathf.Max(0, Mathf.RoundToInt(v)); Recount(); }, 1f);
             AddInt(hero, "基础攻击上限", () => Player().BaseMaxDc, v => { Player().BaseMaxDc = Mathf.Max(0, Mathf.RoundToInt(v)); Recount(); }, 1f);

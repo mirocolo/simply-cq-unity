@@ -182,6 +182,26 @@ SLOT_ID_PREFIX = {
 }
 
 
+# ---- 词条（暴击 / 攻速）----
+#
+# 词条挂在物品上、随品质放大（同一把剑，紫出货比蓝出货词条更高），
+# 但**只有上品(绿底)和珍品(蓝底)档有**：基础款没词条，好东西才配额外属性。
+# 部位分工照传奇的习惯：武器/戒指长暴击，项链/手镯长攻速，防御件不长。
+AFFIX_CRIT_SLOTS = ("weapon", "ring")
+AFFIX_HASTE_SLOTS = ("necklace", "bracelet")
+AFFIX_BY_TIER = {"base": (0, 0), "fine": (1, 3), "rare": (2, 6)}   # (暴击百分点, 急速点)
+
+
+def affix_for(slot_key, tier):
+    """(暴击百分点, 急速点)。没分到词条的部位返回 (0, 0)。"""
+    crit, haste = AFFIX_BY_TIER.get(tier, (0, 0))
+    if slot_key in AFFIX_CRIT_SLOTS:
+        return (crit, 0)
+    if slot_key in AFFIX_HASTE_SLOTS:
+        return (0, haste)
+    return (0, 0)
+
+
 def id_prefix(slot_key):
     """部位 -> id 前缀，和手写的那批老 id 保持一致。"""
     return SLOT_ID_PREFIX.get(slot_key, slot_key[:2] + "_")
@@ -303,6 +323,13 @@ def build_equip(item_id, name, slot_key, band, tier):
     for key in ("minDc", "maxDc", "mc", "sc", "ac", "mac", "bonusHp", "bonusMp"):
         if stats.get(key):
             dto[key] = stats[key]
+
+    # 词条：上品/珍品才有（基础款没有），随品质再放大
+    crit, haste = affix_for(slot_key, tier)
+    if crit > 0:
+        dto["critBonus"] = crit
+    if haste > 0:
+        dto["hasteBonus"] = haste
     return dto, points
 
 
@@ -316,6 +343,9 @@ def fail(msg):
 def validate(items, keepers):
     bad = 0
     equips = [i for i in items if i.get("type") == "equip"]
+    rows = all_rows()
+    tier_of = {item_id: tier for item_id, _, _, _, tier in rows}
+    band_of = {item_id: band for item_id, _, _, band, _ in rows}
 
     print("[数量]")
     if len(equips) < 60:
@@ -405,6 +435,22 @@ def validate(items, keepers):
             bad += fail(p)
     else:
         print("  [PASS] 品质下限只用 白/绿/蓝，价格与攻防上下限都合法")
+
+    # 词条：基础款没有；上品/珍品只长在指定部位，且数值随档次递增
+    bad_affix = []
+    for item in equips:
+        tier = tier_of.get(item["id"], "base")
+        crit = item.get("critBonus", 0)
+        haste = item.get("hasteBonus", 0)
+        exp_crit, exp_haste = affix_for(item.get("slot", ""), tier)
+        if crit != exp_crit or haste != exp_haste:
+            bad_affix.append("%s(%s/%s) 词条不对：暴击 %d/%d 攻速 %d/%d"
+                             % (item["id"], item.get("slot"), tier, crit, exp_crit, haste, exp_haste))
+    if bad_affix:
+        for p in bad_affix[:6]:
+            bad += fail(p)
+    else:
+        print("  [PASS] 词条：基础款没有；绿底起长在武器/戒指（暴击）和项链/手镯（攻速）")
 
     print("[非装备物品]")
     if len(keepers) == 0:

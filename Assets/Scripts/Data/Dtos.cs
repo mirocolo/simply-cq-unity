@@ -164,6 +164,7 @@ namespace SimplyCQ.Data
         public string classReq;
 
         public int minDc, maxDc, mc, sc, ac, mac, bonusHp, bonusMp;
+        public int critBonus, hasteBonus;
         public int healHp, healMp;
 
         /// <summary>

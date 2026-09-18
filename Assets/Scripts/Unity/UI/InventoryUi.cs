@@ -37,6 +37,8 @@ namespace SimplyCQ.Unity
         private readonly World _world;
         private readonly IItemCatalog _catalog;
         private readonly ShopTuning _shop;
+        /// <summary>暴击基础值从这里读（F1 可调）。</summary>
+        private readonly CombatTuning _combat;
         private readonly List<Intent> _pending = new List<Intent>();
         private readonly PanelDrag _bagDrag = new PanelDrag();
         private readonly PanelDrag _charDrag = new PanelDrag();
@@ -54,11 +56,12 @@ namespace SimplyCQ.Unity
         private Rect _bagRect;
         private Rect _charRect;
 
-        public InventoryUi(World world, IItemCatalog catalog, ShopTuning shop)
+        public InventoryUi(World world, IItemCatalog catalog, ShopTuning shop, CombatTuning combat)
         {
             _world = world;
             _catalog = catalog;
             _shop = shop != null ? shop : new ShopTuning();
+            _combat = combat != null ? combat : new CombatTuning();
             if (world != null) world.Events.Subscribe<PickupRefused>(OnPickupRefused);
         }
 
@@ -246,7 +249,15 @@ namespace SimplyCQ.Unity
             y += 38f;
 
             StatBlock(r, y, "攻速", (TickRate / Mathf.Max(1, player.AttackInterval)).ToString("0.0") + " 次/秒",
-                "间隔 " + player.AttackInterval + " tick", "");
+                "间隔 " + player.AttackInterval + " tick",
+                player.HasteBonus > 0 ? "装备 +" + player.HasteBonus + " 急速" : "");
+            y += 38f;
+
+            StatBlock(r, y, "暴击",
+                ((_combat != null ? _combat.CritChance : 0.08f) + player.CritBonus * 0.01f).ToString("0%"),
+                "基础 " + ((_combat != null ? _combat.CritChance : 0.08f) * 100).ToString("0") + "%",
+                player.CritBonus > 0 ? "装备 +" + player.CritBonus + "%" : "");
+            y += 38f;
             y += 38f;
 
             if (player.Mc > 0 || player.Sc > 0)
@@ -365,10 +376,14 @@ namespace SimplyCQ.Unity
                 int maxDc = ItemQualityRules.Scale(def.MaxDc, q);
                 int ac = ItemQualityRules.Scale(def.Ac, q);
                 int hp = ItemQualityRules.Scale(def.BonusHp, q);
+                int crit = ItemQualityRules.Scale(def.CritBonus, q);
+                int haste = ItemQualityRules.Scale(def.HasteBonus, q);
 
                 if (minDc > 0 || maxDc > 0) body += "攻击 " + minDc + "-" + maxDc + "   ";
                 if (ac > 0) body += "防御 " + ac + "   ";
                 if (hp > 0) body += "生命 +" + hp + "   ";
+                if (crit > 0) body += "暴击 +" + crit + "%   ";
+                if (haste > 0) body += "攻速 +" + haste + "   ";
                 if (def.LevelReq > 1) body += "\n要求等级 " + def.LevelReq;
                 body += "\n左键穿上";
             }

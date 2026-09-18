@@ -46,6 +46,8 @@ namespace SimplyCQ.Data
             def.Mac = dto.mac;
             def.BonusHp = dto.bonusHp;
             def.BonusMp = dto.bonusMp;
+            def.CritBonus = dto.critBonus > 0 ? dto.critBonus : 0;
+            def.HasteBonus = dto.hasteBonus > 0 ? dto.hasteBonus : 0;
             def.HealHp = dto.healHp;
             def.HealMp = dto.healMp;
             def.Description = dto.desc;

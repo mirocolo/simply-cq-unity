@@ -1,3 +1,5 @@
+using System;
+
 namespace SimplyCQ.Domain
 {
     /// <summary>
@@ -29,6 +31,9 @@ namespace SimplyCQ.Domain
             int mac = e.BaseMac;
             int maxHp = e.BaseMaxHp;
             int maxMp = e.BaseMaxMp;
+            // 词条完全由当前装备推导：每次重算从 0 开始，保证 Apply 幂等（重复调用不叠加）
+            int crit = 0;
+            int haste = 0;
 
             if (e.Gear != null && catalog != null)
             {
@@ -48,6 +53,8 @@ namespace SimplyCQ.Domain
                     mac += ItemQualityRules.Scale(def.Mac, q);
                     maxHp += ItemQualityRules.Scale(def.BonusHp, q);
                     maxMp += ItemQualityRules.Scale(def.BonusMp, q);
+                    crit += ItemQualityRules.Scale(def.CritBonus, q);
+                    haste += ItemQualityRules.Scale(def.HasteBonus, q);
                 }
             }
 
@@ -62,6 +69,13 @@ namespace SimplyCQ.Domain
 
             if (e.Hp > e.MaxHp) e.Hp = e.MaxHp;
             if (e.Mp > e.MaxMp) e.Mp = e.MaxMp;
+
+            // 攻速词条：间隔 = 基础 × 100/(100+急速)。加法安全（不会减成负数），下限 2 tick
+            e.CritBonus = crit;
+            e.HasteBonus = haste;
+            e.AttackInterval = e.BaseAttackInterval < 2
+                ? e.BaseAttackInterval
+                : Math.Max(2, (int)(e.BaseAttackInterval * 100f / (100f + haste) + 0.5f));
         }
     }
 }

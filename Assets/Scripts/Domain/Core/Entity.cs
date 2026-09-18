@@ -115,6 +115,12 @@ namespace SimplyCQ.Domain
         public int Vision = 5;
         public int AttackRange = 1;
         public int AttackInterval = 10;
+        /// <summary>基础出手间隔（StatCalculator 按装备攻速词条重算 AttackInterval）。</summary>
+        public int BaseAttackInterval = 10;
+        /// <summary>暴击率加成（百分点）。0 = 只吃 CombatTuning.CritChance。</summary>
+        public int CritBonus;
+        /// <summary>攻速词条聚合值（急速点）。有效间隔 = BaseAttackInterval × 100/(100+急速)。</summary>
+        public int HasteBonus;
         public int AttackCooldown;
         public bool Aggressive;
         /// <summary>离出生点超过这个距离就脱战回家。</summary>

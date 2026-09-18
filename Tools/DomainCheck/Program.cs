@@ -45,6 +45,7 @@ namespace DomainCheck
             TestMapSwitch();
             TestNpcTeleport();
             TestGroundTypes();
+            TestGearAffixes();
             Console.WriteLine();
             Console.WriteLine(_failures == 0 ? "全部通过 ✓" : _failures + " 项失败 ✗");
             return _failures == 0 ? 0 : 1;
@@ -361,6 +362,64 @@ namespace DomainCheck
             // 真实地图上也验一遍：镇子是石板广场 + 土路，草原是草地
             GameMap grass = Map("..........", "..........", "..........");
             Check(!grass.IsHardGround(new TilePos(1, 1)), "自检用的草地地图全图都不是硬地");
+        }
+
+        // ---------------------------------------------------------------- M6f+ 装备词条
+
+        private static void TestGearAffixes()
+        {
+            Console.WriteLine("[装备词条（暴击 / 攻速）]");
+
+            TestCatalog cat = new TestCatalog();
+            // 武器长暴击、手镯长攻速（和生成器的部位分工一致）
+            cat.Equip("wp_crit", EquipSlot.Weapon, 5, 9, 0, critBonus: 2);
+            cat.Equip("br_haste", EquipSlot.Bracelet, 0, 0, 0, hasteBonus: 20);
+            cat.Equip("rg_crit", EquipSlot.Ring, 0, 0, 0, critBonus: 3);
+
+            Entity hero = MakeFullPlayer(cat, new TilePos(2, 2));
+            hero.BaseAttackInterval = 7;
+            hero.Gear.Set(EquipSlot.Weapon, new ItemInstance("wp_crit", 1, ItemQuality.White));
+            hero.Gear.Set(EquipSlot.Bracelet, new ItemInstance("br_haste", 1, ItemQuality.White));
+            StatCalculator.Apply(hero, cat);
+
+            Check(hero.CritBonus == 2, "武器词条聚合进暴击（+2% -> 总 " + hero.CritBonus + "%）");
+            Check(hero.HasteBonus == 20, "手镯词条聚合进急速（+20）");
+            Check(hero.AttackInterval == 6, "急速缩短出手间隔：7 tick -> " + hero.AttackInterval
+                + " tick（7×100/120）");
+            Check(hero.MinDc == hero.BaseMinDc + 5 && hero.MaxDc == hero.BaseMaxDc + 9,
+                "攻防聚合不被词条改动破坏");
+
+            // 两件暴击装叠加
+            hero.Gear.Set(EquipSlot.Ring, new ItemInstance("rg_crit", 1, ItemQuality.White));
+            StatCalculator.Apply(hero, cat);
+            Check(hero.CritBonus == 5, "两件暴击装叠加（2 + 3 = " + hero.CritBonus + "%）");
+
+            // 急速没有负数：卸下手镯间隔回基础值
+            hero.Gear.Set(EquipSlot.Bracelet, null);
+            StatCalculator.Apply(hero, cat);
+            Check(hero.AttackInterval == 7 && hero.HasteBonus == 0, "卸下攻速装后间隔回到基础值");
+
+            // 没穿装备：暴击加成为 0（只吃 CombatTuning 的基础暴击）
+            Entity bare = MakeFullPlayer(cat, new TilePos(2, 2));
+            StatCalculator.Apply(bare, cat);
+            Check(bare.CritBonus == 0 && bare.HasteBonus == 0, "空手玩家没有词条加成");
+
+            // 伤害公式确实吃到暴击词条：固定种子下，带词条的期望伤害更高
+            Entity target = MakeFullPlayer(cat, new TilePos(3, 2));
+            CombatTuning t = new CombatTuning();
+            double sumWith = 0, sumWithout = 0;
+            for (uint seed = 1; seed <= 40; seed++)
+            {
+                Rng r1 = new Rng(seed), r2 = new Rng(seed);
+                DamageResult d1 = DamageCalculator.Roll(hero, target, r1, t);
+                Entity noAffix = MakeFullPlayer(cat, new TilePos(2, 2));
+                noAffix.CritBonus = 0;
+                DamageResult d2 = DamageCalculator.Roll(noAffix, target, r2, t);
+                sumWith += d1.Hit ? d1.Amount : 0;
+                sumWithout += d2.Hit ? d2.Amount : 0;
+            }
+            Check(sumWith > sumWithout, "40 个种子平均：带暴击词条的期望伤害更高（"
+                + sumWithout.ToString("0") + " -> " + sumWith.ToString("0") + "）");
         }
 
         private static void TestTilePos()

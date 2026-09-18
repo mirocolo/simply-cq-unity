@@ -256,7 +256,8 @@ namespace SimplyCQ.Data
             e.BaseAc = d.ac;
             e.Exp = Scale(d.exp, MonsterExpMul);
             e.MoveSpeed = d.moveSpeed;
-            e.AttackInterval = Mathf.Max(1, Mathf.RoundToInt(d.attackInterval / Mathf.Max(0.05f, MonsterSpeedMul)));
+            e.BaseAttackInterval = Mathf.Max(1, Mathf.RoundToInt(d.attackInterval / Mathf.Max(0.05f, MonsterSpeedMul)));
+            e.AttackInterval = e.BaseAttackInterval;
             e.AttackRange = d.attackRange;
             e.Vision = d.vision;
             e.Aggressive = d.aggressive;
@@ -349,6 +350,7 @@ namespace SimplyCQ.Data
             e.BaseMaxMp = Balance.playerMp;
 
             CombatTuning t = Tuning != null ? Tuning : new CombatTuning();
+            e.BaseAttackInterval = t.PlayerAttackInterval;
             e.AttackInterval = t.PlayerAttackInterval;
             e.AttackRange = 1;
             e.ExpToNextLevel = LevelCurve.ExpToNext(e.Level, t);
