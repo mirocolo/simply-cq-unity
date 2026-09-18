@@ -162,22 +162,7 @@ const handleDropItem = (item: ItemInstance) => {
 };
 
 const handleOneKeyEquip = () => {
-  let equipCount = 0;
-  const equipItems = [...world.inventory.filter(i => i.type === 'equipment')];
-  for (const item of equipItems) {
-    if (!item.slot) continue;
-    const currentEquip = world.equipped[item.slot];
-    if (!currentEquip || (item.maxDC + item.maxAC + item.hasteBonus > currentEquip.maxDC + currentEquip.maxAC + currentEquip.hasteBonus)) {
-      world.equipItem(item);
-      equipCount++;
-    }
-  }
-  if (equipCount > 0) {
-    sound.playLevelUp();
-    world.addBattleLog(`【一键穿戴】成功更换了 ${equipCount} 件更强神装，战力飙升！`, 'system');
-  } else {
-    world.addBattleLog('【一键穿戴】当前已是最佳装备搭配！', 'system');
-  }
+  world.oneKeyEquipBest();
 };
 
 const handleOneKeyRecycle = () => {

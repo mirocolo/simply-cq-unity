@@ -614,10 +614,26 @@ export class GameWorld {
     if (!item.slot) return;
     let targetSlot = item.slot;
 
-    if (item.slot === 'bracelet_l' && this.equipped['bracelet_l'] && !this.equipped['bracelet_r']) {
-      targetSlot = 'bracelet_r';
-    } else if (item.slot === 'ring_l' && this.equipped['ring_l'] && !this.equipped['ring_r']) {
-      targetSlot = 'ring_r';
+    if (item.slot === 'bracelet_l' || item.slot === 'bracelet_r') {
+      if (!this.equipped['bracelet_l']) {
+        targetSlot = 'bracelet_l';
+      } else if (!this.equipped['bracelet_r']) {
+        targetSlot = 'bracelet_r';
+      } else {
+        const p1 = StatCalculator.getItemCombatPower(this.equipped['bracelet_l']);
+        const p2 = StatCalculator.getItemCombatPower(this.equipped['bracelet_r']);
+        targetSlot = p1 <= p2 ? 'bracelet_l' : 'bracelet_r';
+      }
+    } else if (item.slot === 'ring_l' || item.slot === 'ring_r') {
+      if (!this.equipped['ring_l']) {
+        targetSlot = 'ring_l';
+      } else if (!this.equipped['ring_r']) {
+        targetSlot = 'ring_r';
+      } else {
+        const p1 = StatCalculator.getItemCombatPower(this.equipped['ring_l']);
+        const p2 = StatCalculator.getItemCombatPower(this.equipped['ring_r']);
+        targetSlot = p1 <= p2 ? 'ring_l' : 'ring_r';
+      }
     }
 
     const oldEquip = this.equipped[targetSlot];
@@ -635,6 +651,154 @@ export class GameWorld {
     if (cpDiff > 0) {
       this.addDamagePopup(this.player.gridPos, `战力 +${cpDiff}`, '#fbbf24', true);
     }
+  }
+
+  /**
+   * 一键穿戴同位置战力最优装备 (比对全身同部位战力评分，智能换装)
+   */
+  oneKeyEquipBest(): number {
+    let replacedCount = 0;
+    const playerLevel = this.player.stats.level;
+
+    // 1. 单槽位比对优化: weapon, armor, helmet, necklace
+    const singleSlots: EquipSlot[] = ['weapon', 'armor', 'helmet', 'necklace'];
+    for (const slot of singleSlots) {
+      const current = this.equipped[slot];
+      const currentPower = current ? StatCalculator.getItemCombatPower(current) : -1;
+
+      let bestItemIdx = -1;
+      let bestPower = currentPower;
+
+      for (let i = 0; i < this.inventory.length; i++) {
+        const item = this.inventory[i];
+        if (item.type !== 'equipment' || item.slot !== slot) continue;
+        if (item.levelReq && item.levelReq > playerLevel) continue;
+
+        const power = StatCalculator.getItemCombatPower(item);
+        if (power > bestPower) {
+          bestPower = power;
+          bestItemIdx = i;
+        }
+      }
+
+      if (bestItemIdx !== -1) {
+        const bestItem = this.inventory.splice(bestItemIdx, 1)[0];
+        if (current) {
+          this.addItemToInventory(current);
+        }
+        this.equipped[slot] = bestItem;
+        replacedCount++;
+      }
+    }
+
+    // 2. 双槽位手镯比对优化 (bracelet_l, bracelet_r)
+    replacedCount += this.optimizeDualSlots(['bracelet_l', 'bracelet_r'], playerLevel);
+
+    // 3. 双槽位戒指比对优化 (ring_l, ring_r)
+    replacedCount += this.optimizeDualSlots(['ring_l', 'ring_r'], playerLevel);
+
+    // 重新计算全身属性与战力
+    const oldCp = this.player.stats.combatPower;
+    const base = StatCalculator.getBaseStatsForLevel(this.player.stats.level);
+    this.player.stats = StatCalculator.applyEquipment(base, this.equipped);
+    const cpDiff = this.player.stats.combatPower - oldCp;
+
+    if (replacedCount > 0) {
+      this.onSound?.('levelup');
+      if (cpDiff > 0) {
+        this.addDamagePopup(this.player.gridPos, `战力 +${cpDiff}`, '#fbbf24', true);
+      }
+      this.addBattleLog(
+        `【一键穿戴】成功更换了 ${replacedCount} 件更强同部位装备，战力提升至 ${this.player.stats.combatPower}！`,
+        'system'
+      );
+    } else {
+      this.addBattleLog('【一键穿戴】当前身上穿戴已是同部位最高战力搭配！', 'system');
+    }
+
+    return replacedCount;
+  }
+
+  private optimizeDualSlots(slots: [EquipSlot, EquipSlot], playerLevel: number): number {
+    const [slot1, slot2] = slots;
+    const isMatchingSlot = (itemSlot?: EquipSlot) => itemSlot === slot1 || itemSlot === slot2;
+
+    interface Candidate {
+      item: ItemInstance;
+      power: number;
+    }
+
+    const candidates: Candidate[] = [];
+    if (this.equipped[slot1]) {
+      candidates.push({
+        item: this.equipped[slot1]!,
+        power: StatCalculator.getItemCombatPower(this.equipped[slot1]!)
+      });
+    }
+    if (this.equipped[slot2]) {
+      candidates.push({
+        item: this.equipped[slot2]!,
+        power: StatCalculator.getItemCombatPower(this.equipped[slot2]!)
+      });
+    }
+
+    for (const it of this.inventory) {
+      if (it.type === 'equipment' && isMatchingSlot(it.slot)) {
+        if (!it.levelReq || it.levelReq <= playerLevel) {
+          candidates.push({
+            item: it,
+            power: StatCalculator.getItemCombatPower(it)
+          });
+        }
+      }
+    }
+
+    // 按战力从高到低排序
+    candidates.sort((a, b) => b.power - a.power);
+
+    const desiredItems: ItemInstance[] = [];
+    if (candidates[0]) desiredItems.push(candidates[0].item);
+    if (candidates[1]) desiredItems.push(candidates[1].item);
+
+    const current1 = this.equipped[slot1];
+    const current2 = this.equipped[slot2];
+
+    const currentItems: ItemInstance[] = [];
+    if (current1) currentItems.push(current1);
+    if (current2) currentItems.push(current2);
+
+    const isSameSet = desiredItems.length === currentItems.length &&
+      desiredItems.every(d => currentItems.includes(d));
+
+    if (isSameSet) {
+      return 0;
+    }
+
+    // 卸下当前槽位
+    if (current1) {
+      delete this.equipped[slot1];
+      this.addItemToInventory(current1);
+    }
+    if (current2) {
+      delete this.equipped[slot2];
+      this.addItemToInventory(current2);
+    }
+
+    let changes = 0;
+    if (desiredItems[0]) {
+      const idx = this.inventory.indexOf(desiredItems[0]);
+      if (idx !== -1) this.inventory.splice(idx, 1);
+      this.equipped[slot1] = desiredItems[0];
+      changes++;
+    }
+    if (desiredItems[1]) {
+      const idx = this.inventory.indexOf(desiredItems[1]);
+      if (idx !== -1) this.inventory.splice(idx, 1);
+      this.equipped[slot2] = desiredItems[1];
+      changes++;
+    }
+
+    return changes;
   }
 
   unequipItem(slot: EquipSlot): boolean {
