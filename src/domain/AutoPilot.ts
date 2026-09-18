@@ -34,7 +34,8 @@ export class AutoPilot {
     currentTick: number,
     isWalkable: (x: number, y: number) => boolean,
     portals?: PortalDef[],
-    aoeWarnings?: import('../types/affix').TelegraphedAOE[]
+    aoeWarnings?: import('../types/affix').TelegraphedAOE[],
+    maxInventorySlots?: number
   ): AutoPilotAction {
     if (!config.enabled || player.state === 'dead') {
       return { type: 'none' };
@@ -98,8 +99,9 @@ export class AutoPilot {
 
     // 4. 自动拾取附近掉落物 (6 格以内优先踩格拾取)
     if (config.autoPickup && groundItems.length > 0) {
-      // 仅在未开启自动回收且背包已满 40 格时才过滤装备掉落物；开启自动回收时走过去会自动腾挪入包
-      const cannotAutoRecycle = !config.autoRecycleWeaker && inventory.length >= 40;
+      // 仅在未开启自动回收且背包已满上限时才过滤装备掉落物；开启自动回收时走过去会自动腾挪入包
+      const maxSlots = maxInventorySlots || 40;
+      const cannotAutoRecycle = !config.autoRecycleWeaker && inventory.length >= maxSlots;
       const nearItems = groundItems
         .map(item => ({ item, dist: PathFinder.chebyshevDistance(player.gridPos, item.gridPos) }))
         .filter(entry => {

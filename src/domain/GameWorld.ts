@@ -861,11 +861,12 @@ export class GameWorld {
 
     // 挂机周期性背包水位维护 (每 3 秒自动巡检防爆仓，将背包水位维持在健康安全范围)
     if (this.autoConfig.enabled && this.autoConfig.autoRecycleWeaker && this.currentTick % 30 === 0) {
-      if (this.inventory.length >= 32) {
+      const maxSlots = this.getMaxInventorySlots();
+      if (this.inventory.length >= maxSlots - 8) {
         this.oneKeyEquipBest();
         this.recycleWeakerOrEqualItems(false);
         const maxQ = this.autoConfig.autoRecycleMaxQuality ?? 2;
-        if (this.inventory.length >= 34) {
+        if (this.inventory.length >= maxSlots - 6) {
           this.recycleLowQualityItems(maxQ);
         }
       }
@@ -912,7 +913,8 @@ export class GameWorld {
         this.currentTick,
         this.isWalkable,
         this.currentMap.portals,
-        this.aoeWarnings
+        this.aoeWarnings,
+        this.getMaxInventorySlots()
       );
 
       if (decision.type === 'move' && decision.targetPos) {
@@ -1762,9 +1764,24 @@ export class GameWorld {
     }
   }
 
+  /**
+   * 获取玩家当前随身背包最大格数
+   * 基础 40 格，随等级提升 (每 10 级扩展整整 1 行即 8 格) 与飞升境界突破 (每 2 阶扩展 1 行 8 格) 持续扩容，最高可达 96 格
+   */
+  getMaxInventorySlots(): number {
+    const level = this.player?.stats?.level || 1;
+    const tier = this.player?.stats?.ascensionTier || 0;
+    const levelRows = Math.floor(level / 10);
+    const tierRows = Math.floor(tier / 2);
+    const totalSlots = 40 + (levelRows + tierRows) * 8;
+    return Math.min(96, Math.max(40, totalSlots));
+  }
+
   addExp(amount: number): void {
     this.player.stats.exp += amount;
     this.autoStats.expGained += amount;
+
+    const oldMaxSlots = this.getMaxInventorySlots();
 
     while (this.player.stats.exp >= this.player.stats.maxExp) {
       this.player.stats.exp -= this.player.stats.maxExp;
@@ -1790,6 +1807,15 @@ export class GameWorld {
       }
       this.addBattleLog(`【天赋觉醒】大侠升至 Lv.${this.player.stats.level}，获得 1 点可用天赋点！可按 N 打开星盘自由分配！`, 'system');
     }
+
+    const newMaxSlots = this.getMaxInventorySlots();
+    if (newMaxSlots > oldMaxSlots) {
+      this.addDamagePopup(this.player.gridPos, `包裹扩容 +${newMaxSlots - oldMaxSlots}格!`, '#38bdf8', true);
+      this.addBattleLog(
+        `【包裹扩容】修仙体魄突破！你的随身包裹容量扩展至 ${newMaxSlots} 格 (新增 ${newMaxSlots - oldMaxSlots} 格存储空间)！`,
+        'system'
+      );
+    }
   }
 
   /**
@@ -1804,8 +1830,10 @@ export class GameWorld {
       }
     }
 
-    // 若背包容量达到或接近上限 (>= 38 格)，预先启动紧急智能腾挪
-    if (this.inventory.length >= 38 && !this.isEmergencyCleaning) {
+    const maxSlots = this.getMaxInventorySlots();
+
+    // 若背包容量达到或接近上限 (>= maxSlots - 2 格)，预先启动紧急智能腾挪
+    if (this.inventory.length >= maxSlots - 2 && !this.isEmergencyCleaning) {
       this.isEmergencyCleaning = true;
       try {
         this.emergencyPruneInventory(2);
@@ -1814,10 +1842,10 @@ export class GameWorld {
       }
     }
 
-    // 若依然达到或超过 40 格，进行最终强力腾挪兜底
-    if (this.inventory.length >= 40) {
+    // 若依然达到或超过上限格数，进行最终强力腾挪兜底
+    if (this.inventory.length >= maxSlots) {
       this.emergencyPruneInventory(2);
-      if (this.inventory.length >= 40) {
+      if (this.inventory.length >= maxSlots) {
         return false;
       }
     }
@@ -1827,11 +1855,13 @@ export class GameWorld {
   }
 
   private checkPlayerLootPickup(): void {
-    // 拾取前预检：若背包容量已达 33 格以上，预先自动清理防爆仓
-    if (this.inventory.length >= 33) {
+    const maxSlots = this.getMaxInventorySlots();
+
+    // 拾取前预检：若背包容量已达 80% 以上，预先自动清理防爆仓
+    if (this.inventory.length >= maxSlots - 7) {
       this.recycleWeakerOrEqualItems();
       const maxQ = this.autoConfig.autoRecycleMaxQuality ?? 2;
-      if (this.inventory.length >= 35) {
+      if (this.inventory.length >= maxSlots - 5) {
         this.recycleLowQualityItems(maxQ);
       }
     }
@@ -1855,11 +1885,11 @@ export class GameWorld {
             this.tryAutoEquipIfBetter(drop.item);
           }
 
-          // 拾取后若背包容量再次达到 35 格以上，顺手维护清理
-          if (this.inventory.length >= 35) {
+          // 拾取后若背包容量再次接近上限，顺手维护清理
+          if (this.inventory.length >= maxSlots - 5) {
             this.recycleWeakerOrEqualItems();
             const maxQ = this.autoConfig.autoRecycleMaxQuality ?? 2;
-            if (this.inventory.length >= 36) {
+            if (this.inventory.length >= maxSlots - 4) {
               this.recycleLowQualityItems(maxQ);
             }
           }
@@ -1872,7 +1902,7 @@ export class GameWorld {
     // 背包已满且无法腾挪时的节流提示 (每 3 秒最多提示一次，避免刷屏)
     if (hasFullBagWarning && (!this.lastFullBagWarnTick || this.currentTick - this.lastFullBagWarnTick >= 30)) {
       this.lastFullBagWarnTick = this.currentTick;
-      this.addBattleLog('【背包已满】随身包裹已达到 40/40 上限且无法自动腾挪，无法吸附拾取战利品！', 'system');
+      this.addBattleLog(`【背包已满】随身包裹已达到 ${maxSlots}/${maxSlots} 上限且无法自动腾挪，无法吸附拾取战利品！`, 'system');
       this.addDamagePopup(this.player.gridPos, '包裹已满!', '#ef4444', true);
     }
   }
@@ -2216,8 +2246,9 @@ export class GameWorld {
   unequipItem(slot: EquipSlot): boolean {
     const item = this.equipped[slot];
     if (!item) return false;
-    if (this.inventory.length >= 40) {
-      this.addBattleLog('【背包已满】无法卸下装备！', 'system');
+    const maxSlots = this.getMaxInventorySlots();
+    if (this.inventory.length >= maxSlots) {
+      this.addBattleLog(`【背包已满】随身包裹已达 ${maxSlots} 格上限，无法卸下装备！`, 'system');
       return false;
     }
     delete this.equipped[slot];
@@ -2462,22 +2493,23 @@ export class GameWorld {
    * 终极防爆仓腾挪：背包满时层层递进清理，确保绝对不卡死无法拾取
    */
   emergencyPruneInventory(neededSlots: number = 2): number {
+    const maxSlots = this.getMaxInventorySlots();
     let pruned = 0;
     // 1. 先尝试一键穿戴与智能回收弱装
     this.oneKeyEquipBest();
     const res1 = this.recycleWeakerOrEqualItems(false);
     pruned += res1.count;
-    if (this.inventory.length <= 40 - neededSlots) return pruned;
+    if (this.inventory.length <= maxSlots - neededSlots) return pruned;
 
     // 2. 尝试回收蓝装及以下 (带防裸奔保护)
     const res2 = this.recycleLowQualityItems(2);
     pruned += res2.count;
-    if (this.inventory.length <= 40 - neededSlots) return pruned;
+    if (this.inventory.length <= maxSlots - neededSlots) return pruned;
 
     // 3. 尝试回收紫装及以下 (带防裸奔保护)
     const res3 = this.recycleLowQualityItems(3);
     pruned += res3.count;
-    if (this.inventory.length <= 40 - neededSlots) return pruned;
+    if (this.inventory.length <= maxSlots - neededSlots) return pruned;
 
     // 4. 终极兜底：若依然满格，查找非特戒的未穿戴闲置装备，按战力从低到高强制熔炼
     const candidates: { index: number; item: ItemInstance; power: number }[] = [];
@@ -2494,7 +2526,7 @@ export class GameWorld {
 
     candidates.sort((a, b) => a.power - b.power);
 
-    const neededToRemove = Math.min(candidates.length, this.inventory.length - (40 - neededSlots));
+    const neededToRemove = Math.min(candidates.length, this.inventory.length - (maxSlots - neededSlots));
     if (neededToRemove > 0) {
       const toRemoveIds = new Set(candidates.slice(0, neededToRemove).map(c => c.item.instanceId));
       let gainedGold = 0;

@@ -6,7 +6,10 @@
       <div class="flex items-center justify-between border-b border-legend-border pb-2">
         <div class="flex items-center gap-2">
           <span class="text-xl">🎒</span>
-          <span class="text-base font-bold text-gold-gradient">随身包裹 ({{ inventory.length }} / 40)</span>
+          <span class="text-base font-bold text-gold-gradient">随身包裹 ({{ inventory.length }} / {{ maxSlots }})</span>
+          <span v-if="maxSlots > 40" class="text-[10px] px-1.5 py-0.5 rounded bg-amber-950/80 text-amber-400 border border-amber-600/40 font-bold">
+            已扩容 {{ maxSlots - 40 }}格
+          </span>
         </div>
         <button 
           @click="$emit('close')"
@@ -17,11 +20,11 @@
       </div>
 
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <!-- 左侧 2 列：40 格网格 (5行 x 8列) -->
-        <div class="md:col-span-2 bg-zinc-950/90 p-3 rounded-lg border border-legend-border">
+        <!-- 左侧 2 列：动态格数网格 (每行 8 列，带顺滑滚动) -->
+        <div class="md:col-span-2 bg-zinc-950/90 p-3 rounded-lg border border-legend-border max-h-[380px] overflow-y-auto pr-1.5">
           <div class="grid grid-cols-8 gap-1.5">
             <div 
-              v-for="index in 40" 
+              v-for="index in maxSlots" 
               :key="index"
               @click="handleSelect(inventory[index - 1])"
               class="relative w-12 h-12 bg-zinc-900 rounded border flex items-center justify-center cursor-pointer transition-all hover:scale-105"
@@ -236,16 +239,21 @@
           </button>
         </div>
 
-        <span class="text-xs text-zinc-400 shrink-0">
-          容量: {{ inventory.length }} / 40
-        </span>
+        <div class="flex items-center gap-2 text-xs text-zinc-400 shrink-0">
+          <span v-if="maxSlots < 96" class="text-[10px] text-amber-400/80 hidden sm:inline">
+            (升至 Lv.{{ (Math.floor((props.player?.stats?.level || 1) / 10) + 1) * 10 }} 扩容+8格)
+          </span>
+          <span class="font-mono font-bold" :class="inventory.length >= maxSlots ? 'text-red-400 animate-pulse' : 'text-zinc-300'">
+            容量: {{ inventory.length }} / {{ maxSlots }}
+          </span>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { Entity, EquipSlot, ItemInstance, ItemQuality } from '../types/game';
 import { StatCalculator } from '../domain/StatCalculator';
 
@@ -264,6 +272,15 @@ const emit = defineEmits<{
   (e: 'oneKeyRecycleWeaker'): void;
   (e: 'oneKeyRecycleBlue'): void;
 }>();
+
+const maxSlots = computed(() => {
+  const level = props.player?.stats?.level || 1;
+  const tier = props.player?.stats?.ascensionTier || 0;
+  const levelRows = Math.floor(level / 10);
+  const tierRows = Math.floor(tier / 2);
+  const totalSlots = 40 + (levelRows + tierRows) * 8;
+  return Math.min(96, Math.max(40, totalSlots));
+});
 
 const getItemPower = (item?: ItemInstance | null) => {
   if (!item) return 0;

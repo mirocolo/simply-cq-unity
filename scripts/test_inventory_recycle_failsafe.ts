@@ -130,16 +130,17 @@ console.log('\n▶ Test 4: 模拟高频刷怪掉落连续拾取 100 件装备');
   }
 
   assert(pickupSuccessCount === 100, `连续拾取 100 次全部成功 (${pickupSuccessCount}/100)`);
-  assert(world.inventory.length <= 40, `最终背包容量 ${world.inventory.length} <= 40`);
+  assert(world.inventory.length <= world.getMaxInventorySlots(), `最终背包容量 ${world.inventory.length} <= ${world.getMaxInventorySlots()}`);
   assert(world.player.stats.gold > 0, `多次自动回收累计获得金币: ${world.player.stats.gold}`);
 }
 
 // ── Test 5: AutoPilot 自动拾取在背包满时的决策 ──
-console.log('\n▶ Test 5: AutoPilot 在开启 autoRecycle 时背包满 40 仍可主动寻路拾取');
+console.log('\n▶ Test 5: AutoPilot 在开启 autoRecycle 时背包满仍可主动寻路拾取');
 {
   const world = new GameWorld();
   world.inventory = [];
-  for (let i = 0; i < 40; i++) {
+  const maxSlots = world.getMaxInventorySlots();
+  for (let i = 0; i < maxSlots; i++) {
     world.inventory.push(makeTestItem('w_bronze_sword', `full_${i}`, 0));
   }
 
@@ -159,10 +160,50 @@ console.log('\n▶ Test 5: AutoPilot 在开启 autoRecycle 时背包满 40 仍�
     world.skills,
     world.autoConfig,
     world.currentTick,
-    () => true
+    () => true,
+    undefined,
+    undefined,
+    maxSlots
   );
 
   assert(action.type === 'move', `AutoPilot 在背包满且开启 autoRecycle 时正确发起拾取移动 (action: ${action.type})`);
+}
+
+// ── Test 6: 背包格数随等级与飞升平滑扩容测试 ──
+console.log('\n▶ Test 6: 背包格数随等级与境界突破平滑成长');
+{
+  const world = new GameWorld();
+
+  // Lv.1 0阶
+  world.player.stats.level = 1;
+  world.player.stats.ascensionTier = 0;
+  assert(world.getMaxInventorySlots() === 40, `Lv.1 基础 40 格 (实际 ${world.getMaxInventorySlots()})`);
+
+  // Lv.10 0阶
+  world.player.stats.level = 10;
+  assert(world.getMaxInventorySlots() === 48, `Lv.10 扩充至 48 格 (实际 ${world.getMaxInventorySlots()})`);
+
+  // Lv.20 1阶
+  world.player.stats.level = 20;
+  world.player.stats.ascensionTier = 1;
+  assert(world.getMaxInventorySlots() === 56, `Lv.20 1阶 扩充至 56 格 (实际 ${world.getMaxInventorySlots()})`);
+
+  // Lv.35 2阶
+  world.player.stats.level = 35;
+  world.player.stats.ascensionTier = 2;
+  assert(world.getMaxInventorySlots() === 72, `Lv.35 2阶 扩充至 72 格 (实际 ${world.getMaxInventorySlots()})`);
+
+  // Lv.60 6阶
+  world.player.stats.level = 60;
+  world.player.stats.ascensionTier = 6;
+  assert(world.getMaxInventorySlots() === 96, `Lv.60 6阶 扩充至上限 96 格 (实际 ${world.getMaxInventorySlots()})`);
+
+  // 升级时触发扩容飘字与日志
+  world.player.stats.level = 9;
+  world.player.stats.exp = world.player.stats.maxExp - 10;
+  world.addExp(20);
+  assert(world.player.stats.level === 10, '成功升至 Lv.10');
+  assert(world.battleLogs.some(l => l.text.includes('【包裹扩容】')), '升级到 10 级时正确触发包裹扩容系统播报');
 }
 
 console.log(`\n${'='.repeat(50)}`);
