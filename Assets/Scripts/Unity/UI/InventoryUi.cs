@@ -33,6 +33,7 @@ namespace SimplyCQ.Unity
 
         private readonly World _world;
         private readonly IItemCatalog _catalog;
+        private readonly ShopTuning _shop;
         private readonly List<Intent> _pending = new List<Intent>();
 
         private bool _bagOpen = true;
@@ -50,13 +51,17 @@ namespace SimplyCQ.Unity
         private GUIStyle _tipTitle;
         private GUIStyle _tipBody;
 
+        /// <summary>按品质缓存的文字样式（白/绿/蓝/紫各一份）。</summary>
+        private readonly GUIStyle[] _qualityLabels = new GUIStyle[ItemQualityRules.Count];
+
         private static Rect _bagRect;
         private static Rect _charRect;
 
-        public InventoryUi(World world, IItemCatalog catalog)
+        public InventoryUi(World world, IItemCatalog catalog, ShopTuning shop)
         {
             _world = world;
             _catalog = catalog;
+            _shop = shop != null ? shop : new ShopTuning();
             if (world != null) world.Events.Subscribe<PickupRefused>(OnPickupRefused);
         }
 
@@ -167,6 +172,7 @@ namespace SimplyCQ.Unity
                     {
                         ItemDef def = _catalog != null ? _catalog.Get(item.DefId) : null;
                         DrawIcon(cellRect, item, def);
+                        QualityStripe(cellRect, item.Quality);
                         if (item.Count > 1)
                             GUI.Label(new Rect(cellRect.xMax - UiScale.Px(20f), cellRect.yMax - UiScale.Px(18f), UiScale.Px(20f), UiScale.Px(16f)),
                                 item.Count.ToString(), _small);
@@ -283,10 +289,11 @@ namespace SimplyCQ.Unity
 
                 if (def != null)
                     DrawIcon(new Rect(row.x + UiScale.Px(3f), row.y + UiScale.Px(3f), UiScale.Px(21f), UiScale.Px(21f)), worn, def);
+                if (worn != null) QualityStripe(row, worn.Quality);
 
                 string text = SlotNames[i] + "     " + (def != null ? def.Name : "（空）");
                 GUI.Label(new Rect(row.x + UiScale.Px(28f), row.y + UiScale.Px(5f), row.width, UiScale.Px(20f)),
-                    text, def != null ? _value : _small);
+                    text, def != null ? QualityLabel(worn.Quality) : _small);
 
                 if (hover && leftDown && worn != null)
                     Queue(Intent.BagAction(player.Id, IntentKind.UnequipItem, i));
@@ -308,10 +315,10 @@ namespace SimplyCQ.Unity
             {
                 ItemDef def = _catalog.Get(worn.DefId);
                 if (def == null) continue;
-                minDc += def.MinDc;
-                maxDc += def.MaxDc;
-                ac += def.Ac;
-                hp += def.BonusHp;
+                minDc += ItemQualityRules.Scale(def.MinDc, worn.Quality);
+                maxDc += ItemQualityRules.Scale(def.MaxDc, worn.Quality);
+                ac += ItemQualityRules.Scale(def.Ac, worn.Quality);
+                hp += ItemQualityRules.Scale(def.BonusHp, worn.Quality);
             }
         }
 
@@ -341,6 +348,28 @@ namespace SimplyCQ.Unity
             Border(r, UiColor.Srgb(0.44f, 0.39f, 0.26f, 1f));
         }
 
+        /// <summary>格子/那一行左边的一条品质色带。白装不画（保持金色框那套原生观感）。</summary>
+        private void QualityStripe(Rect r, ItemQuality q)
+        {
+            if (q == ItemQuality.White) return;
+            Fill(new Rect(r.x, r.y, UiScale.Px(3f), r.height), ItemQualityStyle.Srgb(q));
+        }
+
+        /// <summary>按品质取文字样式（懒加载，第一次用到才建）。</summary>
+        private GUIStyle QualityLabel(ItemQuality q)
+        {
+            int i = (int)q;
+            if (i < 0 || i >= _qualityLabels.Length) i = 0;
+            if (_qualityLabels[i] == null)
+            {
+                GUIStyle s = new GUIStyle(GUI.skin.label);
+                s.fontSize = UiScale.Font(14);
+                s.normal.textColor = ItemQualityStyle.Srgb((ItemQuality)i);
+                _qualityLabels[i] = s;
+            }
+            return _qualityLabels[i];
+        }
+
         private void DrawIcon(Rect cell, ItemInstance item, ItemDef def)
         {
             ItemType type = def != null ? def.Type : ItemType.Material;
@@ -363,12 +392,21 @@ namespace SimplyCQ.Unity
         {
             if (def == null) return;
 
+            // 显示的是【这一件】的实际数值（按品质放大过），和面板/战斗用的是同一套换算 ——
+            // 否则会出现"提示说 +3、面板只涨了 +2"。
+            ItemQuality q = item != null ? item.Quality : ItemQuality.White;
+
             string body = "";
             if (def.IsEquip)
             {
-                if (def.MinDc > 0 || def.MaxDc > 0) body += "攻击 " + def.MinDc + "-" + def.MaxDc + "   ";
-                if (def.Ac > 0) body += "防御 " + def.Ac + "   ";
-                if (def.BonusHp > 0) body += "生命 +" + def.BonusHp + "   ";
+                int minDc = ItemQualityRules.Scale(def.MinDc, q);
+                int maxDc = ItemQualityRules.Scale(def.MaxDc, q);
+                int ac = ItemQualityRules.Scale(def.Ac, q);
+                int hp = ItemQualityRules.Scale(def.BonusHp, q);
+
+                if (minDc > 0 || maxDc > 0) body += "攻击 " + minDc + "-" + maxDc + "   ";
+                if (ac > 0) body += "防御 " + ac + "   ";
+                if (hp > 0) body += "生命 +" + hp + "   ";
                 if (def.LevelReq > 1) body += "\n要求等级 " + def.LevelReq;
                 body += "\n左键穿上";
             }
@@ -384,7 +422,9 @@ namespace SimplyCQ.Unity
             }
 
             if (!string.IsNullOrEmpty(def.Description)) body += "\n" + def.Description;
-            body += "\n售价 " + (def.Price / 2) + " 金币";
+
+            // 售价走和商店同一个算法。以前这里写的是 def.Price / 2，和实际回收价（×0.4）对不上。
+            body += "\n售价 " + _shop.SellPriceOf(def, q) + " 金币";
 
             int lines = body.Split('\n').Length;
             float lw = 240f;
@@ -397,10 +437,14 @@ namespace SimplyCQ.Unity
             if (r.yMax > Screen.height) r.y = Screen.height - r.height - UiScale.Px(4f);
 
             Fill(r, UiColor.Srgb(0.04f, 0.04f, 0.05f, 0.97f));
-            Border(r, UiColor.Srgb(0.70f, 0.60f, 0.32f, 1f));
+            Border(r, def.IsEquip ? ItemQualityStyle.Srgb(q) : UiColor.Srgb(0.70f, 0.60f, 0.32f, 1f));
 
-            string name = def.Name + (item != null && item.Count > 1 ? "  x" + item.Count : "");
-            GUI.Label(new Rect(r.x + UiScale.Px(7f), r.y + UiScale.Px(4f), r.width, UiScale.Px(18f)), name, _tipTitle);
+            string name = ItemQualityStyle.TitledName(q, def.Name)
+                          + (item != null && item.Count > 1 ? "  x" + item.Count : "");
+
+            // 装备走品质色（QualityLabel 本身就是 14 号字，和 _tipTitle 一致），材料/药水走原来的金色
+            GUI.Label(new Rect(r.x + UiScale.Px(7f), r.y + UiScale.Px(4f), r.width, UiScale.Px(18f)),
+                name, def.IsEquip ? QualityLabel(q) : _tipTitle);
             GUI.Label(new Rect(r.x + UiScale.Px(7f), r.y + UiScale.Px(26f), r.width, r.height), body, _tipBody);
         }
 

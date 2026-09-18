@@ -76,7 +76,9 @@ namespace SimplyCQ.Domain
                 return false;
             }
 
-            int price = def.Price > 0 ? def.Price : 1;
+            // 商人的货一律是白板 —— 好东西不卖，靠打（这也让品质倍率只在掉落侧生效）
+            ShopTuning bt = tuning != null ? tuning : new ShopTuning();
+            int price = bt.BuyPriceOf(def, ItemQuality.White);
             if (buyer.Gold < price)
             {
                 Refuse(world, buyer, "金币不够（要 " + price + "，你有 " + buyer.Gold + "）");
@@ -89,7 +91,7 @@ namespace SimplyCQ.Domain
             }
 
             buyer.Gold -= price;
-            buyer.Bag.Add(def, 1);
+            buyer.Bag.Add(def, 1, ItemQuality.White);
 
             world.Events.Publish(new ItemBought { By = buyer.Id, DefId = def.Id, Count = 1, Gold = price });
             world.Events.Publish(new InventoryChanged { Id = buyer.Id });
@@ -118,7 +120,7 @@ namespace SimplyCQ.Domain
             }
 
             ShopTuning t = tuning != null ? tuning : new ShopTuning();
-            int price = t.SellPriceOf(def);
+            int price = t.SellPriceOf(def, slot.Quality);
 
             // 按格子精确移除：界面传进来的就是那一格，按 id 移除可能动到别的堆
             if (!seller.Bag.RemoveAt(bagSlot, 1))

@@ -10,8 +10,10 @@ namespace SimplyCQ.Domain
     public sealed class SaveData
     {
         public const int Version1 = 1;
+        /// <summary>v2：装备带上品质（白/绿/蓝/紫）。v1 旧档读进来品质一律按白色处理。</summary>
+        public const int Version2 = 2;
 
-        public int Version = Version1;
+        public int Version = Version2;
         public int Seed;
         public string MapId;
         public string SavedAt;
@@ -38,5 +40,23 @@ namespace SimplyCQ.Domain
         /// <summary>装备按部位存（下标就是 EquipSlot）。</summary>
         public string[] GearIds = new string[ItemDef.SlotCount];
         public int[] GearCounts = new int[ItemDef.SlotCount];
+
+        /// <summary>背包每格的品质（ItemQuality 的整数形式）。v1 存档里没有这一段 -> null -> 全部当白色。</summary>
+        public int[] BagQualities = new int[Inventory.SlotCount];
+
+        /// <summary>每件已穿装备的品质。</summary>
+        public int[] GearQualities = new int[ItemDef.SlotCount];
+
+        /// <summary>
+        /// 安全地读一格品质：数组缺失（v1 旧档）、越界、或者被手改成了奇怪的数字，
+        /// 一律退化成白色 —— 读档永远不该因为品质崩掉。
+        /// </summary>
+        public static ItemQuality QualityAt(int[] qualities, int index)
+        {
+            if (qualities == null || index < 0 || index >= qualities.Length) return ItemQuality.White;
+            int v = qualities[index];
+            if (v < 0 || v >= ItemQualityRules.Count) return ItemQuality.White;
+            return (ItemQuality)v;
+        }
     }
 }

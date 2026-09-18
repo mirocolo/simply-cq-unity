@@ -33,5 +33,9 @@
     "levelUpDcGain": 2,
     "levelUpAcGain": 1
   },
-  "shopSellRatio": 0.4
+  "shopSellRatio": 0.4,
+  "loot": {
+    "qualityWeights": [100, 22, 6, 1.2],
+    "qualityLevelBonus": 0.05
+  }
 }

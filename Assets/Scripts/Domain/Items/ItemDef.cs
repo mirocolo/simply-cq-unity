@@ -40,6 +40,13 @@ namespace SimplyCQ.Domain
         public int LevelReq = 1;
         public string ClassReq;
 
+        /// <summary>
+        /// 掉落时的品质下限（物品表 `minQuality`）。默认白装；
+        /// 想做得「这件武器最低也是稀有的」就在这里写，比如以后的头目专属装备。
+        /// 注意：这是【下限】不是固定值 —— 摇到更高的品质照样成立。
+        /// </summary>
+        public ItemQuality MinQuality = ItemQuality.White;
+
         // ---- 装备加成 ----
         public int MinDc, MaxDc;
         public int Mc, Sc;

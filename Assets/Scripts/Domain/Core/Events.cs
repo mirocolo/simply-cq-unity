@@ -133,6 +133,7 @@ namespace SimplyCQ.Domain
         public string DefId;
         public int Count;
         public TilePos At;
+        public ItemQuality Quality;
     }
 
     public struct ItemPicked
@@ -140,6 +141,7 @@ namespace SimplyCQ.Domain
         public ActorId By;
         public string DefId;
         public int Count;
+        public ItemQuality Quality;
     }
 
     /// <summary>捡不起来：背包满 / 超重 / 数据表里没这件东西。</summary>

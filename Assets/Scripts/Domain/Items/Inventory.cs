@@ -55,8 +55,12 @@ namespace SimplyCQ.Domain
             return FreeSpaceFor(def) >= count;
         }
 
-        /// <summary>加物品，返回真正放进去的数量（可能小于 count）。</summary>
-        public int Add(ItemDef def, int count)
+        /// <summary>
+        /// 加物品，返回真正放进去的数量（可能小于 count）。
+        /// quality 只对不可堆叠的装备有意义 —— 能堆叠的东西恒为白色，
+        /// 所以不会出现「一堆药水里混进一件紫的」。
+        /// </summary>
+        public int Add(ItemDef def, int count, ItemQuality quality = ItemQuality.White)
         {
             if (def == null || count <= 0) return 0;
             int stack = def.MaxStack < 1 ? 1 : def.MaxStack;
@@ -67,7 +71,7 @@ namespace SimplyCQ.Domain
                 for (int i = 0; i < SlotCount && added < count; i++)
                 {
                     ItemInstance s = Slots[i];
-                    if (s == null || s.DefId != def.Id) continue;
+                    if (s == null || s.DefId != def.Id || s.Quality != quality) continue;
                     int can = stack - s.Count;
                     if (can <= 0) continue;
                     int put = count - added < can ? count - added : can;
@@ -80,7 +84,7 @@ namespace SimplyCQ.Domain
             {
                 if (Slots[i] != null) continue;
                 int put = count - added < stack ? count - added : stack;
-                Slots[i] = new ItemInstance(def.Id, put);
+                Slots[i] = new ItemInstance(def.Id, put, stack > 1 ? ItemQuality.White : quality);
                 added += put;
             }
 

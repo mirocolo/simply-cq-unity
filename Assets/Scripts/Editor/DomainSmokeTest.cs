@@ -243,6 +243,88 @@ namespace SimplyCQ.EditorTools
             }
             Check(badDropRefs == 0, "掉落表引用的物品都能在 items.json 里找到");
 
+            // ---------------- M5b 装备品质：数据自检 ----------------
+            int badEquip = 0, badRange = 0, badPrice = 0;
+            int equipCount = 0;
+            foreach (ItemDef def in db.Items.All)
+            {
+                if (def.MinDc > def.MaxDc) badRange++;
+                if (def.Price <= 0 && def.Type != ItemType.Quest) badPrice++;
+                if (!def.IsEquip) continue;
+
+                equipCount++;
+                // 一件"装备"却什么也不加，多半是数据填漏了
+                if (def.MinDc == 0 && def.MaxDc == 0 && def.Ac == 0 && def.Mac == 0
+                    && def.Mc == 0 && def.Sc == 0 && def.BonusHp == 0 && def.BonusMp == 0) badEquip++;
+            }
+            Check(equipCount > 0, "items.json 里有 " + equipCount + " 件装备");
+            Check(badRange == 0, "所有物品的攻击下限不大于上限");
+            Check(badPrice == 0, "所有物品都填了价格");
+            Check(badEquip == 0, "没有「什么属性都不加」的空装备");
+
+            // 商店只卖白装、精良货 —— 稀有 / 史诗只能打怪爆。
+            // 这条规则写在这里，是为了以后往 npcs.json 里塞蓝装时会被立刻拦下来。
+            int premiumInShop = 0;
+            foreach (GameMap m in db.AllMaps)
+            {
+                for (int i = 0; i < m.Npcs.Count; i++)
+                {
+                    NpcDef npc = db.GetNpc(m.Npcs[i].NpcId);
+                    if (npc == null) continue;
+                    for (int k = 0; k < npc.Stock.Count; k++)
+                    {
+                        ItemDef stocked = db.Items.Get(npc.Stock[k]);
+                        if (stocked == null) continue;
+                        if ((int)stocked.MinQuality > (int)ItemQuality.Green) premiumInShop++;
+                    }
+                }
+            }
+            Check(premiumInShop == 0, "商店不卖稀有 / 史诗货（好东西靠打）");
+
+            Check(db.Loot != null && db.Loot.qualityWeights != null
+                  && db.Loot.qualityWeights.Length == ItemQualityRules.Count,
+                "balance.json 的 loot 段加载成功（" + (db.Loot != null && db.Loot.qualityWeights != null
+                    ? string.Join("/", System.Array.ConvertAll(db.Loot.qualityWeights, f => f.ToString("0.#")))
+                    : "-") + "）");
+
+            if (db.Loot != null && db.Loot.qualityWeights != null && db.Loot.qualityWeights.Length == ItemQualityRules.Count)
+            {
+                bool monotone = true;
+                for (int i = 1; i < db.Loot.qualityWeights.Length; i++)
+                    if (db.Loot.qualityWeights[i] > db.Loot.qualityWeights[i - 1]) monotone = false;
+                Check(monotone, "品质权重单调递减（越稀有越难出）");
+
+                // 走真实的掉落路径（DropRoller + 真物品表），别只单独测 LootTuning.Roll ——
+                // 品质下限是在 DropRoller 里贴上去的，只测 Roll 测不到那一步。
+                List<ItemDrop> probeTable = new List<ItemDrop>();
+                foreach (ItemDef def in db.Items.All)
+                {
+                    if (!def.IsEquip) continue;
+                    ItemDrop d = new ItemDrop();
+                    d.ItemId = def.Id; d.Chance = 1f; d.Min = 1; d.Max = 1;
+                    probeTable.Add(d);
+                }
+
+                Rng probe = new Rng((uint)db.Balance.worldSeed);
+                List<ItemDropResult> probeDrops = new List<ItemDropResult>();
+                int lowerThanFloor = 0, rolled = 0, nonWhite = 0;
+                for (int t = 0; t < 400; t++)
+                {
+                    DropRoller.Roll(probeTable, probe, probeDrops, db.Items, db.Loot, 6);
+                    for (int k = 0; k < probeDrops.Count; k++)
+                    {
+                        ItemDef def = db.Items.Get(probeDrops[k].ItemId);
+                        if (def == null) continue;
+                        if ((int)probeDrops[k].Quality < (int)def.MinQuality) lowerThanFloor++;
+                        if (probeDrops[k].Quality != ItemQuality.White) nonWhite++;
+                        rolled++;
+                    }
+                }
+                Check(rolled > 0 && lowerThanFloor == 0,
+                    "走真实掉落路径摇 " + rolled + " 次，没有一次低于物品表写的 minQuality 下限");
+                Check(nonWhite > 0, "装备确实会掉出非白色的（" + nonWhite + " / " + rolled + "）");
+            }
+
             Entity hero = db.CreatePlayer();
             Check(hero.Bag != null && hero.Gear != null, "玩家出生自带背包和装备栏");
             Check(hero.Bag.UsedSlots > 0, "新手包里有 " + hero.Bag.UsedSlots + " 格东西");
@@ -409,7 +491,7 @@ namespace SimplyCQ.EditorTools
                             "买 1 件扣 " + buyDef.Price + " 金（" + goldBefore + " -> " + trader.Gold + "）");
                         Check(trader.Bag.IndexOf(buyId) >= 0, "买到的东西进了背包");
 
-                        int sellPrice = db.Shop.SellPriceOf(buyDef);
+                        int sellPrice = db.Shop.SellPriceOf(buyDef, ItemQuality.White);
                         int bagIndex = trader.Bag.IndexOf(buyId);
                         int goldBeforeSell = trader.Gold;
                         List<Intent> sellActs = new List<Intent>();
@@ -523,7 +605,12 @@ namespace SimplyCQ.EditorTools
                 before.Hp = 200;
 
                 int swordSlot = before.Bag.IndexOf("wp_wood");
-                if (swordSlot >= 0) ItemSystem.Equip(saveSim.World, before, swordSlot, db.Items);
+                if (swordSlot >= 0)
+                {
+                    // 故意给它一个史诗品质，验一验品质能不能扛过 F5/F9
+                    before.Bag.At(swordSlot).Quality = ItemQuality.Purple;
+                    ItemSystem.Equip(saveSim.World, before, swordSlot, db.Items);
+                }
                 ItemDef hideForSave = db.Items.Get("mat_hide");
                 if (hideForSave != null) before.Bag.Add(hideForSave, 4);
 
@@ -533,6 +620,8 @@ namespace SimplyCQ.EditorTools
                 Check(json.Contains("\"Level\": 7"), "JSON 里能看到等级");
 
                 SaveData back = JsonUtility.FromJson<SaveData>(json);
+                Check(back.Version == SaveData.Version2 && back.GearQualities != null,
+                    "存档版本升到 v2 且带上了品质数组");
 
                 Simulation loadSim = db.CreateSimulation(4321u);
                 Entity after = db.CreatePlayer();
@@ -543,8 +632,12 @@ namespace SimplyCQ.EditorTools
 
                 Check(SaveService.Apply(back, loadSim.World, db.Items), "读档应用成功");
                 Check(after.Level == 7 && after.Gold == 555, "等级/金币恢复（Lv" + after.Level + " " + after.Gold + " 金）");
-                Check(after.BaseMinDc == 12 && after.MinDc == 14,
-                    "基础属性恢复且装备加成重算（基础 " + after.BaseMinDc + " -> 有效 " + after.MinDc + "）");
+
+                ItemInstance loadedWeapon = after.Gear.Get(EquipSlot.Weapon);
+                Check(loadedWeapon != null && loadedWeapon.Quality == ItemQuality.Purple,
+                    "史诗品质扛过了存档往返（实际 " + (loadedWeapon != null ? ItemQualityRules.DisplayName(loadedWeapon.Quality) : "-") + "）");
+                Check(after.BaseMinDc == 12 && after.MinDc == 16,
+                    "基础属性恢复且按品质重算装备加成（基础 " + after.BaseMinDc + " -> 有效 " + after.MinDc + "）");
                 Check(after.Gear.Get(EquipSlot.Weapon) != null, "装备栏恢复");
                 Check(after.Bag.IndexOf("mat_hide") >= 0, "背包恢复");
                 Check(after.Pos == before.Pos, "位置恢复（" + after.Pos + "）");

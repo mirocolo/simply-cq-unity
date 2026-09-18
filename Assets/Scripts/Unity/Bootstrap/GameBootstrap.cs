@@ -156,7 +156,7 @@ namespace SimplyCQ.Unity
             _cameraRig.Snap();
 
             _input = new PlayerInputSource();
-            _inventoryUi = new InventoryUi(_simulation.World, _database.Items);
+            _inventoryUi = new InventoryUi(_simulation.World, _database.Items, _database.Shop);
             _inventoryUi.TickRate = _tickRate;   // 必须在这之后赋值，否则 Awake 直接 NRE
             _shopUi = new ShopUi(_simulation.World, _database.Items, _database.Shop);
 

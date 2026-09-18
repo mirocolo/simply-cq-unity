@@ -6,7 +6,8 @@ namespace SimplyCQ.Unity
     /// <summary>
     /// 地面上的名字：掉落物 + NPC。
     /// 掉落物只在玩家附近显示（免得满屏是字），按类型上色：
-    /// 金币金、装备蓝、药水绿、材料灰；NPC 始终显示名字（金色）。
+    /// 金币金、药水绿、材料灰；**装备按品质上色并标出品质名**（普通/精良/稀有/史诗）。
+    /// NPC 始终显示名字（金色）。
     /// </summary>
     public sealed class LootLabelOverlay
     {
@@ -19,11 +20,11 @@ namespace SimplyCQ.Unity
         private readonly Camera _camera;
 
         private GUIStyle _gold;
-        private GUIStyle _equip;
         private GUIStyle _consumable;
         private GUIStyle _material;
         private GUIStyle _unknown;
         private GUIStyle _npc;
+        private readonly GUIStyle[] _quality = new GUIStyle[ItemQualityRules.Count];
 
         public LootLabelOverlay(World world, EntityViewRegistry views, IItemCatalog catalog, Camera camera)
         {
@@ -64,8 +65,14 @@ namespace SimplyCQ.Unity
                 if (e.Count > 1) text += " x" + e.Count;
 
                 ItemType type = def != null ? def.Type : ItemType.Material;
-                GUIStyle style = type == ItemType.Equip ? _equip
-                               : type == ItemType.Consumable ? _consumable
+                if (type == ItemType.Equip)
+                {
+                    // 地上的装备按品质上色 + 标品质名 —— 不用捡起来就知道爆了个好东西
+                    Label(e, ItemQualityStyle.TitledName(e.Quality, text), QualityStyle(e.Quality));
+                    continue;
+                }
+
+                GUIStyle style = type == ItemType.Consumable ? _consumable
                                : type == ItemType.Material ? _material
                                : _unknown;
 
@@ -89,11 +96,19 @@ namespace SimplyCQ.Unity
         {
             if (_gold != null) return;
             _gold = Make(UiColor.Srgb(1f, 0.86f, 0.25f));
-            _equip = Make(UiColor.Srgb(0.45f, 0.78f, 1f));
             _consumable = Make(UiColor.Srgb(0.55f, 1f, 0.60f));
             _material = Make(UiColor.Srgb(0.82f, 0.82f, 0.78f));
             _unknown = Make(UiColor.Srgb(1f, 0.55f, 0.35f));
             _npc = Make(UiColor.Srgb(1f, 0.93f, 0.60f));
+        }
+
+        /// <summary>装备按品质取样式（懒加载）。</summary>
+        private GUIStyle QualityStyle(ItemQuality q)
+        {
+            int i = (int)q;
+            if (i < 0 || i >= _quality.Length) i = 0;
+            if (_quality[i] == null) _quality[i] = Make(ItemQualityStyle.Srgb((ItemQuality)i));
+            return _quality[i];
         }
 
         private static GUIStyle Make(Color color)

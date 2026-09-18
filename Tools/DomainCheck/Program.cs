@@ -37,6 +37,7 @@ namespace DomainCheck
             TestEquipment();
             TestItemPickup();
             TestDropRoller();
+            TestItemQuality();
             TestConsumable();
             TestLootLoop();
             TestMapSwitch();
@@ -941,6 +942,187 @@ namespace DomainCheck
                 if (results[0].Count < 2 || results[0].Count > 5) inRange = false;
             }
             Check(inRange, "数量落在 min..max 区间内");
+        }
+
+        // ---------------------------------------------------------------- M5b 装备品质
+
+        private static void TestItemQuality()
+        {
+            Console.WriteLine("[装备品质]");
+
+            // ---- 规则本身 ----
+            Check(ItemQualityRules.PriceMultiplier(ItemQuality.White) < ItemQualityRules.PriceMultiplier(ItemQuality.Green)
+               && ItemQualityRules.PriceMultiplier(ItemQuality.Green) < ItemQualityRules.PriceMultiplier(ItemQuality.Blue)
+               && ItemQualityRules.PriceMultiplier(ItemQuality.Blue) < ItemQualityRules.PriceMultiplier(ItemQuality.Purple),
+                "价格倍率随品质严格递增");
+
+            Check(ItemQualityRules.StatMultiplier(ItemQuality.White) < ItemQualityRules.StatMultiplier(ItemQuality.Green)
+               && ItemQualityRules.StatMultiplier(ItemQuality.Green) < ItemQualityRules.StatMultiplier(ItemQuality.Blue)
+               && ItemQualityRules.StatMultiplier(ItemQuality.Blue) < ItemQualityRules.StatMultiplier(ItemQuality.Purple),
+                "属性倍率随品质严格递增");
+
+            Check(ItemQualityRules.Scale(0, ItemQuality.Purple) == 0, "0 属性放大还是 0");
+            Check(ItemQualityRules.Scale(4, ItemQuality.White) == 4, "白装属性原样");
+            Check(ItemQualityRules.Scale(4, ItemQuality.Purple) == 8, "史诗 4 -> 8（1.9 倍，实际 " + ItemQualityRules.Scale(4, ItemQuality.Purple) + "）");
+            Check(ItemQualityRules.Parse("purple") == ItemQuality.Purple
+               && ItemQualityRules.Parse("BLUE") == ItemQuality.Blue
+               && ItemQualityRules.Parse("") == ItemQuality.White
+               && ItemQualityRules.Parse("乱七八糟") == ItemQuality.White,
+                "品质字符串解析（含空串 / 脏数据退回白色）");
+
+            Check(ItemQualityRules.Max(ItemQuality.Blue, ItemQuality.Green) == ItemQuality.Blue,
+                "取较高的品质");
+
+            // ---- 掉落时摇品质 ----
+            TestCatalog cat = new TestCatalog();
+            cat.Equip("sword", EquipSlot.Weapon, 6, 10, 0);
+            cat.Equip("relic", EquipSlot.Weapon, 6, 10, 0, 1, 0, ItemQuality.Blue);   // 最低稀有
+            cat.Potion("pot", 30);
+
+            LootTuning tuning = new LootTuning();
+            tuning.Clamp();
+
+            List<ItemDrop> table = new List<ItemDrop>();
+            table.Add(MakeDrop("sword", 1f));
+            table.Add(MakeDrop("relic", 1f));
+            table.Add(MakeDrop("pot", 1f));
+
+            Rng rng = new Rng(20240617u);
+            List<ItemDropResult> results = new List<ItemDropResult>();
+            int[] swordCounts = new int[ItemQualityRules.Count];
+            bool potionAlwaysWhite = true;
+            bool relicNeverBelowFloor = true;
+
+            for (int i = 0; i < 4000; i++)
+            {
+                DropRoller.Roll(table, rng, results, cat, tuning, 3);
+                for (int k = 0; k < results.Count; k++)
+                {
+                    if (results[k].ItemId == "sword") swordCounts[(int)results[k].Quality]++;
+                    if (results[k].ItemId == "pot" && results[k].Quality != ItemQuality.White) potionAlwaysWhite = false;
+                    if (results[k].ItemId == "relic" && (int)results[k].Quality < (int)ItemQuality.Blue) relicNeverBelowFloor = false;
+                }
+            }
+
+            Check(potionAlwaysWhite, "药水永远不会摇出品质（可堆叠物恒为白色）");
+            Check(relicNeverBelowFloor, "物品表写了 minQuality: blue，就绝不会掉出白装或绿装");
+
+            Check(swordCounts[(int)ItemQuality.White] > swordCounts[(int)ItemQuality.Green]
+               && swordCounts[(int)ItemQuality.Green] > swordCounts[(int)ItemQuality.Blue]
+               && swordCounts[(int)ItemQuality.Blue] > swordCounts[(int)ItemQuality.Purple],
+                "品质分布单调递减：白 " + swordCounts[0] + " > 绿 " + swordCounts[1]
+                + " > 蓝 " + swordCounts[2] + " > 紫 " + swordCounts[3]);
+            Check(swordCounts[(int)ItemQuality.Purple] > 0, "4000 次里确实出过史诗（实际 " + swordCounts[3] + " 件）");
+
+            // 同一个种子 -> 同一串品质（可复现）
+            List<ItemDrop> onlySword = new List<ItemDrop>();
+            onlySword.Add(MakeDrop("sword", 1f));
+            Rng r1 = new Rng(99u), r2 = new Rng(99u);
+            bool same = true;
+            for (int i = 0; i < 60; i++)
+            {
+                DropRoller.Roll(onlySword, r1, results, cat, tuning, 3);
+                ItemQuality q1 = results[0].Quality;
+                DropRoller.Roll(onlySword, r2, results, cat, tuning, 3);
+                if (results[0].Quality != q1) same = false;
+            }
+            Check(same, "同种子 -> 同品质序列（可复现）");
+
+            // 怪越高级越容易出好货
+            Check(tuning.WeightOf(ItemQuality.Purple, 12) > tuning.WeightOf(ItemQuality.Purple, 1),
+                "怪越高级，史诗权重越高（Lv1 -> Lv12）");
+            Check(tuning.WeightOf(ItemQuality.White, 12) == tuning.WeightOf(ItemQuality.White, 1),
+                "白装不吃等级加成");
+
+            // 没有物品表时退化成白装，不会崩
+            DropRoller.Roll(onlySword, new Rng(7u), results, null, null, 5);
+            Check(results.Count == 1 && results[0].Quality == ItemQuality.White,
+                "没传物品表时退化成白装，不抛异常");
+
+            // ---- 品质真的进属性 ----
+            GameMap map = OpenMap(8);
+            World world = new World(map, 1u, new EventBus());
+
+            int prevMin = -1, prevMax = -1;
+            bool rising = true;
+            for (int i = 0; i < ItemQualityRules.Count; i++)
+            {
+                Entity hero = MakeFullPlayer(cat, new TilePos(1, 1));
+                hero.Bag.Add(cat.Get("sword"), 1, (ItemQuality)i);
+                ItemSystem.Equip(world, hero, hero.Bag.IndexOf("sword"), cat);
+                if (hero.MinDc <= prevMin || hero.MaxDc <= prevMax) rising = false;
+                prevMin = hero.MinDc; prevMax = hero.MaxDc;
+            }
+            Check(rising, "同一件武器：品质越高，穿上的攻击力越高（白 -> 紫，最后 " + prevMin + "-" + prevMax + "）");
+
+            // 穿脱一个来回，品质不能丢
+            Entity keeper = MakeFullPlayer(cat, new TilePos(2, 2));
+            keeper.Bag.Add(cat.Get("sword"), 1, ItemQuality.Purple);
+            Check(ItemSystem.Equip(world, keeper, keeper.Bag.IndexOf("sword"), cat), "穿上史诗武器");
+            Check(keeper.Gear.Get(EquipSlot.Weapon).Quality == ItemQuality.Purple, "装备栏里记着它是史诗");
+            Check(ItemSystem.Unequip(world, keeper, EquipSlot.Weapon, cat), "卸下史诗武器");
+            Check(keeper.Bag.At(keeper.Bag.IndexOf("sword")).Quality == ItemQuality.Purple,
+                "卸回背包后品质没变成白色");
+
+            // 换装：被换下来的那件也要保持自己的品质
+            Entity swapper = MakeFullPlayer(cat, new TilePos(3, 3));
+            swapper.Bag.Add(cat.Get("sword"), 1, ItemQuality.Blue);
+            ItemSystem.Equip(world, swapper, swapper.Bag.IndexOf("sword"), cat);
+            swapper.Bag.Add(cat.Get("relic"), 1, ItemQuality.White);
+            Check(ItemSystem.Equip(world, swapper, swapper.Bag.IndexOf("relic"), cat), "换上另一件武器");
+            Check(swapper.Bag.At(swapper.Bag.IndexOf("sword")).Quality == ItemQuality.Blue,
+                "换下来的那件还是稀有（没被重置成白色）");
+
+            // 背包：不同品质的同一件装备必须各占一格，不能叠在一起
+            Inventory bag = new Inventory();
+            ItemDef swordDef = cat.Get("sword");
+            bag.Add(swordDef, 1, ItemQuality.White);
+            bag.Add(swordDef, 1, ItemQuality.Purple);
+            Check(bag.UsedSlots == 2, "同名的白剑和紫剑各占一格（实际 " + bag.UsedSlots + " 格）");
+
+            // ---- 品质进价格 ----
+            swordDef.Price = 100;
+            ShopTuning shop = new ShopTuning();
+            shop.SellRatio = 0.4f;
+            Check(shop.BuyPriceOf(swordDef, ItemQuality.White) == 100, "白装买入价 = 基础价 100");
+            Check(shop.BuyPriceOf(swordDef, ItemQuality.Purple) == 420, "史诗买入价 420（实际 " + shop.BuyPriceOf(swordDef, ItemQuality.Purple) + "）");
+            Check(shop.SellPriceOf(swordDef, ItemQuality.Purple) > shop.SellPriceOf(swordDef, ItemQuality.White),
+                "史诗卖得比白装多（" + shop.SellPriceOf(swordDef, ItemQuality.White)
+                + " -> " + shop.SellPriceOf(swordDef, ItemQuality.Purple) + "）");
+            Check(shop.SellPriceOf(swordDef, ItemQuality.White) == 40, "白装回收价还是 ×0.4（旧行为不变）");
+
+            // ---- 地上掉的品质，捡起来要带进背包 ----
+            World lootWorld = new World(OpenMap(12), 11u, new EventBus());
+            lootWorld.Systems.Add(new LootSystem(cat));
+            Entity picker = MakeFullPlayer(cat, new TilePos(5, 5));
+            lootWorld.Spawn(picker);
+            lootWorld.Player = picker;
+
+            Entity groundSword = MakeGroundItem(new TilePos(6, 5), "sword", 1);
+            groundSword.Quality = ItemQuality.Purple;
+            lootWorld.Spawn(groundSword);
+            lootWorld.PlaceEntity(picker, new TilePos(6, 5));
+            lootWorld.Step(new List<Intent>());
+
+            int picked = picker.Bag.IndexOf("sword");
+            Check(picked >= 0 && picker.Bag.At(picked).Quality == ItemQuality.Purple,
+                "地上捡起来的史诗，进了背包还是史诗");
+
+            // ---- 存档读品质：坏数据不能读崩 ----
+            Check(SaveData.QualityAt(null, 0) == ItemQuality.White, "v1 旧档（没有品质数组）读出白色");
+            Check(SaveData.QualityAt(new int[] { (int)ItemQuality.Purple }, 5) == ItemQuality.White, "下标越界读出白色");
+            Check(SaveData.QualityAt(new int[] { 99 }, 0) == ItemQuality.White, "数组里是脏数字也读出白色");
+            Check(SaveData.QualityAt(new int[] { (int)ItemQuality.Purple }, 0) == ItemQuality.Purple, "正常值原样读出");
+        }
+
+        private static ItemDrop MakeDrop(string itemId, float chance)
+        {
+            ItemDrop d = new ItemDrop();
+            d.ItemId = itemId;
+            d.Chance = chance;
+            d.Min = 1;
+            d.Max = 1;
+            return d;
         }
 
         private static void TestConsumable()

@@ -26,7 +26,7 @@ namespace SimplyCQ.Data
         public static SaveData Capture(World world, int seed)
         {
             SaveData data = new SaveData();
-            data.Version = SaveData.Version1;
+            data.Version = SaveData.Version2;
             data.Seed = seed;
             data.SavedAt = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
 
@@ -54,6 +54,7 @@ namespace SimplyCQ.Data
                     ItemInstance s = p.Bag.At(i);
                     data.BagIds[i] = s != null ? s.DefId : "";
                     data.BagCounts[i] = s != null ? s.Count : 0;
+                    data.BagQualities[i] = s != null ? (int)s.Quality : 0;
                 }
             }
 
@@ -64,6 +65,7 @@ namespace SimplyCQ.Data
                     ItemInstance worn = p.Gear.Get((EquipSlot)i);
                     data.GearIds[i] = worn != null ? worn.DefId : "";
                     data.GearCounts[i] = worn != null ? worn.Count : 0;
+                    data.GearQualities[i] = worn != null ? (int)worn.Quality : 0;
                 }
             }
 
@@ -97,7 +99,7 @@ namespace SimplyCQ.Data
                 if (!File.Exists(path)) return null;
                 SaveData data = JsonUtility.FromJson<SaveData>(File.ReadAllText(path));
                 if (data == null) return null;
-                if (data.Version > SaveData.Version1)
+                if (data.Version > SaveData.Version2)
                 {
                     Debug.LogError("[SimplyCQ] 存档版本(" + data.Version + ")比程序还新，已忽略");
                     return null;
@@ -147,7 +149,7 @@ namespace SimplyCQ.Data
                         continue;
                     }
                     int count = (data.BagCounts != null && i < data.BagCounts.Length && data.BagCounts[i] > 0) ? data.BagCounts[i] : 1;
-                    p.Bag.Slots[i] = new ItemInstance(id, count);
+                    p.Bag.Slots[i] = new ItemInstance(id, count, SaveData.QualityAt(data.BagQualities, i));
                 }
             }
 
@@ -159,7 +161,7 @@ namespace SimplyCQ.Data
                     string id = data.GearIds[i];
                     if (string.IsNullOrEmpty(id)) continue;
                     if (catalog != null && catalog.Get(id) == null) continue;
-                    p.Gear.Set((EquipSlot)i, new ItemInstance(id, 1));
+                    p.Gear.Set((EquipSlot)i, new ItemInstance(id, 1, SaveData.QualityAt(data.GearQualities, i)));
                 }
             }
 

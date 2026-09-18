@@ -147,6 +147,12 @@ namespace SimplyCQ.Data
         public int minDc, maxDc, mc, sc, ac, mac, bonusHp, bonusMp;
         public int healHp, healMp;
 
+        /// <summary>
+        /// 掉落品质下限：white / green / blue / purple。
+        /// 留空 = 白装（从白开始摇）。写「blue」表示这件装备最低也是稀有 —— 但可能更高。
+        /// </summary>
+        public string minQuality;
+
         public string desc;
     }
 
@@ -185,6 +191,9 @@ namespace SimplyCQ.Data
 
         /// <summary>战斗/成长数值。JsonUtility 直接反序列化成 Domain 的 CombatTuning。</summary>
         public CombatTuning combat;
+
+        /// <summary>掉落品质调参。JsonUtility 直接反序列化成 Domain 的 LootTuning。</summary>
+        public LootTuning loot;
 
         /// <summary>把明显不合理的值夹到安全范围，避免一个手抖让游戏起不来。</summary>
         public void Normalize()

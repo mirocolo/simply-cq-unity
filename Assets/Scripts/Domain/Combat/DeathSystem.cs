@@ -10,13 +10,16 @@ namespace SimplyCQ.Domain
     {
         private readonly CombatTuning _tuning;
         private readonly IItemCatalog _catalog;
+        private readonly LootTuning _loot;
         private readonly List<Entity> _toDespawn = new List<Entity>();
         private readonly List<ItemDropResult> _drops = new List<ItemDropResult>();
 
-        public DeathSystem(CombatTuning tuning, IItemCatalog catalog)
+        public DeathSystem(CombatTuning tuning, IItemCatalog catalog, LootTuning loot = null)
         {
             _tuning = tuning != null ? tuning : new CombatTuning();
             _catalog = catalog;
+            _loot = loot != null ? loot : new LootTuning();
+            _loot.Clamp();
         }
 
         public void Tick(World world, IReadOnlyList<Intent> intents)
@@ -162,7 +165,7 @@ namespace SimplyCQ.Domain
         {
             if (victim.ItemDrops.Count == 0) return;
 
-            DropRoller.Roll(victim.ItemDrops, world.Rng, _drops);
+            DropRoller.Roll(victim.ItemDrops, world.Rng, _drops, _catalog, _loot, victim.Level);
 
             for (int i = 0; i < _drops.Count; i++)
             {
@@ -175,8 +178,12 @@ namespace SimplyCQ.Domain
                 // 散开放，避免多件掉落挤在同一格互相覆盖
                 TilePos at = world.FindFreeGroundTileNear(victim.Pos, 4);
                 Entity loot = NewGroundItem(at, r.ItemId, name, r.Count);
+                loot.Quality = r.Quality;
                 world.Spawn(loot);
-                world.Events.Publish(new ItemDropped { ItemId = loot.Id, DefId = r.ItemId, Count = r.Count, At = at });
+                world.Events.Publish(new ItemDropped
+                {
+                    ItemId = loot.Id, DefId = r.ItemId, Count = r.Count, At = at, Quality = r.Quality
+                });
             }
         }
 

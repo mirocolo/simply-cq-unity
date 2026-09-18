@@ -91,6 +91,8 @@ namespace SimplyCQ.Domain
         public int LifetimeTicks;
         /// <summary>地面掉落物的数量（金币用 Gold，物品用这个）。</summary>
         public int Count = 1;
+        /// <summary>地面掉落物的品质（只有装备有意义）—— 捡起来时要带进背包。</summary>
+        public ItemQuality Quality = ItemQuality.White;
         /// <summary>捡不起来的提示节流，避免站在上面每 tick 刷一次飘字。</summary>
         public int RefuseCooldown;
 

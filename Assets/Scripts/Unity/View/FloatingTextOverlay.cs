@@ -141,7 +141,17 @@ namespace SimplyCQ.Unity
         private void OnItemPicked(ItemPicked evt)
         {
             string name = _names != null && _names.Get(evt.DefId) != null ? _names.Get(evt.DefId).Name : evt.DefId;
-            Add(evt.By, "+" + name + (evt.Count > 1 ? " x" + evt.Count : ""), UiColor.Srgb(0.70f, 1f, 0.72f), 0.6f, 1.2f);
+            ItemDef def = _names != null ? _names.Get(evt.DefId) : null;
+
+            // 装备按品质上色 + 标品质名：捡到史诗的那一下得有反馈，不然玩家不知道爆了好东西
+            Color color = UiColor.Srgb(0.70f, 1f, 0.72f);
+            if (def != null && def.IsEquip && evt.Quality != ItemQuality.White)
+            {
+                name = ItemQualityStyle.TitledName(evt.Quality, name);
+                color = ItemQualityStyle.Srgb(evt.Quality);
+            }
+
+            Add(evt.By, "+" + name + (evt.Count > 1 ? " x" + evt.Count : ""), color, 0.6f, 1.2f);
         }
 
         /// <summary>捡不起来（负重不够 / 背包满）—— 必须给反馈，否则玩家只觉得"踩上去没反应"。</summary>

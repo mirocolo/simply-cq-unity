@@ -30,6 +30,7 @@ namespace SimplyCQ.Unity
         private GUIStyle _poor;
         private GUIStyle _small;
         private GUIStyle _title;
+        private readonly GUIStyle[] _qualityLabels = new GUIStyle[ItemQualityRules.Count];
 
         public ShopUi(World world, IItemCatalog catalog, ShopTuning tuning)
         {
@@ -104,13 +105,16 @@ namespace SimplyCQ.Unity
 
                 Rect row = LRect(r, Pad, 78f + shown * RowH, ColW + 40f, RowH - 2f);
                 bool hover = e != null && row.Contains(e.mousePosition);
-                bool affordable = player.Gold >= def.Price;
+
+                // 商人的货是白板 —— 价格用和逻辑层同一个方法算，界面才不会"报错价"
+                int buyPrice = _tuning.BuyPriceOf(def, ItemQuality.White);
+                bool affordable = player.Gold >= buyPrice;
 
                 Fill(row, hover ? UiColor.Srgb(0.30f, 0.28f, 0.18f, 0.95f) : UiColor.Srgb(0.15f, 0.14f, 0.13f, 0.92f));
                 Border(row, UiColor.Srgb(0.44f, 0.39f, 0.26f, 1f));
 
                 GUI.Label(new Rect(row.x + UiScale.Px(6f), row.y + UiScale.Px(2f), row.width, UiScale.Px(20f)), def.Name, _label);
-                GUI.Label(LRect(r, Pad + ColW + 8f, 78f + shown * RowH, 60f, RowH), def.Price + " 金", affordable ? _value : _poor);
+                GUI.Label(LRect(r, Pad + ColW + 8f, 78f + shown * RowH, 60f, RowH), buyPrice + " 金", affordable ? _value : _poor);
 
                 if (affordable && hover && leftDown)
                     Queue(Intent.BagAction(player.Id, IntentKind.BuyItem, i));
@@ -143,9 +147,10 @@ namespace SimplyCQ.Unity
                 Border(row, UiColor.Srgb(0.44f, 0.39f, 0.26f, 1f));
 
                 string name = def.Name + (item.Count > 1 ? " x" + item.Count : "");
-                GUI.Label(new Rect(row.x + UiScale.Px(6f), row.y + UiScale.Px(2f), row.width, UiScale.Px(20f)), name, _label);
+                GUI.Label(new Rect(row.x + UiScale.Px(6f), row.y + UiScale.Px(2f), row.width, UiScale.Px(20f)), name, QualityLabel(item.Quality));
 
-                int sellPrice = _tuning.SellPriceOf(def);
+                // 卖掉的价格看的是【这一件】的品质：捡到史诗就是比白板值钱
+                int sellPrice = _tuning.SellPriceOf(def, item.Quality);
                 GUI.Label(LRect(r, rx + ColW + 8f, 78f + shown * RowH, 60f, RowH), sellPrice + " 金", _value);
 
                 if (hover && leftDown)
@@ -170,6 +175,21 @@ namespace SimplyCQ.Unity
         private static Rect LRect(Rect outer, float lx, float ly, float lw, float lh)
         {
             return new Rect(outer.x + UiScale.Px(lx), outer.y + UiScale.Px(ly), UiScale.Px(lw), UiScale.Px(lh));
+        }
+
+        /// <summary>按品质取文字样式（懒加载）。和背包面板同一套配色。</summary>
+        private GUIStyle QualityLabel(ItemQuality q)
+        {
+            int i = (int)q;
+            if (i < 0 || i >= _qualityLabels.Length) i = 0;
+            if (_qualityLabels[i] == null)
+            {
+                GUIStyle s = new GUIStyle(GUI.skin.label);
+                s.fontSize = UiScale.Font(13);
+                s.normal.textColor = ItemQualityStyle.Srgb((ItemQuality)i);
+                _qualityLabels[i] = s;
+            }
+            return _qualityLabels[i];
         }
 
         private static void Fill(Rect r, Color c)

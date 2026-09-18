@@ -16,11 +16,22 @@ namespace SimplyCQ.Domain
             if (SellRatio > 2f) SellRatio = 2f;
         }
 
-        /// <summary>至少 1 金，免得卖一堆垃圾都是 0。</summary>
-        public int SellPriceOf(ItemDef def)
+        /// <summary>
+        /// 买入价 = 物品表里的基础价 × 品质倍率。
+        /// 逻辑层和界面都调这一个方法，才不会出现「界面说 100、扣了 260」。
+        /// </summary>
+        public int BuyPriceOf(ItemDef def, ItemQuality quality)
+        {
+            if (def == null || def.Price <= 0) return 1;
+            int price = (int)(def.Price * ItemQualityRules.PriceMultiplier(quality) + 0.5f);
+            return price < 1 ? 1 : price;
+        }
+
+        /// <summary>卖价 = 买入价 × 回收比例。至少 1 金，免得卖一堆垃圾都是 0。</summary>
+        public int SellPriceOf(ItemDef def, ItemQuality quality)
         {
             if (def == null) return 0;
-            int price = (int)(def.Price * SellRatio);
+            int price = (int)(BuyPriceOf(def, quality) * SellRatio);
             return price < 1 ? 1 : price;
         }
     }

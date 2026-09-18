@@ -74,14 +74,14 @@ namespace SimplyCQ.Domain
                 return;
             }
 
-            int added = player.Bag.Add(def, item.Count);
+            int added = player.Bag.Add(def, item.Count, item.Quality);
             if (added <= 0)
             {
                 Refuse(world, player, item, "背包满了");
                 return;
             }
 
-            world.Events.Publish(new ItemPicked { By = player.Id, DefId = def.Id, Count = added });
+            world.Events.Publish(new ItemPicked { By = player.Id, DefId = def.Id, Count = added, Quality = item.Quality });
             world.Events.Publish(new InventoryChanged { Id = player.Id });
             world.Despawn(item.Id);
         }

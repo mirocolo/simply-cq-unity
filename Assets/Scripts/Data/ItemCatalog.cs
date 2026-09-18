@@ -36,6 +36,7 @@ namespace SimplyCQ.Data
             def.Price = dto.price;
             def.LevelReq = dto.levelReq > 0 ? dto.levelReq : 1;
             def.ClassReq = dto.classReq;
+            def.MinQuality = ItemQualityRules.Parse(dto.minQuality);
 
             def.MinDc = dto.minDc;
             def.MaxDc = dto.maxDc;

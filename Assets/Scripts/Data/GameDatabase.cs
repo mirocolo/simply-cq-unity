@@ -15,6 +15,7 @@ namespace SimplyCQ.Data
 
         public BalanceDto Balance { get; private set; }
         public CombatTuning Tuning { get; private set; }
+        public LootTuning Loot { get; private set; }
         public ItemCatalog Items { get; private set; }
         public SkillCatalog Skills { get; private set; }
         public ShopTuning Shop { get; private set; }
@@ -42,6 +43,9 @@ namespace SimplyCQ.Data
 
             db.Tuning = db.Balance.combat != null ? db.Balance.combat : new CombatTuning();
             db.Tuning.Clamp();
+
+            db.Loot = db.Balance.loot != null ? db.Balance.loot : new LootTuning();
+            db.Loot.Clamp();
 
             db.Shop = new ShopTuning();
             db.Shop.SellRatio = db.Balance.shopSellRatio;
@@ -149,7 +153,7 @@ namespace SimplyCQ.Data
         /// </summary>
         public Simulation CreateSimulation(uint seed)
         {
-            return new Simulation(Map, seed, CreateMonster, Tuning, Items, Skills, Shop, this);
+            return new Simulation(Map, seed, CreateMonster, Tuning, Items, Skills, Shop, this, Loot);
         }
 
         /// <summary>按 id 取图（实现 IMapCatalog）。找不到返回 null，由调用方给玩家反馈。</summary>

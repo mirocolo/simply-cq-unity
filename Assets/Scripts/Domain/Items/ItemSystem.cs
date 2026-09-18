@@ -100,7 +100,7 @@ namespace SimplyCQ.Domain
             if (replaced != null)
             {
                 ItemDef oldDef = catalog != null ? catalog.Get(replaced.DefId) : null;
-                e.Bag.Add(oldDef, replaced.Count);
+                e.Bag.Add(oldDef, replaced.Count, replaced.Quality);
             }
 
             StatCalculator.Apply(e, catalog);
@@ -121,7 +121,7 @@ namespace SimplyCQ.Domain
             if (!e.Bag.CanAdd(def, worn.Count)) return false;
 
             e.Gear.Clear(gearSlot);
-            e.Bag.Add(def, worn.Count);
+            e.Bag.Add(def, worn.Count, worn.Quality);
 
             StatCalculator.Apply(e, catalog);
             world.Events.Publish(new EquipmentChanged { Id = e.Id, Slot = gearSlot, DefId = worn.DefId });
@@ -149,6 +149,7 @@ namespace SimplyCQ.Domain
             loot.Name = def != null ? def.Name : slot.DefId;
             loot.BlocksTile = false;
             loot.Count = 1;
+            loot.Quality = slot.Quality;
             loot.LifetimeTicks = 0;    // 玩家自己丢的不消失
             loot.Pos = at;
             loot.HomePos = at;

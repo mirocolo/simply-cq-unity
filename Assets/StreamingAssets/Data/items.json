@@ -79,6 +79,7 @@
       "slot": "weapon",
       "price": 900,
       "levelReq": 7,
+      "minQuality": "green",
       "minDc": 6,
       "maxDc": 12,
       "desc": "好东西"
@@ -113,6 +114,7 @@
       "slot": "armour",
       "price": 1200,
       "levelReq": 7,
+      "minQuality": "green",
       "ac": 7,
       "bonusHp": 30,
       "desc": "又硬又重"

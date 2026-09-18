@@ -22,13 +22,14 @@ namespace DomainCheck
         }
 
         public ItemDef Equip(string id, EquipSlot slot, int minDc, int maxDc, int ac,
-                             int levelReq = 1, int bonusHp = 0)
+                             int levelReq = 1, int bonusHp = 0, ItemQuality minQuality = ItemQuality.White)
         {
             ItemDef d = new ItemDef();
             d.Id = id; d.Name = id; d.SpriteId = id;
             d.Type = ItemType.Equip; d.Slot = slot; d.MaxStack = 1;
             d.MinDc = minDc; d.MaxDc = maxDc; d.Ac = ac;
             d.LevelReq = levelReq; d.BonusHp = bonusHp;
+            d.MinQuality = minQuality;
             _byId[id] = d;
             return d;
         }
