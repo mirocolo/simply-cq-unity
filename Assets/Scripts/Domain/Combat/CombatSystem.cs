@@ -183,6 +183,9 @@ namespace SimplyCQ.Domain
             target.LastDamagedTick = world.Tick;
             if (source != null) target.Killer = source.Id;
 
+            // 一击秒杀也要惊动狼群：倒下的那只不会把同伴的耳朵一起带走
+            AlertPack(world, source, target);
+
             world.Events.Publish(new DamageDealt
             {
                 Source = source != null ? source.Id : ActorId.None,
@@ -192,6 +195,28 @@ namespace SimplyCQ.Domain
             });
 
             if (target.Hp <= 0 && target.DeathTick < 0) target.DeathTick = world.Tick;
+        }
+
+        /// <summary>
+        /// 群居：打了狼群里的任何一只，半径内的同类一起被激怒扑上来。
+        ///
+        /// 只是把它们的 Target 设成攻击者，剩下的交给 AI —— 脱战距离（Leash）还是各管各的，
+        /// 所以离窝太远的同伴会自己放弃，不需要在这里另写一套"什么时候冷静下来"。
+        /// </summary>
+        private static void AlertPack(World world, Entity source, Entity victim)
+        {
+            if (source == null || victim == null) return;
+            if (victim.Kind != EntityKind.Monster || victim.PackRadius <= 0) return;
+            if (source.Kind != EntityKind.Player) return;
+
+            foreach (Entity other in world.Entities)
+            {
+                if (ReferenceEquals(other, victim)) continue;
+                if (other.Kind != EntityKind.Monster || !other.IsAlive) continue;
+                if (other.DefId != victim.DefId) continue;                          // 只惊动同类
+                if (other.Pos.ChebyshevTo(victim.Pos) > victim.PackRadius) continue;
+                other.Target = source.Id;
+            }
         }
     }
 }

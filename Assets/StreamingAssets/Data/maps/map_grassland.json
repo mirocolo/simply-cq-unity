@@ -75,6 +75,24 @@
       "intervalTicks": 20
     },
     {
+      "x": 4,
+      "y": 20,
+      "w": 12,
+      "h": 10,
+      "monsterId": "mon_rabbit",
+      "max": 6,
+      "intervalTicks": 22
+    },
+    {
+      "x": 20,
+      "y": 4,
+      "w": 12,
+      "h": 10,
+      "monsterId": "mon_deer",
+      "max": 5,
+      "intervalTicks": 26
+    },
+    {
       "x": 26,
       "y": 6,
       "w": 16,
@@ -84,13 +102,40 @@
       "intervalTicks": 30
     },
     {
-      "x": 28,
-      "y": 26,
-      "w": 14,
+      "x": 4,
+      "y": 36,
+      "w": 12,
+      "h": 8,
+      "monsterId": "mon_scorpion",
+      "max": 4,
+      "intervalTicks": 32
+    },
+    {
+      "x": 38,
+      "y": 20,
+      "w": 8,
       "h": 14,
+      "monsterId": "mon_skeleton",
+      "max": 4,
+      "intervalTicks": 34
+    },
+    {
+      "x": 30,
+      "y": 32,
+      "w": 14,
+      "h": 12,
       "monsterId": "mon_boar",
       "max": 4,
       "intervalTicks": 45
+    },
+    {
+      "x": 38,
+      "y": 4,
+      "w": 8,
+      "h": 10,
+      "monsterId": "mon_orc",
+      "max": 3,
+      "intervalTicks": 40
     }
   ],
   "npcs": [

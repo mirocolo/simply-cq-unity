@@ -16,19 +16,20 @@
       "vision": 4,
       "aggressive": false,
       "leash": 6,
+      "packRadius": 0,
       "goldMin": 0,
       "goldMax": 2,
       "goldChance": 0.6,
       "drops": [
         {
-          "itemId": "mat_hide",
-          "chance": 0.3,
+          "itemId": "pot_hp_s",
+          "chance": 0.08,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "pot_hp_s",
-          "chance": 0.08,
+          "itemId": "mat_hide",
+          "chance": 0.3,
           "min": 1,
           "max": 1
         },
@@ -131,6 +132,482 @@
       ]
     },
     {
+      "id": "mon_rabbit",
+      "name": "野兔",
+      "sprite": "mon_rabbit",
+      "level": 1,
+      "hp": 18,
+      "ac": 0,
+      "minDc": 1,
+      "maxDc": 2,
+      "exp": 5,
+      "moveSpeed": 9,
+      "attackInterval": 18,
+      "attackRange": 1,
+      "vision": 4,
+      "aggressive": false,
+      "leash": 8,
+      "packRadius": 0,
+      "goldMin": 0,
+      "goldMax": 2,
+      "goldChance": 0.6,
+      "drops": [
+        {
+          "itemId": "ar_cloth",
+          "chance": 0.015,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "be_cloth",
+          "chance": 0.015,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "br_copper",
+          "chance": 0.015,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "bt_straw",
+          "chance": 0.015,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "he_cap",
+          "chance": 0.015,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "nk_bead",
+          "chance": 0.015,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "rg_copper",
+          "chance": 0.015,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "wp_wood",
+          "chance": 0.015,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "ar_padded",
+          "chance": 0.008,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "be_leather",
+          "chance": 0.008,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "br_iron",
+          "chance": 0.008,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "bt_cloth",
+          "chance": 0.008,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "he_leather",
+          "chance": 0.008,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "nk_copper",
+          "chance": 0.008,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "rg_iron",
+          "chance": 0.008,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "wp_oak",
+          "chance": 0.008,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "id": "mon_deer",
+      "name": "鹿",
+      "sprite": "mon_deer",
+      "level": 2,
+      "hp": 34,
+      "ac": 1,
+      "minDc": 2,
+      "maxDc": 3,
+      "exp": 9,
+      "moveSpeed": 6,
+      "attackInterval": 15,
+      "attackRange": 1,
+      "vision": 5,
+      "aggressive": false,
+      "leash": 8,
+      "packRadius": 0,
+      "goldMin": 1,
+      "goldMax": 4,
+      "goldChance": 0.8,
+      "drops": [
+        {
+          "itemId": "ar_cloth",
+          "chance": 0.016,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "be_cloth",
+          "chance": 0.016,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "br_copper",
+          "chance": 0.016,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "bt_straw",
+          "chance": 0.016,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "he_cap",
+          "chance": 0.016,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "nk_bead",
+          "chance": 0.016,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "rg_copper",
+          "chance": 0.016,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "wp_wood",
+          "chance": 0.016,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "ar_padded",
+          "chance": 0.009,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "be_leather",
+          "chance": 0.009,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "br_iron",
+          "chance": 0.009,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "bt_cloth",
+          "chance": 0.009,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "he_leather",
+          "chance": 0.009,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "nk_copper",
+          "chance": 0.009,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "rg_iron",
+          "chance": 0.009,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "wp_oak",
+          "chance": 0.009,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "id": "mon_scorpion",
+      "name": "毒蝎",
+      "sprite": "mon_scorpion",
+      "level": 3,
+      "hp": 40,
+      "ac": 2,
+      "minDc": 3,
+      "maxDc": 5,
+      "exp": 14,
+      "moveSpeed": 5,
+      "attackInterval": 14,
+      "attackRange": 1,
+      "vision": 6,
+      "aggressive": true,
+      "leash": 10,
+      "packRadius": 0,
+      "goldMin": 2,
+      "goldMax": 6,
+      "goldChance": 0.9,
+      "drops": [
+        {
+          "itemId": "ar_cloth",
+          "chance": 0.018,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "be_cloth",
+          "chance": 0.018,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "br_copper",
+          "chance": 0.018,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "bt_straw",
+          "chance": 0.018,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "he_cap",
+          "chance": 0.018,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "nk_bead",
+          "chance": 0.018,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "rg_copper",
+          "chance": 0.018,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "wp_wood",
+          "chance": 0.018,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "ar_padded",
+          "chance": 0.01,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "be_leather",
+          "chance": 0.01,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "br_iron",
+          "chance": 0.01,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "bt_cloth",
+          "chance": 0.01,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "he_leather",
+          "chance": 0.01,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "nk_copper",
+          "chance": 0.01,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "rg_iron",
+          "chance": 0.01,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "wp_oak",
+          "chance": 0.01,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "id": "mon_bat",
+      "name": "蝙蝠",
+      "sprite": "mon_bat",
+      "level": 3,
+      "hp": 26,
+      "ac": 0,
+      "minDc": 2,
+      "maxDc": 4,
+      "exp": 13,
+      "moveSpeed": 10,
+      "attackInterval": 12,
+      "attackRange": 1,
+      "vision": 7,
+      "aggressive": true,
+      "leash": 12,
+      "packRadius": 0,
+      "goldMin": 1,
+      "goldMax": 5,
+      "goldChance": 0.9,
+      "drops": [
+        {
+          "itemId": "ar_cloth",
+          "chance": 0.018,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "be_cloth",
+          "chance": 0.018,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "br_copper",
+          "chance": 0.018,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "bt_straw",
+          "chance": 0.018,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "he_cap",
+          "chance": 0.018,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "nk_bead",
+          "chance": 0.018,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "rg_copper",
+          "chance": 0.018,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "wp_wood",
+          "chance": 0.018,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "ar_padded",
+          "chance": 0.01,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "be_leather",
+          "chance": 0.01,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "br_iron",
+          "chance": 0.01,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "bt_cloth",
+          "chance": 0.01,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "he_leather",
+          "chance": 0.01,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "nk_copper",
+          "chance": 0.01,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "rg_iron",
+          "chance": 0.01,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "wp_oak",
+          "chance": 0.01,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
       "id": "mon_wolf",
       "name": "野狼",
       "sprite": "mon_wolf",
@@ -146,21 +623,22 @@
       "vision": 7,
       "aggressive": true,
       "leash": 14,
+      "packRadius": 7,
       "goldMin": 2,
       "goldMax": 8,
       "goldChance": 0.9,
       "drops": [
         {
-          "itemId": "mat_hide",
-          "chance": 0.7,
-          "min": 1,
-          "max": 1
-        },
-        {
           "itemId": "pot_hp_s",
           "chance": 0.2,
           "min": 1,
           "max": 2
+        },
+        {
+          "itemId": "mat_hide",
+          "chance": 0.7,
+          "min": 1,
+          "max": 1
         },
         {
           "itemId": "ar_leather",
@@ -285,6 +763,435 @@
       ]
     },
     {
+      "id": "mon_skeleton",
+      "name": "骷髅",
+      "sprite": "mon_skeleton",
+      "level": 4,
+      "hp": 70,
+      "ac": 3,
+      "minDc": 3,
+      "maxDc": 7,
+      "exp": 24,
+      "moveSpeed": 4,
+      "attackInterval": 13,
+      "attackRange": 1,
+      "vision": 7,
+      "aggressive": true,
+      "leash": 14,
+      "packRadius": 6,
+      "goldMin": 3,
+      "goldMax": 9,
+      "goldChance": 0.9,
+      "drops": [
+        {
+          "itemId": "ar_leather",
+          "chance": 0.019,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "be_iron",
+          "chance": 0.019,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "br_silver",
+          "chance": 0.019,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "bt_leather",
+          "chance": 0.019,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "he_iron",
+          "chance": 0.019,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "nk_fang",
+          "chance": 0.019,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "rg_silver",
+          "chance": 0.019,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "wp_short",
+          "chance": 0.019,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "ar_iron",
+          "chance": 0.011,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "be_silver",
+          "chance": 0.011,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "br_jade",
+          "chance": 0.011,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "bt_iron",
+          "chance": 0.011,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "he_silver",
+          "chance": 0.011,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "nk_silver",
+          "chance": 0.011,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "rg_jade",
+          "chance": 0.011,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "wp_iron",
+          "chance": 0.011,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "ar_chain",
+          "chance": 0.006,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "nk_jade",
+          "chance": 0.006,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "rg_gem",
+          "chance": 0.006,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "wp_silver",
+          "chance": 0.006,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "id": "mon_spider",
+      "name": "巨蜘蛛",
+      "sprite": "mon_spider",
+      "level": 5,
+      "hp": 66,
+      "ac": 2,
+      "minDc": 4,
+      "maxDc": 8,
+      "exp": 30,
+      "moveSpeed": 8,
+      "attackInterval": 10,
+      "attackRange": 1,
+      "vision": 7,
+      "aggressive": true,
+      "leash": 13,
+      "packRadius": 0,
+      "goldMin": 3,
+      "goldMax": 10,
+      "goldChance": 0.95,
+      "drops": [
+        {
+          "itemId": "ar_leather",
+          "chance": 0.021,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "be_iron",
+          "chance": 0.021,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "br_silver",
+          "chance": 0.021,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "bt_leather",
+          "chance": 0.021,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "he_iron",
+          "chance": 0.021,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "nk_fang",
+          "chance": 0.021,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "rg_silver",
+          "chance": 0.021,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "wp_short",
+          "chance": 0.021,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "ar_iron",
+          "chance": 0.011,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "be_silver",
+          "chance": 0.011,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "br_jade",
+          "chance": 0.011,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "bt_iron",
+          "chance": 0.011,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "he_silver",
+          "chance": 0.011,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "nk_silver",
+          "chance": 0.011,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "rg_jade",
+          "chance": 0.011,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "wp_iron",
+          "chance": 0.011,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "ar_chain",
+          "chance": 0.006,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "nk_jade",
+          "chance": 0.006,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "rg_gem",
+          "chance": 0.006,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "wp_silver",
+          "chance": 0.006,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "id": "mon_zombie",
+      "name": "僵尸",
+      "sprite": "mon_zombie",
+      "level": 5,
+      "hp": 110,
+      "ac": 4,
+      "minDc": 4,
+      "maxDc": 8,
+      "exp": 34,
+      "moveSpeed": 2,
+      "attackInterval": 16,
+      "attackRange": 1,
+      "vision": 5,
+      "aggressive": true,
+      "leash": 12,
+      "packRadius": 5,
+      "goldMin": 4,
+      "goldMax": 12,
+      "goldChance": 1.0,
+      "drops": [
+        {
+          "itemId": "ar_leather",
+          "chance": 0.021,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "be_iron",
+          "chance": 0.021,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "br_silver",
+          "chance": 0.021,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "bt_leather",
+          "chance": 0.021,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "he_iron",
+          "chance": 0.021,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "nk_fang",
+          "chance": 0.021,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "rg_silver",
+          "chance": 0.021,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "wp_short",
+          "chance": 0.021,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "ar_iron",
+          "chance": 0.011,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "be_silver",
+          "chance": 0.011,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "br_jade",
+          "chance": 0.011,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "bt_iron",
+          "chance": 0.011,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "he_silver",
+          "chance": 0.011,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "nk_silver",
+          "chance": 0.011,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "rg_jade",
+          "chance": 0.011,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "wp_iron",
+          "chance": 0.011,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "ar_chain",
+          "chance": 0.006,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "nk_jade",
+          "chance": 0.006,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "rg_gem",
+          "chance": 0.006,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "wp_silver",
+          "chance": 0.006,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
       "id": "mon_boar",
       "name": "野猪",
       "sprite": "mon_boar",
@@ -300,15 +1207,16 @@
       "vision": 6,
       "aggressive": true,
       "leash": 10,
+      "packRadius": 5,
       "goldMin": 5,
       "goldMax": 15,
-      "goldChance": 1,
+      "goldChance": 1.0,
       "drops": [
         {
-          "itemId": "mat_hide",
-          "chance": 1,
+          "itemId": "pot_hp_m",
+          "chance": 0.25,
           "min": 1,
-          "max": 2
+          "max": 1
         },
         {
           "itemId": "mat_fang",
@@ -317,11 +1225,1299 @@
           "max": 2
         },
         {
-          "itemId": "pot_hp_m",
-          "chance": 0.25,
+          "itemId": "mat_hide",
+          "chance": 1.0,
+          "min": 1,
+          "max": 2
+        },
+        {
+          "itemId": "ar_leather",
+          "chance": 0.029,
           "min": 1,
           "max": 1
         },
+        {
+          "itemId": "be_iron",
+          "chance": 0.029,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "br_silver",
+          "chance": 0.029,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "bt_leather",
+          "chance": 0.029,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "he_iron",
+          "chance": 0.029,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "nk_fang",
+          "chance": 0.029,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "rg_silver",
+          "chance": 0.029,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "wp_short",
+          "chance": 0.029,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "ar_iron",
+          "chance": 0.016,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "be_silver",
+          "chance": 0.016,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "br_jade",
+          "chance": 0.016,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "bt_iron",
+          "chance": 0.016,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "he_silver",
+          "chance": 0.016,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "nk_silver",
+          "chance": 0.016,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "rg_jade",
+          "chance": 0.016,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "wp_iron",
+          "chance": 0.016,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "ar_chain",
+          "chance": 0.009,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "nk_jade",
+          "chance": 0.009,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "rg_gem",
+          "chance": 0.009,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "wp_silver",
+          "chance": 0.009,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "id": "mon_orc",
+      "name": "半兽人",
+      "sprite": "mon_orc",
+      "level": 6,
+      "hp": 130,
+      "ac": 5,
+      "minDc": 6,
+      "maxDc": 10,
+      "exp": 46,
+      "moveSpeed": 5,
+      "attackInterval": 13,
+      "attackRange": 1,
+      "vision": 7,
+      "aggressive": true,
+      "leash": 16,
+      "packRadius": 8,
+      "goldMin": 6,
+      "goldMax": 16,
+      "goldChance": 1.0,
+      "drops": [
+        {
+          "itemId": "ar_leather",
+          "chance": 0.029,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "be_iron",
+          "chance": 0.029,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "br_silver",
+          "chance": 0.029,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "bt_leather",
+          "chance": 0.029,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "he_iron",
+          "chance": 0.029,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "nk_fang",
+          "chance": 0.029,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "rg_silver",
+          "chance": 0.029,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "wp_short",
+          "chance": 0.029,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "ar_iron",
+          "chance": 0.016,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "be_silver",
+          "chance": 0.016,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "br_jade",
+          "chance": 0.016,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "bt_iron",
+          "chance": 0.016,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "he_silver",
+          "chance": 0.016,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "nk_silver",
+          "chance": 0.016,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "rg_jade",
+          "chance": 0.016,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "wp_iron",
+          "chance": 0.016,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "ar_chain",
+          "chance": 0.009,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "nk_jade",
+          "chance": 0.009,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "rg_gem",
+          "chance": 0.009,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "wp_silver",
+          "chance": 0.009,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "id": "mon_ghoul",
+      "name": "食尸鬼",
+      "sprite": "mon_ghoul",
+      "level": 7,
+      "hp": 150,
+      "ac": 5,
+      "minDc": 7,
+      "maxDc": 12,
+      "exp": 60,
+      "moveSpeed": 5,
+      "attackInterval": 12,
+      "attackRange": 1,
+      "vision": 7,
+      "aggressive": true,
+      "leash": 15,
+      "packRadius": 6,
+      "goldMin": 8,
+      "goldMax": 20,
+      "goldChance": 1.0,
+      "drops": [
+        {
+          "itemId": "ar_bronze",
+          "chance": 0.023,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "be_bronze",
+          "chance": 0.023,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "br_gold",
+          "chance": 0.023,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "bt_bronze",
+          "chance": 0.023,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "he_bronze",
+          "chance": 0.023,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "nk_gold",
+          "chance": 0.023,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "rg_gold",
+          "chance": 0.023,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "wp_long",
+          "chance": 0.023,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "ar_steel",
+          "chance": 0.013,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "be_steel",
+          "chance": 0.013,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "br_steel",
+          "chance": 0.013,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "bt_steel",
+          "chance": 0.013,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "he_steel",
+          "chance": 0.013,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "nk_steel",
+          "chance": 0.013,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "rg_steel",
+          "chance": 0.013,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "wp_bronze",
+          "chance": 0.013,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "ar_black",
+          "chance": 0.007,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "be_black",
+          "chance": 0.007,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "br_black",
+          "chance": 0.007,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "bt_black",
+          "chance": 0.007,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "he_black",
+          "chance": 0.007,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "nk_black",
+          "chance": 0.007,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "rg_black",
+          "chance": 0.007,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "wp_black",
+          "chance": 0.007,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "id": "mon_gargoyle",
+      "name": "石像鬼",
+      "sprite": "mon_gargoyle",
+      "level": 8,
+      "hp": 190,
+      "ac": 8,
+      "minDc": 8,
+      "maxDc": 13,
+      "exp": 75,
+      "moveSpeed": 4,
+      "attackInterval": 14,
+      "attackRange": 3,
+      "vision": 8,
+      "aggressive": true,
+      "leash": 16,
+      "packRadius": 0,
+      "goldMin": 10,
+      "goldMax": 24,
+      "goldChance": 1.0,
+      "drops": [
+        {
+          "itemId": "ar_bronze",
+          "chance": 0.023,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "be_bronze",
+          "chance": 0.023,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "br_gold",
+          "chance": 0.023,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "bt_bronze",
+          "chance": 0.023,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "he_bronze",
+          "chance": 0.023,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "nk_gold",
+          "chance": 0.023,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "rg_gold",
+          "chance": 0.023,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "wp_long",
+          "chance": 0.023,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "ar_steel",
+          "chance": 0.013,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "be_steel",
+          "chance": 0.013,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "br_steel",
+          "chance": 0.013,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "bt_steel",
+          "chance": 0.013,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "he_steel",
+          "chance": 0.013,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "nk_steel",
+          "chance": 0.013,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "rg_steel",
+          "chance": 0.013,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "wp_bronze",
+          "chance": 0.013,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "ar_black",
+          "chance": 0.007,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "be_black",
+          "chance": 0.007,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "br_black",
+          "chance": 0.007,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "bt_black",
+          "chance": 0.007,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "he_black",
+          "chance": 0.007,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "nk_black",
+          "chance": 0.007,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "rg_black",
+          "chance": 0.007,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "wp_black",
+          "chance": 0.007,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "id": "mon_wolf_alpha",
+      "name": "狼王",
+      "sprite": "mon_wolf_alpha",
+      "level": 8,
+      "hp": 200,
+      "ac": 6,
+      "minDc": 10,
+      "maxDc": 15,
+      "exp": 90,
+      "moveSpeed": 7,
+      "attackInterval": 11,
+      "attackRange": 1,
+      "vision": 8,
+      "aggressive": true,
+      "leash": 18,
+      "packRadius": 9,
+      "goldMin": 12,
+      "goldMax": 26,
+      "goldChance": 1.0,
+      "drops": [
+        {
+          "itemId": "ar_bronze",
+          "chance": 0.028,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "be_bronze",
+          "chance": 0.028,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "br_gold",
+          "chance": 0.028,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "bt_bronze",
+          "chance": 0.028,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "he_bronze",
+          "chance": 0.028,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "nk_gold",
+          "chance": 0.028,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "rg_gold",
+          "chance": 0.028,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "wp_long",
+          "chance": 0.028,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "ar_steel",
+          "chance": 0.016,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "be_steel",
+          "chance": 0.016,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "br_steel",
+          "chance": 0.016,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "bt_steel",
+          "chance": 0.016,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "he_steel",
+          "chance": 0.016,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "nk_steel",
+          "chance": 0.016,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "rg_steel",
+          "chance": 0.016,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "wp_bronze",
+          "chance": 0.016,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "ar_black",
+          "chance": 0.009,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "be_black",
+          "chance": 0.009,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "br_black",
+          "chance": 0.009,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "bt_black",
+          "chance": 0.009,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "he_black",
+          "chance": 0.009,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "nk_black",
+          "chance": 0.009,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "rg_black",
+          "chance": 0.009,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "wp_black",
+          "chance": 0.009,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "id": "mon_wraith",
+      "name": "幽魂",
+      "sprite": "mon_wraith",
+      "level": 9,
+      "hp": 180,
+      "ac": 4,
+      "minDc": 13,
+      "maxDc": 18,
+      "exp": 110,
+      "moveSpeed": 6,
+      "attackInterval": 11,
+      "attackRange": 4,
+      "vision": 9,
+      "aggressive": true,
+      "leash": 20,
+      "packRadius": 0,
+      "goldMin": 14,
+      "goldMax": 30,
+      "goldChance": 1.0,
+      "drops": [
+        {
+          "itemId": "ar_bronze",
+          "chance": 0.023,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "be_bronze",
+          "chance": 0.023,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "br_gold",
+          "chance": 0.023,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "bt_bronze",
+          "chance": 0.023,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "he_bronze",
+          "chance": 0.023,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "nk_gold",
+          "chance": 0.023,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "rg_gold",
+          "chance": 0.023,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "wp_long",
+          "chance": 0.023,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "ar_steel",
+          "chance": 0.013,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "be_steel",
+          "chance": 0.013,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "br_steel",
+          "chance": 0.013,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "bt_steel",
+          "chance": 0.013,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "he_steel",
+          "chance": 0.013,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "nk_steel",
+          "chance": 0.013,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "rg_steel",
+          "chance": 0.013,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "wp_bronze",
+          "chance": 0.013,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "ar_black",
+          "chance": 0.007,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "be_black",
+          "chance": 0.007,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "br_black",
+          "chance": 0.007,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "bt_black",
+          "chance": 0.007,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "he_black",
+          "chance": 0.007,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "nk_black",
+          "chance": 0.007,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "rg_black",
+          "chance": 0.007,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "wp_black",
+          "chance": 0.007,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "id": "mon_golem",
+      "name": "石头人",
+      "sprite": "mon_golem",
+      "level": 10,
+      "hp": 300,
+      "ac": 12,
+      "minDc": 11,
+      "maxDc": 17,
+      "exp": 140,
+      "moveSpeed": 3,
+      "attackInterval": 16,
+      "attackRange": 1,
+      "vision": 6,
+      "aggressive": true,
+      "leash": 14,
+      "packRadius": 0,
+      "goldMin": 18,
+      "goldMax": 36,
+      "goldChance": 1.0,
+      "drops": [
+        {
+          "itemId": "ar_bronze",
+          "chance": 0.024,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "be_bronze",
+          "chance": 0.024,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "br_gold",
+          "chance": 0.024,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "bt_bronze",
+          "chance": 0.024,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "he_bronze",
+          "chance": 0.024,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "nk_gold",
+          "chance": 0.024,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "rg_gold",
+          "chance": 0.024,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "wp_long",
+          "chance": 0.024,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "ar_steel",
+          "chance": 0.013,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "be_steel",
+          "chance": 0.013,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "br_steel",
+          "chance": 0.013,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "bt_steel",
+          "chance": 0.013,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "he_steel",
+          "chance": 0.013,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "nk_steel",
+          "chance": 0.013,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "rg_steel",
+          "chance": 0.013,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "wp_bronze",
+          "chance": 0.013,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "ar_black",
+          "chance": 0.007,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "be_black",
+          "chance": 0.007,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "br_black",
+          "chance": 0.007,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "bt_black",
+          "chance": 0.007,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "he_black",
+          "chance": 0.007,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "nk_black",
+          "chance": 0.007,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "rg_black",
+          "chance": 0.007,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "wp_black",
+          "chance": 0.007,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "id": "mon_dark_knight",
+      "name": "暗黑骑士",
+      "sprite": "mon_dark_knight",
+      "level": 11,
+      "hp": 260,
+      "ac": 10,
+      "minDc": 14,
+      "maxDc": 20,
+      "exp": 165,
+      "moveSpeed": 5,
+      "attackInterval": 12,
+      "attackRange": 1,
+      "vision": 8,
+      "aggressive": true,
+      "leash": 18,
+      "packRadius": 7,
+      "goldMin": 22,
+      "goldMax": 44,
+      "goldChance": 1.0,
+      "drops": [
+        {
+          "itemId": "ar_bronze",
+          "chance": 0.026,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "be_bronze",
+          "chance": 0.026,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "br_gold",
+          "chance": 0.026,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "bt_bronze",
+          "chance": 0.026,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "he_bronze",
+          "chance": 0.026,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "nk_gold",
+          "chance": 0.026,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "rg_gold",
+          "chance": 0.026,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "wp_long",
+          "chance": 0.026,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "ar_steel",
+          "chance": 0.014,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "be_steel",
+          "chance": 0.014,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "br_steel",
+          "chance": 0.014,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "bt_steel",
+          "chance": 0.014,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "he_steel",
+          "chance": 0.014,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "nk_steel",
+          "chance": 0.014,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "rg_steel",
+          "chance": 0.014,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "wp_bronze",
+          "chance": 0.014,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "ar_black",
+          "chance": 0.008,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "be_black",
+          "chance": 0.008,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "br_black",
+          "chance": 0.008,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "bt_black",
+          "chance": 0.008,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "he_black",
+          "chance": 0.008,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "nk_black",
+          "chance": 0.008,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "rg_black",
+          "chance": 0.008,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "wp_black",
+          "chance": 0.008,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "id": "mon_lich",
+      "name": "巫妖",
+      "sprite": "mon_lich",
+      "level": 12,
+      "hp": 230,
+      "ac": 7,
+      "minDc": 16,
+      "maxDc": 23,
+      "exp": 200,
+      "moveSpeed": 4,
+      "attackInterval": 13,
+      "attackRange": 5,
+      "vision": 10,
+      "aggressive": true,
+      "leash": 20,
+      "packRadius": 0,
+      "goldMin": 28,
+      "goldMax": 52,
+      "goldChance": 1.0,
+      "drops": [
         {
           "itemId": "ar_bronze",
           "chance": 0.027,
@@ -463,6 +2659,340 @@
         {
           "itemId": "wp_black",
           "chance": 0.008,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "id": "mon_dragon_whelp",
+      "name": "幼龙",
+      "sprite": "mon_dragon_whelp",
+      "level": 13,
+      "hp": 340,
+      "ac": 13,
+      "minDc": 17,
+      "maxDc": 25,
+      "exp": 260,
+      "moveSpeed": 5,
+      "attackInterval": 12,
+      "attackRange": 3,
+      "vision": 9,
+      "aggressive": true,
+      "leash": 20,
+      "packRadius": 0,
+      "goldMin": 36,
+      "goldMax": 64,
+      "goldChance": 1.0,
+      "drops": [
+        {
+          "itemId": "ar_bronze",
+          "chance": 0.031,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "be_bronze",
+          "chance": 0.031,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "br_gold",
+          "chance": 0.031,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "bt_bronze",
+          "chance": 0.031,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "he_bronze",
+          "chance": 0.031,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "nk_gold",
+          "chance": 0.031,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "rg_gold",
+          "chance": 0.031,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "wp_long",
+          "chance": 0.031,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "ar_steel",
+          "chance": 0.017,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "be_steel",
+          "chance": 0.017,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "br_steel",
+          "chance": 0.017,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "bt_steel",
+          "chance": 0.017,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "he_steel",
+          "chance": 0.017,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "nk_steel",
+          "chance": 0.017,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "rg_steel",
+          "chance": 0.017,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "wp_bronze",
+          "chance": 0.017,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "ar_black",
+          "chance": 0.009,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "be_black",
+          "chance": 0.009,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "br_black",
+          "chance": 0.009,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "bt_black",
+          "chance": 0.009,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "he_black",
+          "chance": 0.009,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "nk_black",
+          "chance": 0.009,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "rg_black",
+          "chance": 0.009,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "wp_black",
+          "chance": 0.009,
+          "min": 1,
+          "max": 1
+        }
+      ]
+    },
+    {
+      "id": "mon_cave_lord",
+      "name": "洞窟领主",
+      "sprite": "mon_cave_lord",
+      "level": 15,
+      "hp": 560,
+      "ac": 16,
+      "minDc": 21,
+      "maxDc": 31,
+      "exp": 460,
+      "moveSpeed": 4,
+      "attackInterval": 11,
+      "attackRange": 2,
+      "vision": 11,
+      "aggressive": true,
+      "leash": 24,
+      "packRadius": 0,
+      "goldMin": 60,
+      "goldMax": 120,
+      "goldChance": 1.0,
+      "drops": [
+        {
+          "itemId": "ar_bronze",
+          "chance": 0.061,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "be_bronze",
+          "chance": 0.061,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "br_gold",
+          "chance": 0.061,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "bt_bronze",
+          "chance": 0.061,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "he_bronze",
+          "chance": 0.061,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "nk_gold",
+          "chance": 0.061,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "rg_gold",
+          "chance": 0.061,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "wp_long",
+          "chance": 0.061,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "ar_steel",
+          "chance": 0.033,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "be_steel",
+          "chance": 0.033,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "br_steel",
+          "chance": 0.033,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "bt_steel",
+          "chance": 0.033,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "he_steel",
+          "chance": 0.033,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "nk_steel",
+          "chance": 0.033,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "rg_steel",
+          "chance": 0.033,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "wp_bronze",
+          "chance": 0.033,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "ar_black",
+          "chance": 0.018,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "be_black",
+          "chance": 0.018,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "br_black",
+          "chance": 0.018,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "bt_black",
+          "chance": 0.018,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "he_black",
+          "chance": 0.018,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "nk_black",
+          "chance": 0.018,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "rg_black",
+          "chance": 0.018,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "wp_black",
+          "chance": 0.018,
           "min": 1,
           "max": 1
         }

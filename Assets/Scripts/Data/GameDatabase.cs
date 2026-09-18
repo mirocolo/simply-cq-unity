@@ -233,6 +233,7 @@ namespace SimplyCQ.Data
             e.Vision = d.vision;
             e.Aggressive = d.aggressive;
             e.Leash = d.leash;
+            e.PackRadius = d.packRadius > 0 ? d.packRadius : 0;   // 手抖填了负数就当独行
 
             e.ExpReward = d.exp;
             e.GoldMin = d.goldMin;

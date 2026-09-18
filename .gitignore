@@ -37,5 +37,8 @@ LocalTools/
 Tools/**/bin/
 Tools/**/obj/
 
+# ---- 生成器脚本互相 import 时留下的字节码缓存 ----
+Tools/**/__pycache__/
+
 # Unity 模板的 *.csproj 规则会误伤自检工程，这两个必须提交
 !Tools/**/*.csproj

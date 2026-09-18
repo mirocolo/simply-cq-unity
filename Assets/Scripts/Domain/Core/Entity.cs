@@ -119,6 +119,10 @@ namespace SimplyCQ.Domain
         public bool Aggressive;
         /// <summary>离出生点超过这个距离就脱战回家。</summary>
         public int Leash = 12;
+        /// <summary>
+        /// 群居半径：打了这只怪，周围这么近的同类会一起被激怒。0 = 独行（不合群）。
+        /// </summary>
+        public int PackRadius;
         public int AiThinkCooldown;
         public ActorId Target;
         public TilePos? WanderTarget;

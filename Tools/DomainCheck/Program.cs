@@ -38,6 +38,8 @@ namespace DomainCheck
             TestItemPickup();
             TestDropRoller();
             TestItemQuality();
+            TestLineOfSight();
+            TestPackAggro();
             TestConsumable();
             TestLootLoop();
             TestMapSwitch();
@@ -942,6 +944,167 @@ namespace DomainCheck
                 if (results[0].Count < 2 || results[0].Count > 5) inRange = false;
             }
             Check(inRange, "数量落在 min..max 区间内");
+        }
+
+        // ---------------------------------------------------------------- M5d 怪物的 AI
+
+        private static void TestLineOfSight()
+        {
+            Console.WriteLine("[视线（远程怪不隔墙打人）]");
+
+            GameMap open = OpenMap(10);
+            Check(LineOfSight.Clear(open, new TilePos(1, 1), new TilePos(8, 1)), "空旷直线上看得见");
+            Check(LineOfSight.Clear(open, new TilePos(1, 1), new TilePos(8, 8)), "空旷斜线上看得见");
+            Check(LineOfSight.Clear(open, new TilePos(3, 3), new TilePos(3, 3)), "同格永远看得见");
+
+            // 一堵竖墙，中间留个缺口
+            GameMap wall = Map(
+                "..........",
+                "..........",
+                "..#.......",
+                "..#.......",
+                "....#.....",
+                "..........",
+                "..........",
+                "..........",
+                "..........",
+                "..........");
+            Check(!LineOfSight.Clear(wall, new TilePos(0, 3), new TilePos(5, 3)),
+                "墙后面的看不见（不穿墙）");
+            Check(LineOfSight.Clear(wall, new TilePos(0, 4), new TilePos(3, 4)),
+                "绕过缺口那一条看得见");
+
+            // 起点和终点自己不算遮挡：怪站在墙边、目标贴着另一面墙，也不能因此判成"被挡住"
+            GameMap edge = Map(
+                "..........",
+                "#.........",
+                "..........",
+                "..........",
+                "..........",
+                "..........",
+                "..........",
+                "..........",
+                "..........",
+                "..........");
+            Check(LineOfSight.Clear(edge, new TilePos(1, 1), new TilePos(5, 1)),
+                "起点自己是墙也不影响（只看中间经过的格）");
+            Check(LineOfSight.Clear(edge, new TilePos(5, 8), new TilePos(0, 8)),
+                "终点是墙也看得见（终点那格不判）");
+        }
+
+        private static void TestPackAggro()
+        {
+            Console.WriteLine("[群居（打了狼群一只，一群扑上来）]");
+
+            GameMap map = OpenMap(20);
+            World world = new World(map, 3u, new EventBus());
+
+            Entity player = MakeEntity(EntityKind.Player, new TilePos(2, 5));
+            world.Spawn(player);
+            world.Player = player;
+
+            Entity victim = MakeMonster("mon_wolf", new TilePos(5, 5), 10, 6);
+            Entity near = MakeMonster("mon_wolf", new TilePos(7, 5), 8, 6);      // 距离 2，在半径 6 内
+            Entity far = MakeMonster("mon_wolf", new TilePos(19, 5), 8, 6);      // 距离 14，半径外
+            Entity otherKind = MakeMonster("mon_boar", new TilePos(6, 5), 6, 6); // 同类才惊动
+            world.Spawn(victim); world.Spawn(near); world.Spawn(far); world.Spawn(otherKind);
+
+            DamageResult hit = new DamageResult();
+            hit.Amount = 1;
+            CombatSystem.ApplyDamage(world, player, victim, hit);
+
+            Check(near.Target == player.Id, "半径内的同类被惊动，目标指向打人的人");
+            Check(far.Target.IsValid == false, "半径外的同伴没被惊动（离太远听不见）");
+            Check(otherKind.Target.IsValid == false, "只惊动同类，别的怪不管");
+
+            // 独行怪（packRadius = 0）不该有这种行为
+            World solo = new World(OpenMap(20), 4u, new EventBus());
+            Entity hero = MakeEntity(EntityKind.Player, new TilePos(2, 5));
+            solo.Spawn(hero);
+            solo.Player = hero;
+            Entity lone = MakeMonster("mon_spider", new TilePos(5, 5), 10, 0);
+            Entity buddy = MakeMonster("mon_spider", new TilePos(6, 5), 8, 0);
+            solo.Spawn(lone); solo.Spawn(buddy);
+            CombatSystem.ApplyDamage(solo, hero, lone, hit);
+            Check(buddy.Target.IsValid == false, "群居半径 0 的怪（独行）不会喊同伴");
+
+            // 打死的那一只也要惊动同伴：一击秒掉一只狼，狼群照样扑上来
+            World killing = new World(OpenMap(20), 5u, new EventBus());
+            Entity killer = MakeEntity(EntityKind.Player, new TilePos(2, 5));
+            killing.Spawn(killer);
+            killing.Player = killer;
+            Entity dying = MakeMonster("mon_wolf", new TilePos(5, 5), 10, 8);
+            Entity witness = MakeMonster("mon_wolf", new TilePos(8, 5), 8, 8);
+            killing.Spawn(dying); killing.Spawn(witness);
+            DamageResult lethal = new DamageResult();
+            lethal.Amount = 999;
+            CombatSystem.ApplyDamage(killing, killer, dying, lethal);
+            Check(dying.Hp == 0, "第一只被秒了");
+            Check(witness.Target == killer.Id, "被秒的那一只也把同伴喊来了");
+
+            // 远程怪：目标在射程内、但中间隔着墙 -> 不出手；绕开墙 -> 出手
+            GameMap wallMap = Map(
+                "####################",
+                "#..................#",
+                "#..................#",
+                "#...##.............#",
+                "#...##.............#",
+                "#..................#",
+                "#..................#",
+                "#..................#",
+                "####################");
+            World ranged = new World(wallMap, 6u, new EventBus());
+            Entity prey = MakeEntity(EntityKind.Player, new TilePos(1, 3));
+            ranged.Spawn(prey);
+            ranged.Player = prey;
+
+            // 射程 6、视野 8，玩家在 (1,3)：距离 5 够得着，但 (4,3)/(5,3) 是墙
+            Entity shooter = MakeEntity(EntityKind.Monster, new TilePos(6, 3));
+            shooter.DefId = "mon_lich";
+            shooter.AttackRange = 6;
+            shooter.Vision = 8;
+            shooter.Aggressive = true;
+            shooter.AttackCooldown = 0;
+            shooter.AiThinkCooldown = 0;
+            ranged.Spawn(shooter);
+
+            // 让 AI 思考一次：中间隔着 (4,3)/(5,3) 那两格墙
+            ranged.Systems.Add(new AiSystem());
+            ranged.Step(new List<Intent>());
+            Check(!shooter.WantsAttack, "隔着墙不出手（远程怪的视线判定生效）");
+
+            // 把怪挪到没有墙的一侧，同一个射程就该开火
+            World clear = new World(wallMap, 6u, new EventBus());
+            Entity prey2 = MakeEntity(EntityKind.Player, new TilePos(1, 1));
+            clear.Spawn(prey2);
+            clear.Player = prey2;
+            Entity shooter2 = MakeEntity(EntityKind.Monster, new TilePos(7, 1));
+            shooter2.DefId = "mon_lich";
+            shooter2.AttackRange = 6;
+            shooter2.Vision = 8;
+            shooter2.Aggressive = true;
+            shooter2.AiThinkCooldown = 0;
+            clear.Spawn(shooter2);
+            clear.Systems.Add(new AiSystem());
+            clear.Step(new List<Intent>());
+            Check(shooter2.WantsAttack, "同一条直线上没有墙就该开火");
+        }
+
+        private static Entity MakeMonster(string defId, TilePos at, int hp, int packRadius)
+        {
+            Entity e = MakeEntity(EntityKind.Monster, at);
+            e.DefId = defId;
+            e.SpriteId = defId;
+            e.Name = defId;
+            e.BaseMaxHp = hp;
+            e.MaxHp = hp;
+            e.Hp = hp;
+            e.PackRadius = packRadius;
+            e.Aggressive = true;
+            e.Vision = 9;
+            e.Leash = 20;
+            e.AttackRange = 1;
+            return e;
         }
 
         // ---------------------------------------------------------------- M5b 装备品质

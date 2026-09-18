@@ -107,6 +107,98 @@ namespace SimplyCQ.EditorTools
             }
             Check(portalTotal > 0, "至少有一张图配了传送点（共 " + portalTotal + " 个）");
 
+            // ---------------- M5d 怪：名单、AI、难度分层 ----------------
+            {
+                int kinds = 0;
+                foreach (MonsterDto md in db.AllMonsters) kinds++;
+                Check(kinds >= 15 && kinds <= 20, "monsters.json 里有 " + kinds + " 种怪（目标 15~20）");
+
+                int ranged = 0, packing = 0, passive = 0;
+                int badAI = 0;
+                string badAIWhere = "";
+                foreach (MonsterDto md in db.AllMonsters)
+                {
+                    if (md.attackRange > 1) ranged++;
+                    if (md.packRadius > 0) packing++;
+                    if (!md.aggressive) passive++;
+
+                    // 视野比射程还短 = 永远够不着（远程怪最容易填错的一栏）
+                    if (md.vision < md.attackRange || md.minDc > md.maxDc)
+                    {
+                        badAI++;
+                        if (badAIWhere.Length < 60) badAIWhere += md.id + " ";
+                    }
+                }
+                Check(badAI == 0, "没有「视野比射程还短」或攻防上下限填反的怪"
+                      + (badAI > 0 ? "，可疑：" + badAIWhere : ""));
+                Check(ranged > 0, "有 " + ranged + " 种远程怪（射程 > 1）");
+                Check(packing > 0, "有 " + packing + " 种群居怪（packRadius > 0）");
+                Check(passive > 0, "有 " + passive + " 种被动怪（新手区总得有能安心打的）");
+
+                // 数据里的 packRadius / attackRange 必须真的传到 Entity 上，
+                // 不然就是"表里配了、游戏里没生效"这种最难查的坑
+                MonsterDto packSample = null;
+                foreach (MonsterDto md in db.AllMonsters)
+                    if (md.packRadius > 0) { packSample = md; break; }
+                if (packSample != null)
+                {
+                    Entity probe = db.CreateMonster(packSample.id);
+                    Check(probe != null && probe.PackRadius == packSample.packRadius,
+                        "monsters.json 的 packRadius 传到了 Entity 上（" + packSample.id
+                        + " -> " + (probe != null ? probe.PackRadius : -1) + "）");
+                }
+
+                MonsterDto rangedSample = null;
+                foreach (MonsterDto md in db.AllMonsters)
+                    if (md.attackRange > 1) { rangedSample = md; break; }
+                if (rangedSample != null)
+                {
+                    Entity probe = db.CreateMonster(rangedSample.id);
+                    Check(probe != null && probe.AttackRange == rangedSample.attackRange,
+                        "远程怪的射程传到了 Entity 上（" + rangedSample.id + " -> "
+                        + (probe != null ? probe.AttackRange : -1) + "）");
+                }
+
+                // 难度分层 + 刷怪区不冷落任何一只怪
+                int grassTop = 0, caveTop = 0;
+                foreach (GameMap m in db.AllMaps)
+                {
+                    for (int i = 0; i < m.Spawners.Count; i++)
+                    {
+                        MonsterDto md = null;
+                        foreach (MonsterDto candidate in db.AllMonsters)
+                            if (candidate.id == m.Spawners[i].MonsterId) { md = candidate; break; }
+                        if (md == null) continue;
+                        if (m.Id == "map_grassland" && md.level > grassTop) grassTop = md.level;
+                        if (m.Id == "map_cave" && md.level > caveTop) caveTop = md.level;
+                    }
+                }
+                Check(grassTop > 0 && grassTop <= 6,
+                    "草原最高怪 Lv" + grassTop + "（新手区，压在 Lv6 以内）");
+                Check(caveTop >= 10, "洞窟最高怪 Lv" + caveTop + "（深处有 Lv10+ 的压力）");
+                Check(caveTop > grassTop, "洞窟整体比草原更危险（Lv" + caveTop + " > Lv" + grassTop + "）");
+
+                int idle = 0;
+                string idleWhere = "";
+                foreach (MonsterDto md in db.AllMonsters)
+                {
+                    bool spawned = false;
+                    foreach (GameMap m in db.AllMaps)
+                        for (int i = 0; i < m.Spawners.Count; i++)
+                            if (m.Spawners[i].MonsterId == md.id) spawned = true;
+                    if (!spawned)
+                    {
+                        idle++;
+                        if (idleWhere.Length < 60) idleWhere += md.id + " ";
+                    }
+                }
+                Check(idle == 0, "每种怪都有刷怪区，没有玩家永远见不到的怪"
+                      + (idle > 0 ? "，冷落的：" + idleWhere : ""));
+
+                GameMap townMap = db.GetMap("map_town");
+                Check(townMap != null && townMap.Spawners.Count == 0, "比邻镇是安全区（不刷怪）");
+            }
+
             // 从出生点随便找一块可走地，必须能寻路过去
             TilePos far = FindFarWalkable(map, map.Spawn);
             List<TilePos> path = new List<TilePos>();
@@ -211,21 +303,28 @@ namespace SimplyCQ.EditorTools
                 Check(diedCount == 1 && damageCount == 1, "致命伤 -> DamageDealt + EntityDied 各一次");
                 Check(fighter.Exp == expBefore + 7, "经验结算正确（" + expBefore + " -> " + fighter.Exp + "）");
 
+                // 怪现在还会掉装备，所以不能"抓最后一件地面物"就当金币 —— 按金币找
                 Entity drop = null;
-                foreach (Entity e in arena2.World.Entities) if (e.Kind == EntityKind.GroundItem) drop = e;
-                Check(drop != null && drop.Gold == 3, "按掉落表掉出 3 金币");
+                int groundCount = 0;
+                foreach (Entity e in arena2.World.Entities)
+                {
+                    if (e.Kind != EntityKind.GroundItem) continue;
+                    groundCount++;
+                    if (e.Gold > 0) drop = e;
+                }
+                Check(drop != null && drop.Gold == 3, "按掉落表掉出 3 金币（地面物共 " + groundCount + " 件）");
                 Check(drop != null && drop.Pos == at, "金币落在怪物死亡点 " + at);
                 Check(arena2.World.EntityAt(at) == dummy, "此刻占着这一格的是尸体，掉落物不参与占格");
 
                 for (int i = 0; i < tuning.CorpseTicks + 2; i++) arena2.Step(new List<Intent>());
                 Check(arena2.World.Get(dummy.Id) == null, "尸体按 CorpseTicks=" + tuning.CorpseTicks + " 被清理");
-                Check(arena2.World.GroundItemAt(at) == drop, "金币还留在原地");
+                Check(drop != null && arena2.World.Get(drop.Id) != null, "金币还留在原地");
                 Check(!arena2.World.IsOccupied(at), "尸体清掉后金币所在格可通行（掉落物不占格）");
 
                 arena2.World.PlaceEntity(fighter, at);
                 arena2.Step(new List<Intent>());
                 Check(fighter.Gold == 3, "踩上去自动捡到 3 金币（实际 " + fighter.Gold + "）");
-                Check(arena2.World.GroundItemAt(at) == null, "捡完后地面金币消失");
+                Check(drop != null && arena2.World.Get(drop.Id) == null, "捡完后地面金币消失");
             }
 
             // ---------------- M3 物品 / 背包 / 装备（用真实数据表）----------------

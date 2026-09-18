@@ -41,7 +41,7 @@ namespace SimplyCQ.Domain
                 Entity target = ResolveTarget(world, e);
                 if (target != null)
                 {
-                    if (e.Pos.ChebyshevTo(target.Pos) <= e.AttackRange)
+                    if (e.Pos.ChebyshevTo(target.Pos) <= e.AttackRange && CanSee(world, e, target))
                     {
                         e.Facing = DirHelper.FromDelta(target.Pos.X - e.Pos.X, target.Pos.Y - e.Pos.Y, e.Facing);
                         e.WantsAttack = true;   // M2 才会真正结算伤害
@@ -56,6 +56,16 @@ namespace SimplyCQ.Domain
 
                 Wander(world, e);
             }
+        }
+
+        /// <summary>
+        /// 打得到 ≠ 看得见。近战（射程 1）本来就贴着，不判；
+        /// 远程必须中间没有墙，否则会出现"隔着石墙一直射你"。
+        /// </summary>
+        private static bool CanSee(World world, Entity e, Entity target)
+        {
+            if (e.AttackRange <= 1) return true;
+            return LineOfSight.Clear(world.Map, e.Pos, target.Pos);
         }
 
         private static Entity ResolveTarget(World world, Entity e)

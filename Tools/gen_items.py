@@ -148,15 +148,20 @@ TABLE = [
 # 非装备物品原样保留（消耗品 / 材料），这一版不动它们
 KEEP_KINDS = ("consumable", "material")
 
-# 哪只怪管哪个等级段 —— 鸡(1) 出 Lv1 段、野狼(4) 出 Lv4 段、野猪(6) 出 Lv7 段。
+# 等级段 ← 怪的等级。这条规则只在这里定义一次，gen_monsters.py 直接 import 用，
+# 两个脚本不会各自维护一份"哪只怪掉哪一段"。
 # 幽暗石洞里野狼和野猪的刷怪区最多，所以越深越出好东西，不用另加"地图等级"机制。
-MONSTER_BAND = {"mon_hen": "b1", "mon_wolf": "b2", "mon_boar": "b3"}
 
-# 每种怪每杀一只，掉出"任意一件装备"的期望概率（越大越容易爆装）
-MONSTER_EQUIP_TOTAL = {"mon_hen": 0.18, "mon_wolf": 0.26, "mon_boar": 0.40}
 
-# 同等级段里，档次越高越难爆
-DROP_WEIGHT = {"base": 1.0, "fine": 0.55, "rare": 0.30}
+def band_for_level(level):
+    if level <= 3:
+        return "b1"
+    if level <= 6:
+        return "b2"
+    return "b3"
+
+
+# 掉落表的概率调参属于怪那一侧，放在 gen_monsters.py 里
 
 # 老 id 必须还在 —— 存档、新手包、掉落表都按 id 引用，改名等于把玩家的东西弄丢
 REQUIRED_IDS = [
@@ -351,7 +356,8 @@ def validate(items, keepers):
 
 
 def validate_drops_in(monsters_data, items):
-    """校验【将要落盘的】掉落表：引用存在、怪的等级配得上装备、每件装备有出处、爆装率可控。"""
+    """校验【gen_monsters.py 将要落盘的】掉落表。
+    这一版起 monsters.json 归 gen_monsters.py 写，这里只读它、只校验，不再写。"""
     bad = 0
     catalog = {i["id"]: i for i in items}
     monsters = monsters_data["monsters"]
@@ -373,28 +379,23 @@ def validate_drops_in(monsters_data, items):
                 continue
             coverage.setdefault(item_id, []).append(mon)
 
-            # 怪掉的装备不该比怪高太多级：允许 3 级以内的超前
-            if dto.get("levelReq", 1) > mon["level"] + 3:
-                ref_problems.append("%s(Lv%d) 掉了 %s（要求 Lv%d，差太远）"
-                                    % (mon["id"], mon["level"], item_id, dto["levelReq"]))
-
             # 每只怪只出自己等级段的装备 —— 别让鸡掉 Lv7 的剑
-            want = MONSTER_BAND.get(mon["id"])
-            if want is not None and band_of.get(item_id) != want:
-                band_problems.append("%s 的掉落里混进了 %s(%s 段)，它只该出 %s 段"
-                                     % (mon["id"], item_id, band_of.get(item_id), want))
+            want = band_for_level(mon["level"])
+            if band_of.get(item_id) != want:
+                band_problems.append("%s(Lv%d，%s 段) 的掉落里混进了 %s(%s 段)"
+                                     % (mon["id"], mon["level"], want, item_id, band_of.get(item_id)))
 
     if ref_problems:
         for p in ref_problems:
             bad += fail(p)
     else:
-        print("  [PASS] %d 只怪的掉落表引用全部存在，且怪的等级配得上掉的装备" % len(monsters))
+        print("  [PASS] %d 只怪的掉落表引用全部存在" % len(monsters))
 
     if band_problems:
         for p in band_problems:
             bad += fail(p)
     else:
-        print("  [PASS] 三只怪各出自己等级段的装备，没有跨段乱掉")
+        print("  [PASS] 每只怪只出自己等级段的装备，没有跨段乱掉")
 
     equips = [i for i in items if i.get("type") == "equip"]
     orphans = [i["id"] for i in equips if i["id"] not in coverage]
@@ -403,62 +404,7 @@ def validate_drops_in(monsters_data, items):
     else:
         print("  [PASS] %d 件装备每件都有出处" % len(equips))
 
-    # 期望爆装率别失控
-    rate_problems = []
-    for mon in monsters:
-        total = sum(d["chance"] for d in mon.get("drops", [])
-                    if catalog.get(d["itemId"], {}).get("type") == "equip")
-        nice = MONSTER_EQUIP_TOTAL.get(mon["id"])
-        if nice is not None and abs(total - nice) > 0.02:
-            rate_problems.append("%s 每杀一只的爆装概率是 %.3f，目标是 %.2f"
-                                 % (mon["id"], total, nice))
-    if rate_problems:
-        for p in rate_problems:
-            bad += fail(p)
-    else:
-        print("  [PASS] 每只怪的爆装期望概率都落在目标值上")
-
     return bad
-
-
-# ----------------------------------------------------------------- 掉落表生成
-
-def build_equip_drops(equips):
-    """按 怪 -> 等级段 分配装备掉落，并按档次权重把总概率摊到每件上。"""
-    tier_of = {item_id: tier for item_id, _, _, _, tier in TABLE}
-    band_of = {item_id: band for item_id, _, _, band, _ in TABLE}
-    items_by_id = {d["id"]: d for d in equips}
-
-    out = {}
-    for monster_id, band in MONSTER_BAND.items():
-        pool = [d for d in equips if band_of.get(d["id"]) == band]
-        if not pool:
-            continue
-        target = MONSTER_EQUIP_TOTAL[monster_id]
-        weight_sum = sum(DROP_WEIGHT[tier_of[d["id"]]] for d in pool)
-
-        drops = []
-        for dto in pool:
-            chance = target * DROP_WEIGHT[tier_of[dto["id"]]] / weight_sum
-            chance = max(0.001, round(chance, 3))
-            drops.append({"itemId": dto["id"], "chance": chance, "min": 1, "max": 1})
-        # 概率高的排前面，读起来顺
-        drops.sort(key=lambda d: (-d["chance"], d["itemId"]))
-        out[monster_id] = drops
-    return out
-
-
-def apply_monsters(equip_drops, keeper_ids):
-    """把装备掉落换成新生成的；材料 / 药水掉落原样保留。"""
-    with open(MONSTERS_PATH, encoding="utf-8") as f:
-        data = json.load(f)
-
-    for mon in data["monsters"]:
-        # 只留消耗品/材料那几条（旧的装备掉落会被下面整段换掉）
-        keep = [d for d in mon.get("drops", []) if d["itemId"] in keeper_ids]
-        mon["drops"] = keep + equip_drops.get(mon["id"], [])
-
-    return data
 
 
 # ----------------------------------------------------------------- 主流程
@@ -494,12 +440,10 @@ def main():
 
     items = generate(existing)
     keepers = [i for i in items if i.get("type") in KEEP_KINDS]
-    keeper_ids = {k["id"] for k in keepers}
     equips = [i for i in items if i.get("type") == "equip"]
 
-    # 掉落表要先生成出来，才能"先校验后落盘" —— 校验跑的是生成后的世界，不是旧文件
-    equip_drops = build_equip_drops(equips)
-    monsters_data = apply_monsters(equip_drops, keeper_ids)
+    # monsters.json 归 gen_monsters.py 写；这里只读它来校验掉落表
+    monsters_data = json.load(open(MONSTERS_PATH, encoding="utf-8")) if os.path.exists(MONSTERS_PATH) else {"monsters": []}
 
     print()
     bad = validate(items, keepers)
@@ -507,11 +451,6 @@ def main():
 
     print()
     print("汇总：装备 %d 件 + 消耗品/材料 %d 件 = %d 件" % (len(equips), len(keepers), len(items)))
-    for monster_id in sorted(equip_drops):
-        drops = equip_drops[monster_id]
-        total = sum(d["chance"] for d in drops)
-        print("  掉落 %-9s 管 %s 段：%2d 件装备，每杀一只爆装概率 %.3f"
-              % (monster_id, MONSTER_BAND[monster_id], len(drops), total))
 
     # 打印一下阶梯，肉眼确认没有倒挂
     print()
@@ -532,20 +471,16 @@ def main():
 
     if not write:
         print()
-        print("校验通过 ✓（没有落盘；加 --write 才写回 items.json / monsters.json）")
+        print("校验通过 ✓（没有落盘；加 --write 才写回 items.json）")
         return 0
 
     with open(ITEMS_PATH, "w", encoding="utf-8") as f:
         json.dump({"items": items}, f, ensure_ascii=False, indent=2)
         f.write("\n")
-    with open(MONSTERS_PATH, "w", encoding="utf-8") as f:
-        json.dump(monsters_data, f, ensure_ascii=False, indent=2)
-        f.write("\n")
 
     print()
-    print("已写回：")
-    print("  %s（%d 件物品）" % (os.path.relpath(ITEMS_PATH, ROOT), len(items)))
-    print("  %s（%d 只怪的掉落表）" % (os.path.relpath(MONSTERS_PATH, ROOT), len(monsters_data["monsters"])))
+    print("已写回 %s（%d 件物品）" % (os.path.relpath(ITEMS_PATH, ROOT), len(items)))
+    print("掉落表在 monsters.json，归 Tools/gen_monsters.py 写 —— 改完记得也跑一下它")
     return 0
 
 

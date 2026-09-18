@@ -110,6 +110,8 @@ namespace SimplyCQ.Data
         public int vision = 5;
         public bool aggressive;
         public int leash = 12;
+        /// <summary>群居半径：打了这只怪，附近同类一起上。0 = 独行。</summary>
+        public int packRadius;
 
         // 击杀收益（M2 战斗）
         public int goldMin;

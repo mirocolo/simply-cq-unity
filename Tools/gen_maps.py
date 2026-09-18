@@ -91,6 +91,7 @@ def build_cave():
     carve(8, 14, 18, 22)           # 西北 tier3
     carve(29, 15, 30, 19, "=")     # tier2 -> 深处 的走廊
     carve(24, 8, 34, 16)           # 深处大厅
+    carve(14, 3, 26, 7)            # 洞底大厅（Lv10+ 的窝，和深处大厅在 x24~26 处上下相接）
 
     # 岩壁上的水潭（纯装饰，阻挡）
     carve(2, 4, 4, 6, "~")
@@ -114,16 +115,29 @@ def build_cave():
             {"x": 20, "y": 36, "targetMap": "map_town", "targetX": 30, "targetY": 20},
         ],
         "spawners": [
-            # 入口缓冲：低阶怪，密度低
-            {"x": 16, "y": 30, "w": 8, "h": 5, "monsterId": "mon_hen", "max": 5, "intervalTicks": 25},
-            # 西侧中阶
-            {"x": 8, "y": 28, "w": 6, "h": 5, "monsterId": "mon_wolf", "max": 5, "intervalTicks": 30},
-            # 东侧中阶：最大的一片，密度更高
-            {"x": 28, "y": 19, "w": 7, "h": 7, "monsterId": "mon_wolf", "max": 8, "intervalTicks": 22},
-            # 西北高阶
-            {"x": 9, "y": 15, "w": 9, "h": 6, "monsterId": "mon_boar", "max": 6, "intervalTicks": 40},
-            # 深处：又硬又多
-            {"x": 25, "y": 9, "w": 9, "h": 6, "monsterId": "mon_boar", "max": 7, "intervalTicks": 28},
+            # 难度带：入口(南，y≈36)浅 -> 洞底(y≈3)强。
+            # 越往里走怪的等级越高，不用另加"地图等级"机制；洞底那几只基本是"见到了就该跑"。
+            # 入口厅 —— 蝙蝠(Lv3)
+            {"x": 16, "y": 30, "w": 9, "h": 4, "monsterId": "mon_bat", "max": 5, "intervalTicks": 24},
+            # 西侧 tier1 —— 野狼(Lv4) / 骷髅(Lv4)
+            {"x": 8, "y": 28, "w": 6, "h": 3, "monsterId": "mon_wolf", "max": 4, "intervalTicks": 30},
+            {"x": 8, "y": 31, "w": 6, "h": 2, "monsterId": "mon_skeleton", "max": 3, "intervalTicks": 32},
+            # 东侧 tier2 —— 巨蜘蛛(Lv5) / 僵尸(Lv5)
+            {"x": 27, "y": 19, "w": 8, "h": 4, "monsterId": "mon_spider", "max": 4, "intervalTicks": 28},
+            {"x": 27, "y": 24, "w": 8, "h": 3, "monsterId": "mon_zombie", "max": 3, "intervalTicks": 36},
+            # 西北 tier3 —— 半兽人(Lv6) / 食尸鬼(Lv7)
+            {"x": 9, "y": 15, "w": 9, "h": 3, "monsterId": "mon_orc", "max": 3, "intervalTicks": 34},
+            {"x": 9, "y": 19, "w": 9, "h": 3, "monsterId": "mon_ghoul", "max": 3, "intervalTicks": 32},
+            # 深处大厅 —— 幽魂(Lv9) / 狼王(Lv8) / 石像鬼(Lv8) / 石头人(Lv10)
+            {"x": 25, "y": 9, "w": 9, "h": 2, "monsterId": "mon_wraith", "max": 3, "intervalTicks": 40},
+            {"x": 25, "y": 11, "w": 9, "h": 2, "monsterId": "mon_wolf_alpha", "max": 1, "intervalTicks": 90},
+            {"x": 25, "y": 13, "w": 9, "h": 2, "monsterId": "mon_gargoyle", "max": 2, "intervalTicks": 45},
+            {"x": 25, "y": 15, "w": 9, "h": 2, "monsterId": "mon_golem", "max": 2, "intervalTicks": 60},
+            # 洞底大厅 —— 暗黑骑士(Lv11) / 巫妖(Lv12) / 幼龙(Lv13) / 洞窟领主(Lv15)
+            {"x": 15, "y": 3, "w": 11, "h": 1, "monsterId": "mon_dark_knight", "max": 2, "intervalTicks": 60},
+            {"x": 15, "y": 4, "w": 11, "h": 1, "monsterId": "mon_lich", "max": 2, "intervalTicks": 70},
+            {"x": 15, "y": 5, "w": 11, "h": 1, "monsterId": "mon_dragon_whelp", "max": 2, "intervalTicks": 90},
+            {"x": 15, "y": 7, "w": 11, "h": 1, "monsterId": "mon_cave_lord", "max": 1, "intervalTicks": 150},
         ],
         "npcs": [],
     }
