@@ -104,28 +104,8 @@ namespace SimplyCQ.Domain
             if (killer == null || killer.Kind != EntityKind.Player) return;
             if (!killer.IsAlive || victim.ExpReward <= 0) return;
 
-            killer.Exp += victim.ExpReward;
-            world.Events.Publish(new ExpGained { Id = killer.Id, Amount = victim.ExpReward, Total = killer.Exp });
-
-            int guard = 0;
-            while (killer.ExpToNextLevel > 0 && killer.Exp >= killer.ExpToNextLevel && guard < 100)
-            {
-                guard++;
-                killer.Exp -= killer.ExpToNextLevel;
-                killer.Level++;
-
-                // 改基础属性再重算，装备加成不会被升级覆盖掉
-                killer.BaseMaxHp += _tuning.LevelUpHpGain;
-                killer.BaseMinDc += _tuning.LevelUpDcGain;
-                killer.BaseMaxDc += _tuning.LevelUpDcGain;
-                killer.BaseAc += _tuning.LevelUpAcGain;
-                StatCalculator.Apply(killer, _catalog);
-
-                killer.Hp = killer.MaxHp;          // M3 还没做药水，升级回满血玩起来更舒服
-                killer.ExpToNextLevel = LevelCurve.ExpToNext(killer.Level, _tuning);
-
-                world.Events.Publish(new LevelUp { Id = killer.Id, Level = killer.Level });
-            }
+            // 给经验 + 吃升级循环 + 发事件，全在 LevelCurve.ApplyExperience（离线收益共用同一份）
+            LevelCurve.ApplyExperience(world, killer, victim.ExpReward, _tuning, _catalog);
         }
 
         private void DropLoot(World world, Entity victim)

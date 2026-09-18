@@ -149,6 +149,17 @@ namespace SimplyCQ.Unity
             return 0;
         }
 
+        /// <summary>T：开关挂机（自动战斗）。</summary>
+        public bool ReadAutoPilotToggle()
+        {
+            if (!Enabled) return false;
+#if ENABLE_LEGACY_INPUT_MANAGER
+            return Input.GetKeyDown(KeyCode.T);
+#else
+            return false;
+#endif
+        }
+
         /// <summary>N：单独开关背景音乐（M 是全部静音）。</summary>
         public bool ReadMusicToggle()
         {

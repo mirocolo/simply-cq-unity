@@ -38,6 +38,18 @@ namespace SimplyCQ.Unity
         private TeleportUi _teleportUi;
         private AudioDirector _audio;
         private MusicDirector _music;
+        private AutoPilot _autoPilot = new AutoPilot();
+        private PickupFeed _pickups;
+        private GrindStats _stats;
+        /// <summary>自动喝药的防连灌（世界 tick）。</summary>
+        private long _nextAutoPotionTick;
+        /// <summary>升级全屏闪的截止时间。</summary>
+        private float _levelUpFlashUntil;
+        /// <summary>上一帧战力 —— 涨了就在头顶飘一条。</summary>
+        private int _lastPower;
+        /// <summary>离线收益结算摘要（读档后填，UI 显示一次）。</summary>
+        private string _offlineSummary = "";
+        private float _offlineSummaryUntil;
         /// <summary>上一帧开着的面板数，用来在"开/关面板"的那一刻各响一声。</summary>
         private int _openPanels;
         private Camera _camera;
@@ -154,8 +166,12 @@ namespace SimplyCQ.Unity
             {
                 SaveData saved = SaveService.Load(SaveService.DefaultPath);
                 if (saved != null && SaveService.Apply(saved, _simulation.World, _database.Items, _database))
+                {
                     Debug.Log("[SimplyCQ] 已读取存档（" + saved.SavedAt + "）" + saved.MapId
                         + " Lv" + saved.Level + " 金币 " + saved.Gold);
+                    ShowOfflineGains(OfflineGains.Apply(_database, _simulation.World,
+                                       _simulation.World.Player, saved, System.DateTime.Now));
+                }
             }
 
             // 读档可能把人挪到很远的地方（甚至换图），相机直接咬合过去，别飞
@@ -170,6 +186,12 @@ namespace SimplyCQ.Unity
             _audio = new AudioDirector(_simulation.World, _projection, _camera);
             _music = new MusicDirector(entityRoot, _simulation.World);
             _music.SyncToMap();          // 开局先按当前地图起一首
+            _pickups = new PickupFeed(_simulation.World, _database.Items);
+            _stats = new GrindStats(_simulation.World);
+            _simulation.Bus.Subscribe<LevelUp>(delegate(LevelUp e)
+            {
+                _levelUpFlashUntil = Time.timeSinceLevelLoad + 0.35f;
+            });
 
             ParseCommandLine();
 
@@ -264,6 +286,13 @@ namespace SimplyCQ.Unity
             if (_input.ReadMusicToggle())
                 Debug.Log("[SimplyCQ] 背景音乐：" + (_music.ToggleMute() ? "已关闭" : "已打开"));
 
+            if (_input.ReadAutoPilotToggle())
+            {
+                _autoPilot.Enabled = !_autoPilot.Enabled;
+                if (_autoPilot.Enabled) _stats.StartSession();     // 挂机从零开始计收益
+                Debug.Log("[SimplyCQ] 挂机：" + (_autoPilot.Enabled ? "开启（T 关闭）" : "关闭"));
+            }
+
             int audioKey = _input.ReadAudioToggle();
             if (audioKey == 1) Debug.Log("[SimplyCQ] 音效：" + (_audio.ToggleMute() ? "已静音" : "已打开"));
             else if (audioKey == 2) Debug.Log("[SimplyCQ] 音效音量 " + Mathf.RoundToInt(_audio.AdjustVolume(-0.1f) * 100f) + "%");
@@ -275,7 +304,11 @@ namespace SimplyCQ.Unity
             {
                 SaveData loaded = SaveService.Load(SaveService.DefaultPath);
                 if (loaded != null && SaveService.Apply(loaded, _simulation.World, _database.Items, _database))
+                {
                     Debug.Log("[SimplyCQ] 读档成功 Lv" + loaded.Level);
+                    ShowOfflineGains(OfflineGains.Apply(_database, _simulation.World,
+                                       _simulation.World.Player, loaded, System.DateTime.Now));
+                }
             }
 
             int toggle = _input.ReadPanelToggle();
@@ -325,7 +358,9 @@ namespace SimplyCQ.Unity
             _floatingText.Tick(dt);
             _audio.Tick(dt);
             _music.Tick(dt);
+            _pickups.Tick();
             PlayPanelSound();
+            TrackCombatPower(_simulation.World.Player);
 
             _secondTimer += dt;
             if (_secondTimer >= 1f)
@@ -661,20 +696,35 @@ namespace SimplyCQ.Unity
 
             if (player != null && player.IsAlive)
             {
+                bool manualActed = false;
+
                 Dir moveDir;
-                if (_input.TryReadMove(out moveDir)) _intents.Add(Intent.Move(player.Id, moveDir));
+                if (_input.TryReadMove(out moveDir))
+                {
+                    _intents.Add(Intent.Move(player.Id, moveDir));
+                    manualActed = true;
+                }
 
                 if (_attackQueued || _attackHeld)
                 {
                     _attackQueued = false;
                     _intents.Add(Intent.Attack(player.Id, _attackDir));
+                    manualActed = true;
                 }
 
                 if (_skillQueued >= 0)
                 {
                     _intents.Add(Intent.BagAction(player.Id, IntentKind.CastSkill, _skillQueued));
                     _skillQueued = -1;
+                    manualActed = true;
                 }
+
+                // 自动喝药（手操和挂机都要）：阈值到了就找最便宜的药，走同一条 UseItem 通道
+                AutoDrinkPotion(player);
+
+                // 挂机：手操没占用这一 tick 才接管
+                _autoPilot.TryProduce(_simulation.World, player, _database.Skills,
+                                      manualActed, _intents);
             }
             else
             {
@@ -686,6 +736,83 @@ namespace SimplyCQ.Unity
             _shopUi.DrainInto(_intents);
             _teleportUi.DrainInto(_intents);
             _simulation.Step(_intents);
+        }
+
+        /// <summary>
+        /// 自动喝药：阈值由 CombatTuning 提供（F1 可调），找药和手操同一条 UseItem 通道 ——
+        /// 挂机喝药和手点喝药在逻辑层是同一件事，不该有两套规则。
+        /// </summary>
+        private void AutoDrinkPotion(Entity player)
+        {
+            if (_simulation.World.Tick < _nextAutoPotionTick) return;
+            if (player.MaxHp <= 0 || player.MaxMp <= 0) return;
+
+            float hpPct = player.Hp / (float)player.MaxHp;
+            float mpPct = player.Mp / (float)player.MaxMp;
+            bool needHp = hpPct < _database.Tuning.AutoPotionHpPct;
+            bool needMp = !needHp && mpPct < _database.Tuning.AutoPotionMpPct;
+            if (!needHp && !needMp) return;
+
+            int slot = ItemSystem.FindPotion(player, _database.Items, mana: needMp);
+            if (slot < 0) return;
+
+            _intents.Add(Intent.BagAction(player.Id, IntentKind.UseItem, slot));
+            _nextAutoPotionTick = _simulation.World.Tick + 20;   // 防连灌：两次至少隔 2 秒
+        }
+
+        /// <summary>战力涨了就在头顶飘一条 —— 页游第一爽点。</summary>
+        private void TrackCombatPower(Entity player)
+        {
+            if (player == null || !player.IsAlive) return;
+
+            int power = StatCalculator.CombatPower(player);
+            if (_lastPower > 0 && power > _lastPower)
+                _floatingText.Add(player.Id, "战力 +" + (power - _lastPower),
+                    UiColor.Srgb(1f, 0.87f, 0.45f), 1.1f, 1.15f);
+            _lastPower = power;
+        }
+
+        /// <summary>升级的全屏反馈：白闪 + 大字。血蓝回满是 Domain 的事（DeathSystem）。</summary>
+        private void DrawLevelUpFlash()
+        {
+            if (Time.timeSinceLevelLoad > _levelUpFlashUntil) return;
+            float k = (_levelUpFlashUntil - Time.timeSinceLevelLoad) / 0.35f;
+
+            UiSkin.Fill(new Rect(0, 0, Screen.width, Screen.height),
+                UiColor.Srgb(1f, 0.96f, 0.85f, 0.35f * k));
+            GUIStyle big = new GUIStyle(UiSkin.Styles.Title);
+            big.fontSize = UiScale.Font(34);
+            big.alignment = TextAnchor.MiddleCenter;
+            big.normal.textColor = UiColor.Srgb(1f, 0.9f, 0.4f, k);
+            GUI.Label(new Rect(0, Screen.height * 0.28f, Screen.width, UiScale.Px(60f)), "LEVEL UP!", big);
+        }
+
+        /// <summary>挂机收益面板：开挂机时显示在左侧中部。</summary>
+        private void DrawGrindPanel()
+        {
+            if (!_autoPilot.Enabled || !_stats.HasSession) return;
+
+            Rect r = UiScale.R(10f, 190f, 240f, 92f);
+            UiSkin.Panel(r, "挂机收益");
+            GUI.Label(UiSkin.LRect(r, 8f, 30f, 224f, 54f), _stats.Summary, UiSkin.Styles.Label);
+        }
+
+        /// <summary>离线收益：有收获才弹（短离线 / 无怪可算都不打扰）。</summary>
+        private void ShowOfflineGains(OfflineGains.Report report)
+        {
+            if (report == null || !report.HasGains) return;
+            _offlineSummary = report.Summary;
+            _offlineSummaryUntil = Time.timeSinceLevelLoad + 8f;
+            Debug.Log("[SimplyCQ] 离线收益：" + report.Summary.Replace("\n", "  "));
+        }
+
+        /// <summary>离线收益：读档后显示一次。</summary>
+        private void DrawOfflineSummary()
+        {
+            if (string.IsNullOrEmpty(_offlineSummary) || Time.timeSinceLevelLoad > _offlineSummaryUntil) return;
+            Rect r = UiScale.R(Screen.width / UiScale.Scale - 340f, 150f, 320f, 96f);
+            UiSkin.Panel(r, "欢迎回来");
+            GUI.Label(UiSkin.LRect(r, 8f, 30f, 304f, 58f), _offlineSummary, UiSkin.Styles.Label);
         }
 
         private void LateUpdate()
@@ -749,6 +876,10 @@ namespace SimplyCQ.Unity
             _tuning.Draw();
             _skillBar.Draw(world.Player, _database.Skills);
             _floatingText.Draw();
+            _pickups.Draw();
+            DrawLevelUpFlash();
+            DrawGrindPanel();
+            DrawOfflineSummary();
         }
 
         /// <summary>
@@ -784,6 +915,9 @@ namespace SimplyCQ.Unity
             string status = "Lv." + p.Level + "    金币 " + p.Gold + "    攻 " + p.MinDc + "-" + p.MaxDc + "    防 " + p.Ac;
             if (!p.IsAlive) status += "    （死亡，等待复活…）";
             status += "    音效 " + _audio.StatusText + "（M 静音）    " + _music.StatusText + "（N 开关）";
+            status += _autoPilot.Enabled
+                ? "    [挂机中 " + _autoPilot.TargetName + "]（T 停）"
+                : "    挂机关（T 开）";
             GUI.Label(UiScale.R(x, y, 640f, 20f), status, UiSkin.Styles.Label);
         }
     }

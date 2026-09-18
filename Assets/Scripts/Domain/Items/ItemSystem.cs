@@ -72,6 +72,34 @@ namespace SimplyCQ.Domain
 
         // ------------------------------------------------------------------ 穿戴
 
+        /// <summary>
+        /// 找背包里"最便宜的那瓶"药（挂机自动喝用手操同一条 UseItem 通道）。
+        /// 便宜优先：先灌小药，大药留给真危机 —— 和传奇的喝药习惯一致。
+        /// 返回背包格下标；没有合适的药返回 -1。
+        /// </summary>
+        public static int FindPotion(Entity e, IItemCatalog catalog, bool mana)
+        {
+            if (e == null || e.Bag == null || catalog == null) return -1;
+
+            int bestSlot = -1;
+            int bestPrice = int.MaxValue;
+            for (int i = 0; i < Inventory.SlotCount; i++)
+            {
+                ItemInstance item = e.Bag.At(i);
+                if (item == null) continue;
+                ItemDef def = catalog.Get(item.DefId);
+                if (def == null || def.Type != ItemType.Consumable) continue;
+                if (mana ? def.HealMp <= 0 : def.HealHp <= 0) continue;
+
+                if (def.Price < bestPrice)
+                {
+                    bestPrice = def.Price;
+                    bestSlot = i;
+                }
+            }
+            return bestSlot;
+        }
+
         public static bool Equip(World world, Entity e, int bagSlot, IItemCatalog catalog)
         {
             if (e == null || e.Bag == null || e.Gear == null) return false;

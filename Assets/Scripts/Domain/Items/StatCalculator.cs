@@ -6,6 +6,17 @@ namespace SimplyCQ.Domain
     /// </summary>
     public static class StatCalculator
     {
+        /// <summary>
+        /// 战力值：把攻/防/血折成一个"能看着往上涨"的数。权重无所谓对错，
+        /// 要紧的是单调 —— 装备越好它越高，仅此而已。
+        /// </summary>
+        public static int CombatPower(Entity e)
+        {
+            if (e == null) return 0;
+            float mid = (e.MinDc + e.MaxDc) * 0.5f;
+            return (int)(mid * 3f + e.Ac * 2f + e.MaxHp * 0.5f + 0.5f);
+        }
+
         public static void Apply(Entity e, IItemCatalog catalog)
         {
             if (e == null) return;

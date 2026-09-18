@@ -145,6 +145,10 @@ namespace SimplyCQ.Unity
                 v => _db.Tuning.RegenPctPerTick = Mathf.Max(0f, v / 10f), 0.005f, "0.000");
             AddInt(combat, "回血延迟(tick)", () => _db.Tuning.RegenDelayTicks,
                 v => _db.Tuning.RegenDelayTicks = Mathf.Max(0, Mathf.RoundToInt(v)), 5f);
+            AddFloat(combat, "自动喝药血线", () => _db.Tuning.AutoPotionHpPct,
+                v => _db.Tuning.AutoPotionHpPct = Clamp01(v), 0.05f, "0.00");
+            AddFloat(combat, "自动喝药蓝线", () => _db.Tuning.AutoPotionMpPct,
+                v => _db.Tuning.AutoPotionMpPct = Clamp01(v), 0.05f, "0.00");
             _groups.Add(combat);
 
             Group growth = new Group();

@@ -1586,6 +1586,105 @@ namespace SimplyCQ.EditorTools
                 Check(true, "运行时建的音乐物体能收干净");
             }
 
+            // ---------------- P0 挂机核心：自动战斗 / 喝药 / 通知流 / 离线收益 ----------------
+            {
+                GameMap apMap = MapLoader.CreateFallbackMap(24, 24);
+                World apWorld = new World(apMap, 51515u, new EventBus());
+                Projection apProj = new Projection(
+                    db.Balance.tileWidthPx / (float)db.Balance.pixelsPerUnit,
+                    db.Balance.tileHeightPx / (float)db.Balance.pixelsPerUnit);
+
+                Entity apHero = db.CreatePlayer();
+                apHero.Pos = apMap.Spawn;
+                apHero.HomePos = apHero.Pos;
+                apWorld.Spawn(apHero);
+                apWorld.Player = apHero;
+
+                Entity apFoe = db.CreateMonster("mon_wolf");
+                apFoe.Pos = apMap.FindNearestWalkable(new TilePos(apMap.Spawn.X + 6, apMap.Spawn.Y), 6);
+                apFoe.HomePos = apFoe.Pos;
+                apWorld.Spawn(apFoe);
+
+                AutoPilot pilot = new AutoPilot { Enabled = true };
+                List<Intent> apIntents = new List<Intent>();
+
+                // 1) 怪在 6 格外：产出"走一步"而不是原地攻击
+                pilot.TryProduce(apWorld, apHero, db.Skills, false, apIntents);
+                Check(apIntents.Count > 0 && apIntents[0].Kind == IntentKind.Move,
+                    "挂机：怪在射程外会走过去（产出 " + apIntents.Count + " 条意图）");
+                apWorld.Step(apIntents);
+
+                // 2) 贴脸：产出攻击（技能没学就只有普攻）
+                apWorld.PlaceEntity(apHero, apFoe.Pos + new TilePos(-1, 0));
+                apIntents.Clear();
+                pilot.TryProduce(apWorld, apHero, db.Skills, false, apIntents);
+                Check(apIntents.Count > 0 && apIntents.Exists(x => x.Kind == IntentKind.Attack),
+                    "挂机：进射程就出手（" + apIntents.Count + " 条意图，含攻击 "
+                    + apIntents.FindAll(x => x.Kind == IntentKind.Attack).Count + " 条）");
+
+                // 3) 手操优先：这一 tick 玩家自己动了，挂机让位
+                apIntents.Clear();
+                pilot.TryProduce(apWorld, apHero, db.Skills, true, apIntents);
+                Check(apIntents.Count == 0, "手操优先：玩家按键时挂机不插手");
+
+                // 4) 没开挂机：什么都不产出
+                pilot.Enabled = false;
+                apIntents.Clear();
+                pilot.TryProduce(apWorld, apHero, db.Skills, false, apIntents);
+                Check(apIntents.Count == 0, "挂机关闭时不产出意图");
+                pilot.Enabled = true;
+
+                // 5) 紧急血线：贴脸时改为撤退（移动而不是攻击）
+                apHero.Hp = 1;
+                apIntents.Clear();
+                pilot.TryProduce(apWorld, apHero, db.Skills, false, apIntents);
+                Check(apIntents.Count > 0 && apIntents[0].Kind == IntentKind.Move,
+                    "血见底时贴脸怪改为走位（等药，不站着挨打）");
+                apHero.Hp = apHero.MaxHp;
+
+                // 6) 自动喝药找的是"最便宜的那瓶"
+                apHero.Bag.Add(db.Items.Get("pot_hp_m"), 2, ItemQuality.White);
+                apHero.Bag.Add(db.Items.Get("pot_hp_s"), 2, ItemQuality.White);
+                int hpSlot = ItemSystem.FindPotion(apHero, db.Items, mana: false);
+                ItemDef potionDef = hpSlot >= 0 ? db.Items.Get(apHero.Bag.At(hpSlot).DefId) : null;
+                Check(potionDef != null && potionDef.Id == "pot_hp_s",
+                    "自动喝药先灌最便宜的小药（选中 " + (potionDef != null ? potionDef.Id : "-") + "）");
+                int mpSlot = ItemSystem.FindPotion(apHero, db.Items, mana: true);
+                Check(mpSlot < 0, "背包里没有蓝药时不会瞎喝血药");
+
+                // 7) 通知流：蓝紫才推、白不推、金币合并
+                PickupFeed feed = new PickupFeed(apWorld, db.Items);
+                apWorld.Events.Publish(new ItemPicked { By = apHero.Id, DefId = "wp_wood", Count = 1, Quality = ItemQuality.White });
+                apWorld.Events.Publish(new ItemPicked { By = apHero.Id, DefId = "wp_long", Count = 1, Quality = ItemQuality.Blue });
+                apWorld.Events.Publish(new GoldPicked { By = apHero.Id, Amount = 3, Total = 3 });
+                apWorld.Events.Publish(new GoldPicked { By = apHero.Id, Amount = 5, Total = 8 });
+                feed.Tick();
+                Check(feed.VisibleCount == 2, "通知流：白装不推，蓝装 + 合并后的金币 = 2 条（实际 "
+                    + feed.VisibleCount + "）");
+
+                // 8) 离线收益：2 小时该有经验金币、装备不超 3 件且品质封顶蓝
+                SaveData fakeSave = new SaveData();
+                fakeSave.SavedAt = System.DateTime.Now.AddHours(-2).ToString("yyyy-MM-dd HH:mm:ss");
+                OfflineGains.Report report = OfflineGains.Apply(db, apWorld, apHero, fakeSave,
+                    System.DateTime.Now);
+                Check(report.HasGains && report.Exp > 0 && report.Gold > 0,
+                    "离线 2 小时有收益（经验 " + report.Exp + "，金币 " + report.Gold + "，击杀约 " + report.Kills + "）");
+                Check(report.Items.Count <= 3, "离线装备最多 3 件（实际 " + report.Items.Count + "）");
+                bool noPurple = true;
+                foreach (ItemInstance it in report.Items)
+                    if (it.Quality > ItemQuality.Blue) noPurple = false;
+                Check(noPurple, "离线不白给紫装（品质封顶蓝）");
+                Check(report.Kills <= 8 * 3600.0 / 1.0, "离线击杀数在封顶范围内（8 小时上限）");
+
+                // 9) 刚离开一会儿不算（60 秒起步）
+                SaveData shortSave = new SaveData();
+                shortSave.SavedAt = System.DateTime.Now.AddSeconds(-10).ToString("yyyy-MM-dd HH:mm:ss");
+                OfflineGains.Report shortReport = OfflineGains.Apply(db, apWorld, apHero, shortSave,
+                    System.DateTime.Now);
+                Check(!shortReport.HasGains, "离开 10 秒不弹结算（免得读个档就烦一次）");
+
+            }
+
             // 键盘操作的成败取决于 Player Settings，这里用编译期宏直接断言，
             // 免得出现「能跑但按键盘没反应」这种最难查的情况。
 #if ENABLE_LEGACY_INPUT_MANAGER

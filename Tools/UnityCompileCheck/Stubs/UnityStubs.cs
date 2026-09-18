@@ -281,7 +281,7 @@ namespace UnityEngine
         public static float timeSinceLevelLoad { get { return 0f; } }
     }
 
-    public enum KeyCode { A, B, C, D, E, I, J, M, N, S, W, F1, F5, F9, Space, Escape, Minus, Equals, Alpha1, Alpha2, Alpha3, Alpha4, Alpha5, Alpha6, UpArrow, DownArrow, LeftArrow, RightArrow }
+    public enum KeyCode { A, B, C, D, E, I, J, M, N, S, T, W, F1, F5, F9, Space, Escape, Minus, Equals, Alpha1, Alpha2, Alpha3, Alpha4, Alpha5, Alpha6, UpArrow, DownArrow, LeftArrow, RightArrow }
 
     public static class Input
     {

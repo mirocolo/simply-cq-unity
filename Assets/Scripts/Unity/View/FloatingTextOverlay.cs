@@ -99,7 +99,8 @@ namespace SimplyCQ.Unity
             }
         }
 
-        private void Add(ActorId id, string text, Color color, float rise, float life)
+        /// <summary>头顶飘字（表现层各处共用：伤害 / 暴击 / 战力 / 拒绝理由）。</summary>
+        public void Add(ActorId id, string text, Color color, float rise, float life)
         {
             Transform t = _views.GetTransform(id);
             if (t == null) return;

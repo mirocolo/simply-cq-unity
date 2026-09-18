@@ -22,6 +22,10 @@ namespace SimplyCQ.Domain
         // ---- 玩家攻击节奏 ----
         public int PlayerAttackInterval = 7;
 
+        // ---- 自动喝药（挂机/手操共用；Unity 层按阈值找药并走 UseItem 通道）----
+        public float AutoPotionHpPct = 0.5f;
+        public float AutoPotionMpPct = 0.3f;
+
         // ---- 脱战回血 ----
         public float RegenPctPerTick = 0.004f;
         public int RegenDelayTicks = 60;
@@ -48,6 +52,8 @@ namespace SimplyCQ.Domain
             if (MinDamage < 1) MinDamage = 1;
             if (PlayerAttackInterval < 1) PlayerAttackInterval = 1;
             if (RegenPctPerTick < 0f) RegenPctPerTick = 0f;
+            AutoPotionHpPct = ClampPct(AutoPotionHpPct);
+            AutoPotionMpPct = ClampPct(AutoPotionMpPct);
             if (RegenDelayTicks < 0) RegenDelayTicks = 0;
             if (ExpCurveBase < 1) ExpCurveBase = 1;
             if (ExpCurvePow < 1f) ExpCurvePow = 1f;
@@ -58,5 +64,8 @@ namespace SimplyCQ.Domain
         }
 
         private static float Clamp01(float v) { return v < 0f ? 0f : (v > 1f ? 1f : v); }
+
+        /// <summary>喝药阈值夹在 5%~90%：太低等于没开，太高会一挨打就灌。</summary>
+        private static float ClampPct(float v) { return v < 0.05f ? 0.05f : (v > 0.9f ? 0.9f : v); }
     }
 }
