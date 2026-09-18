@@ -42,3 +42,18 @@ Tools/**/__pycache__/
 
 # Unity 模板的 *.csproj 规则会误伤自检工程，这两个必须提交
 !Tools/**/*.csproj
+
+# ---- Web / Node.js ----
+node_modules/
+dist/
+dist-ssr/
+*.local
+.pnpm-debug.log*
+.yarn-debug.log*
+.npm/
+.vite/
+
+# ---- System ----
+.DS_Store
+Thumbs.db
+*.tsbuildinfo

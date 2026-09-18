@@ -1,0 +1,53 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 传奇经典滚动条 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #151318;
+}
+::-webkit-scrollbar-thumb {
+  background: #3c3226;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #c49a45;
+}
+
+/* 经典页游金色文字渐变 */
+.text-gold-gradient {
+  background: linear-gradient(180deg, #fffbeb 0%, #fde68a 30%, #f59e0b 70%, #b45309 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.text-gold-glow {
+  text-shadow: 0 0 8px rgba(245, 158, 11, 0.6), 0 0 16px rgba(180, 83, 9, 0.4);
+}
+
+.text-crit-glow {
+  text-shadow: 0 0 10px rgba(239, 68, 68, 0.8), 0 0 20px rgba(185, 28, 28, 0.6);
+}
+
+/* 经典暗黑金色边框面板 */
+.legend-box {
+  background: #141216;
+  border: 2px solid #544431;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.9), inset 0 0 10px rgba(0, 0, 0, 0.8), 0 0 0 1px #1d1712;
+  position: relative;
+}
+
+.legend-box::before {
+  content: '';
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  right: 1px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #c49a45, transparent);
+  pointer-events: none;
+}
