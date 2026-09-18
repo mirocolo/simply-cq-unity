@@ -1,5 +1,5 @@
 <template>
-  <div class="w-screen h-screen bg-legend-bg text-white overflow-hidden relative select-none">
+  <div class="w-screen h-screen bg-legend-bg text-white overflow-hidden relative select-none font-serif">
     <!-- 2.5D 等轴测视口主画布 -->
     <GameCanvas 
       :world="world"
@@ -7,22 +7,21 @@
       v-model:selectedTargetId="selectedTargetId"
     />
 
-    <!-- 顶部 HUD (头像/血蓝/战力/地图/挂机状态) -->
+    <!-- 顶部 HUD (头像/血蓝/战力/右上角青铜罗盘小地图/挂机状态) -->
     <GameHUD 
       :player="world.player"
+      :monsters="world.monsters"
       :selectedMonster="selectedMonster"
       :isAutoEnabled="world.autoConfig.enabled"
       @toggleAuto="toggleAutoPilot"
     />
 
-    <!-- 战斗与掉落实时信息流 -->
-    <BattleLogStream :logs="world.battleLogs" />
-
-    <!-- 底部操作栏 (经验条/药水QW/技能1-4/弹窗快捷键) -->
+    <!-- 底部经典传奇青铜石雕主控制台 (红蓝太极双血球/嵌入式聊天框/药水/技能/功能按钮) -->
     <BottomActionBar 
       :player="world.player"
       :skills="world.skills"
       :inventory="world.inventory"
+      :logs="world.battleLogs"
       :isSoundOn="isSoundOn"
       @castSkill="handleCastSkill"
       @useHpPotion="handleUseHpPotion"
@@ -40,7 +39,7 @@
       @unequip="handleUnequip"
     />
 
-    <!-- 模态弹窗：40格随身背包 (B) -->
+    <!-- 模态弹窗：40格随身包裹 (B) -->
     <InventoryModal 
       v-if="activeModal === 'inventory'"
       :inventory="world.inventory"
@@ -91,14 +90,12 @@ import { EquipSlot, ItemInstance, SkillDef } from './types/game';
 import GameCanvas from './renderer/GameCanvas.vue';
 import GameHUD from './components/GameHUD.vue';
 import BottomActionBar from './components/BottomActionBar.vue';
-import BattleLogStream from './components/BattleLogStream.vue';
 import CharacterModal from './components/CharacterModal.vue';
 import InventoryModal from './components/InventoryModal.vue';
 import AutoPilotModal from './components/AutoPilotModal.vue';
 import SettingsModal from './components/SettingsModal.vue';
 import OfflineRewardModal from './components/OfflineRewardModal.vue';
 
-// 实例化核心系统
 const world = reactive(new GameWorld()) as GameWorld;
 const renderer = new IsometricRenderer();
 const sound = new SoundEffects();
@@ -113,7 +110,6 @@ const soundVolume = ref(0.4);
 let tickTimer: number | null = null;
 let saveTimer: number | null = null;
 
-// 绑定音效与刀光回调
 world.onSound = (name) => {
   switch (name) {
     case 'swing': sound.playSwing(); break;
@@ -139,7 +135,7 @@ const selectedMonster = computed(() => {
 const toggleAutoPilot = () => {
   world.autoConfig.enabled = !world.autoConfig.enabled;
   world.addBattleLog(
-    world.autoConfig.enabled ? '【挂机】已开启自动寻路、索敌打怪与自动喝药' : '【挂机】已暂停自动挂机，交由手动控制',
+    world.autoConfig.enabled ? '【挂机】开启自动寻路打怪、顺劈割草与自动喝药' : '【挂机】暂停自动挂机，交由手动控制',
     'system'
   );
 };
@@ -164,15 +160,12 @@ const handleDropItem = (item: ItemInstance) => {
   }
 };
 
-// 一键穿戴最强战力
 const handleOneKeyEquip = () => {
   let equipCount = 0;
-  // 遍历背包里的装备
   const equipItems = [...world.inventory.filter(i => i.type === 'equipment')];
   for (const item of equipItems) {
     if (!item.slot) continue;
     const currentEquip = world.equipped[item.slot];
-    // 若空位，或新装备 maxDC+maxAC 更优
     if (!currentEquip || (item.maxDC + item.maxAC + item.hasteBonus > currentEquip.maxDC + currentEquip.maxAC + currentEquip.hasteBonus)) {
       world.equipItem(item);
       equipCount++;
@@ -186,12 +179,10 @@ const handleOneKeyEquip = () => {
   }
 };
 
-// 一键回收
 const handleOneKeyRecycle = () => {
   world.recycleLowQualityItems();
 };
 
-// 快捷喝药
 const handleUseHpPotion = () => {
   const pot = world.inventory.find(i => i.type === 'potion' && (i.recoverHp || 0) > 0);
   if (pot) {
@@ -210,7 +201,6 @@ const handleUseMpPotion = () => {
   }
 };
 
-// 释放技能
 const handleCastSkill = (skill: SkillDef) => {
   if (skill.currentCdTicks > 0) return;
   if (world.player.stats.mp < skill.manaCost) {
@@ -218,10 +208,8 @@ const handleCastSkill = (skill: SkillDef) => {
     return;
   }
 
-  // 若有锁定怪或寻找最近怪
   let target = selectedMonster.value;
   if (!target) {
-    // 寻找最近的怪
     let minDist = 3;
     for (const m of world.monsters) {
       if (m.state === 'dead') continue;
@@ -239,7 +227,6 @@ const handleCastSkill = (skill: SkillDef) => {
   }
 };
 
-// 音量控制
 const toggleSound = () => {
   isSoundOn.value = sound.toggleSound();
 };
@@ -272,9 +259,7 @@ const handleClaimOfflineReward = () => {
   }
 };
 
-// 全局快捷键监听
 const handleKeyDown = (e: KeyboardEvent) => {
-  // 如果在输入框中不拦截
   if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
 
   const key = e.key.toUpperCase();
@@ -302,7 +287,6 @@ const handleKeyDown = (e: KeyboardEvent) => {
       handleCastSkill(world.skills[idx]);
     }
   } else if (e.code === 'Space') {
-    // 空格手动普攻
     if (world.skills[0]) {
       handleCastSkill(world.skills[0]);
     }
@@ -310,7 +294,6 @@ const handleKeyDown = (e: KeyboardEvent) => {
 };
 
 onMounted(() => {
-  // 1. 尝试读档
   const hasLoaded = world.load();
   if (hasLoaded) {
     const saved = StorageManager.loadGame();
@@ -322,12 +305,10 @@ onMounted(() => {
     }
   }
 
-  // 2. 启动世界逻辑 Tick 定时器 (100ms 一跳)
   tickTimer = window.setInterval(() => {
     world.tick();
   }, 100);
 
-  // 3. 自动存档定时器 (每 10 秒自动存一次)
   saveTimer = window.setInterval(() => {
     world.save();
   }, 10000);

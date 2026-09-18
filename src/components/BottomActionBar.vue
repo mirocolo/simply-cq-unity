@@ -1,130 +1,180 @@
 <template>
-  <div class="pointer-events-none absolute bottom-0 left-0 right-0 z-10 flex flex-col items-center select-none">
-    <!-- 经验条 (铺满整条底部) -->
-    <div class="pointer-events-auto relative w-full h-3 bg-zinc-950 border-t border-legend-border overflow-hidden">
+  <div class="pointer-events-none absolute bottom-0 left-0 right-0 z-20 flex flex-col items-center select-none font-serif">
+    <!-- 经验条 (铺满整条底部，经典墨玉绿刻度) -->
+    <div class="pointer-events-auto relative w-full h-3 bg-black border-t border-b border-[#3c2f21] overflow-hidden">
       <div 
-        class="h-full bg-gradient-to-r from-emerald-600 to-teal-400 transition-all duration-300"
+        class="h-full bg-gradient-to-r from-emerald-700 via-emerald-500 to-teal-400 transition-all duration-300"
         :style="{ width: `${expPercent}%` }"
       ></div>
-      <span class="absolute inset-0 flex items-center justify-center text-[10px] text-emerald-100 font-mono font-bold leading-none">
-        EXP: {{ expPercent.toFixed(1) }}% ({{ player.stats.exp }} / {{ player.stats.maxExp }})
+      <span class="absolute inset-0 flex items-center justify-center text-[10px] text-amber-200 font-mono leading-none drop-shadow">
+        【经验】 {{ expPercent.toFixed(1) }}% ({{ player.stats.exp }} / {{ player.stats.maxExp }})
       </span>
     </div>
 
-    <!-- 核心操作底栏 -->
-    <div class="pointer-events-auto w-full bg-gradient-to-t from-black via-zinc-950/95 to-zinc-900/90 border-t border-legend-border px-4 py-2 flex items-center justify-between">
-      <!-- 左侧：快捷药水栏 (Q, W) -->
-      <div class="flex items-center gap-2">
-        <!-- Q 键生命药 -->
-        <button 
-          @click="$emit('useHpPotion')"
-          class="relative w-12 h-12 bg-zinc-900 rounded-lg border-2 border-red-900/80 hover:border-red-500 flex flex-col items-center justify-center transition-all group active:scale-95 shadow-md"
-        >
-          <span class="text-xl">🍷</span>
-          <span class="absolute top-0.5 left-1 text-[10px] font-bold text-red-400 font-mono">Q</span>
-          <span class="absolute bottom-0.5 right-1 text-[10px] font-bold text-white bg-red-900/90 px-1 rounded-full">
-            {{ hpPotionCount }}
-          </span>
-        </button>
+    <!-- 传奇最经典青铜石雕主控制台底座 -->
+    <div class="pointer-events-auto w-full bg-gradient-to-t from-[#0e0c0b] via-[#1a1612] to-[#252019] border-t-2 border-[#5c4a34] px-4 py-2 flex items-center justify-between shadow-[0_-8px_25px_rgba(0,0,0,0.9)]">
+      
+      <!-- 左翼：嵌入式传奇聊天与战斗日志窗口 -->
+      <div class="w-80 h-28 bg-black/85 rounded border-2 border-[#4a3b2b] p-2 flex flex-col justify-between shadow-inner">
+        <!-- 频道标签 -->
+        <div class="flex items-center gap-2 border-b border-[#3c2f21] pb-1 text-[10px]">
+          <span 
+            @click="activeTab = 'all'" 
+            class="cursor-pointer px-1.5 py-0.5 rounded font-bold"
+            :class="activeTab === 'all' ? 'bg-[#4a3b2b] text-amber-300' : 'text-zinc-500 hover:text-zinc-300'"
+          >综合</span>
+          <span 
+            @click="activeTab = 'drop'" 
+            class="cursor-pointer px-1.5 py-0.5 rounded font-bold"
+            :class="activeTab === 'drop' ? 'bg-[#4a3b2b] text-purple-300' : 'text-zinc-500 hover:text-zinc-300'"
+          >极品爆装</span>
+          <span 
+            @click="activeTab = 'system'" 
+            class="cursor-pointer px-1.5 py-0.5 rounded font-bold"
+            :class="activeTab === 'system' ? 'bg-[#4a3b2b] text-yellow-300' : 'text-zinc-500 hover:text-zinc-300'"
+          >系统提示</span>
+        </div>
 
-        <!-- W 键法力药 -->
-        <button 
-          @click="$emit('useMpPotion')"
-          class="relative w-12 h-12 bg-zinc-900 rounded-lg border-2 border-blue-900/80 hover:border-blue-500 flex flex-col items-center justify-center transition-all group active:scale-95 shadow-md"
-        >
-          <span class="text-xl">🍶</span>
-          <span class="absolute top-0.5 left-1 text-[10px] font-bold text-blue-400 font-mono">W</span>
-          <span class="absolute bottom-0.5 right-1 text-[10px] font-bold text-white bg-blue-900/90 px-1 rounded-full">
-            {{ mpPotionCount }}
-          </span>
-        </button>
+        <!-- 日志流 -->
+        <div class="overflow-y-auto max-h-20 flex flex-col gap-1 pr-1 text-[11px] leading-tight font-sans">
+          <div 
+            v-for="log in filteredLogs" 
+            :key="log.id"
+            class="flex items-baseline gap-1"
+          >
+            <span class="text-zinc-500 text-[9px] shrink-0 font-mono">[{{ log.timestamp }}]</span>
+            <span :class="getLogClass(log)">{{ log.text }}</span>
+          </div>
+        </div>
       </div>
 
-      <!-- 中间：经典技能快捷栏 (1 ~ 4) -->
+      <!-- 中央核心：传奇标志性【红蓝太极双血球】 (太极阴阳双半圆) -->
+      <div class="flex flex-col items-center -mt-6">
+        <!-- 双血球玻璃圆盘 (直经 84px) -->
+        <div class="relative w-[88px] h-[88px] rounded-full border-4 border-[#8c6d3b] bg-zinc-950 overflow-hidden shadow-[0_0_20px_rgba(0,0,0,0.9),inset_0_0_15px_rgba(0,0,0,0.8)] flex">
+          <!-- 左半边：红血球 (HP) -->
+          <div class="relative w-1/2 h-full bg-[#1c0808] border-r-2 border-[#5c4a34] overflow-hidden">
+            <div 
+              class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-red-900 via-red-600 to-rose-500 transition-all duration-200"
+              :style="{ height: `${hpPercent}%` }"
+            ></div>
+            <!-- 液面高光波纹 -->
+            <div class="absolute inset-0 bg-gradient-to-tr from-transparent via-white/15 to-transparent pointer-events-none"></div>
+          </div>
+
+          <!-- 右半边：蓝魔球 (MP) -->
+          <div class="relative w-1/2 h-full bg-[#08111c] overflow-hidden">
+            <div 
+              class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-blue-900 via-blue-600 to-cyan-400 transition-all duration-200"
+              :style="{ height: `${mpPercent}%` }"
+            ></div>
+            <!-- 液面高光波纹 -->
+            <div class="absolute inset-0 bg-gradient-to-tl from-transparent via-white/15 to-transparent pointer-events-none"></div>
+          </div>
+
+          <!-- 球心金色太极徽标与数字 -->
+          <div class="absolute inset-0 flex flex-col items-center justify-center text-[10px] font-mono font-bold leading-tight pointer-events-none text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
+            <span class="text-rose-200">{{ player.stats.hp }}</span>
+            <span class="text-cyan-200">{{ player.stats.mp }}</span>
+          </div>
+
+          <!-- 玻璃反光弧形罩 -->
+          <div class="absolute inset-0 rounded-full border border-white/20 pointer-events-none bg-gradient-to-b from-white/20 via-transparent to-black/30"></div>
+        </div>
+
+        <!-- 药水快捷按键提示 -->
+        <div class="flex gap-4 mt-1">
+          <button 
+            @click="$emit('useHpPotion')"
+            class="px-2 py-0.5 bg-red-950/80 hover:bg-red-800 border border-red-800 rounded text-[10px] text-red-300 font-bold active:scale-95 transition-all flex items-center gap-1 shadow"
+            title="快捷喝金创药 (按 Q)"
+          >
+            <span>🍷 Q</span>
+            <span class="text-white font-mono">({{ hpPotionCount }})</span>
+          </button>
+          <button 
+            @click="$emit('useMpPotion')"
+            class="px-2 py-0.5 bg-blue-950/80 hover:bg-blue-800 border border-blue-800 rounded text-[10px] text-blue-300 font-bold active:scale-95 transition-all flex items-center gap-1 shadow"
+            title="快捷喝魔法药 (按 W)"
+          >
+            <span>🍶 W</span>
+            <span class="text-white font-mono">({{ mpPotionCount }})</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 右翼中：经典 4 技能石雕卡槽 -->
       <div class="flex items-center gap-2">
         <div 
           v-for="(skill, index) in skills" 
           :key="skill.id"
           @click="$emit('castSkill', skill)"
-          class="relative w-13 h-13 p-1 bg-zinc-900 rounded-lg border-2 border-amber-900/80 hover:border-amber-400 flex flex-col items-center justify-center cursor-pointer transition-all active:scale-95 shadow-panel group"
+          class="relative w-14 h-14 bg-gradient-to-b from-[#211b15] to-[#120f0c] rounded border-2 border-[#5c4a34] hover:border-amber-400 flex flex-col items-center justify-center cursor-pointer transition-all active:scale-95 shadow-[0_4px_10px_rgba(0,0,0,0.8),inset_0_0_8px_rgba(0,0,0,0.9)] group"
         >
-          <!-- 技能图标 -->
           <span class="text-2xl">{{ skill.icon }}</span>
-
-          <!-- 快捷键编号 -->
           <span class="absolute top-0.5 left-1 text-[10px] font-black text-amber-400 font-mono">
             {{ index + 1 }}
           </span>
-
-          <!-- 技能名称微缩 -->
-          <span class="text-[9px] text-zinc-300 truncate max-w-[48px] leading-tight mt-0.5">
+          <span class="text-[9px] text-zinc-300 truncate max-w-[48px] leading-tight font-sans">
             {{ skill.name }}
           </span>
 
-          <!-- 冷却遮罩 (半透明扇形/矩形倒计时) -->
+          <!-- 冷却遮罩 -->
           <div 
             v-if="skill.currentCdTicks > 0"
-            class="absolute inset-0 bg-black/75 rounded-lg flex items-center justify-center text-xs font-bold text-amber-300 font-mono"
+            class="absolute inset-0 bg-black/80 rounded flex items-center justify-center text-xs font-bold text-amber-300 font-mono"
           >
             {{ (skill.currentCdTicks / 10).toFixed(1) }}s
           </div>
         </div>
       </div>
 
-      <!-- 右侧：功能弹窗菜单按钮 -->
-      <div class="flex items-center gap-2">
-        <button 
-          @click="$emit('openModal', 'character')"
-          class="px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-legend-gold border border-legend-border rounded-lg text-xs font-bold transition-all flex items-center gap-1 shadow"
-        >
-          <span>👤</span>
-          <span>人物(C)</span>
-        </button>
+      <!-- 右翼尾：经典青铜刻字菜单操作按钮 -->
+      <div class="flex flex-col gap-1.5">
+        <div class="flex gap-2">
+          <button 
+            @click="$emit('openModal', 'character')"
+            class="w-16 py-1.5 bg-gradient-to-b from-[#3a2f23] to-[#1e1710] hover:from-[#4d3e2d] hover:to-[#2c2217] text-[#f3c258] border-2 border-[#6d563a] rounded text-xs font-bold transition-all shadow-md active:scale-95"
+          >
+            人物(C)
+          </button>
+          <button 
+            @click="$emit('openModal', 'inventory')"
+            class="w-16 py-1.5 bg-gradient-to-b from-[#3a2f23] to-[#1e1710] hover:from-[#4d3e2d] hover:to-[#2c2217] text-[#f3c258] border-2 border-[#6d563a] rounded text-xs font-bold transition-all shadow-md active:scale-95"
+          >
+            包裹(B)
+          </button>
+        </div>
 
-        <button 
-          @click="$emit('openModal', 'inventory')"
-          class="px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-legend-gold border border-legend-border rounded-lg text-xs font-bold transition-all flex items-center gap-1 shadow"
-        >
-          <span>🎒</span>
-          <span>背包(B)</span>
-        </button>
-
-        <button 
-          @click="$emit('openModal', 'autopilot')"
-          class="px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-legend-gold border border-legend-border rounded-lg text-xs font-bold transition-all flex items-center gap-1 shadow"
-        >
-          <span>⚙️</span>
-          <span>挂机(L)</span>
-        </button>
-
-        <button 
-          @click="$emit('openModal', 'settings')"
-          class="p-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-legend-border rounded-lg text-xs font-bold transition-all shadow"
-          title="系统设置 (O)"
-        >
-          ⚙
-        </button>
-
-        <button 
-          @click="$emit('toggleSound')"
-          class="p-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-legend-border rounded-lg text-xs font-bold transition-all shadow"
-          :title="isSoundOn ? '音效开启' : '音效静音'"
-        >
-          {{ isSoundOn ? '🔊' : '🔇' }}
-        </button>
+        <div class="flex gap-2">
+          <button 
+            @click="$emit('openModal', 'autopilot')"
+            class="w-16 py-1.5 bg-gradient-to-b from-[#3a2f23] to-[#1e1710] hover:from-[#4d3e2d] hover:to-[#2c2217] text-[#f3c258] border-2 border-[#6d563a] rounded text-xs font-bold transition-all shadow-md active:scale-95"
+          >
+            挂机(L)
+          </button>
+          <button 
+            @click="$emit('openModal', 'settings')"
+            class="w-16 py-1.5 bg-gradient-to-b from-[#3a2f23] to-[#1e1710] hover:from-[#4d3e2d] hover:to-[#2c2217] text-[#f3c258] border-2 border-[#6d563a] rounded text-xs font-bold transition-all shadow-md active:scale-95"
+          >
+            设置(O)
+          </button>
+        </div>
       </div>
+
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
-import { Entity, ItemInstance, SkillDef } from '../types/game';
+import { ref, computed } from 'vue';
+import { BattleLog, Entity, ItemInstance, SkillDef } from '../types/game';
 
 const props = defineProps<{
   player: Entity;
   skills: SkillDef[];
   inventory: ItemInstance[];
+  logs: BattleLog[];
   isSoundOn: boolean;
 }>();
 
@@ -136,9 +186,38 @@ defineEmits<{
   (e: 'toggleSound'): void;
 }>();
 
+const activeTab = ref<'all' | 'drop' | 'system'>('all');
+
+const filteredLogs = computed(() => {
+  if (activeTab.value === 'drop') return props.logs.filter(l => l.type === 'drop');
+  if (activeTab.value === 'system') return props.logs.filter(l => l.type === 'system');
+  return props.logs;
+});
+
+const getLogClass = (log: BattleLog) => {
+  if (log.type === 'system') return 'text-amber-400 font-semibold';
+  if (log.type === 'drop') {
+    if (log.quality === 4) return 'text-orange-400 font-bold';
+    if (log.quality === 3) return 'text-purple-400 font-bold';
+    if (log.quality === 2) return 'text-blue-400 font-medium';
+    if (log.quality === 1) return 'text-emerald-400';
+    return 'text-slate-300';
+  }
+  if (log.type === 'kill') return 'text-zinc-300';
+  return 'text-zinc-400';
+};
+
 const expPercent = computed(() => {
   if (!props.player.stats.maxExp) return 0;
   return Math.min(100, (props.player.stats.exp / props.player.stats.maxExp) * 100);
+});
+
+const hpPercent = computed(() => {
+  return Math.max(0, Math.min(100, (props.player.stats.hp / props.player.stats.maxHp) * 100));
+});
+
+const mpPercent = computed(() => {
+  return Math.max(0, Math.min(100, (props.player.stats.mp / props.player.stats.maxMp) * 100));
 });
 
 const hpPotionCount = computed(() => {
