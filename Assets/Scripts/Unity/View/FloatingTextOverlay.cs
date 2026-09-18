@@ -46,9 +46,17 @@ namespace SimplyCQ.Unity
             world.Events.Subscribe<PickupRefused>(OnPickupRefused);
             world.Events.Subscribe<SkillLearned>(OnSkillLearned);
             world.Events.Subscribe<SkillRefused>(OnSkillRefused);
+            world.Events.Subscribe<PortalRefused>(OnPortalRefused);
+            world.Events.Subscribe<MapChanged>(OnMapChanged);
         }
 
         public int Count { get { return _items.Count; } }
+
+        /// <summary>换图时清掉上一张图残留的飘字 —— 它们的世界坐标已经不成立了。</summary>
+        public void Clear()
+        {
+            _items.Clear();
+        }
 
         public void Tick(float dt)
         {
@@ -150,6 +158,20 @@ namespace SimplyCQ.Unity
         private void OnSkillRefused(SkillRefused evt)
         {
             Add(evt.Id, evt.Reason, new Color(1f, 0.62f, 0.35f), 0.5f, 1.2f);
+        }
+
+        /// <summary>传送失败（目标地图不存在）—— 沉默会让玩家以为传送点是坏的。</summary>
+        private void OnPortalRefused(PortalRefused evt)
+        {
+            Add(evt.Id, evt.Reason, UiColor.Srgb(1f, 0.62f, 0.30f), 0.5f, 1.6f);
+        }
+
+        private void OnMapChanged(MapChanged evt)
+        {
+            Entity p = _world.Player;
+            if (p == null) return;
+            string name = _world.Map != null ? _world.Map.Name : evt.ToMapId;
+            Add(p.Id, "进入 " + name, UiColor.Srgb(0.75f, 0.90f, 1f), 0.4f, 1.6f);
         }
 
         private void OnDied(EntityDied evt)

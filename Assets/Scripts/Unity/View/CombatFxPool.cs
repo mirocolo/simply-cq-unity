@@ -100,6 +100,17 @@ namespace SimplyCQ.Unity
             }
         }
 
+        /// <summary>换图时关掉所有活跃特效 —— 它们停在上一张图的世界坐标上。</summary>
+        public void Clear()
+        {
+            for (int i = 0; i < _pool.Count; i++)
+            {
+                if (!_pool[i].Active) continue;
+                _pool[i].Active = false;
+                _pool[i].Renderer.enabled = false;
+            }
+        }
+
         public void Tick(float dt)
         {
             for (int i = 0; i < _pool.Count; i++)

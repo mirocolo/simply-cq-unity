@@ -17,7 +17,8 @@ namespace SimplyCQ.Domain
         /// 只是穿装备和捡物品会静默失效 —— 这种坑必须让编译器挡下来。
         /// </remarks>
         public Simulation(GameMap map, uint seed, Func<string, Entity> monsterFactory,
-                          CombatTuning tuning, IItemCatalog catalog, ISkillCatalog skills, ShopTuning shop)
+                          CombatTuning tuning, IItemCatalog catalog, ISkillCatalog skills, ShopTuning shop,
+                          IMapCatalog maps = null)
         {
             Bus = new EventBus();
             World = new World(map, seed, Bus);
@@ -28,6 +29,8 @@ namespace SimplyCQ.Domain
             // 顺序有含义：先决策（AI），再执行移动，再结算战斗/死亡/拾取，最后刷怪
             World.Systems.Add(new AiSystem());
             World.Systems.Add(new MovementSystem());
+            // 传送紧跟在移动之后：这样「走进传送点」当 tick 就能换图，玩家的位移不会浪费半拍
+            if (maps != null) World.Systems.Add(new PortalSystem(maps));
             World.Systems.Add(new CombatSystem(Tuning));
             World.Systems.Add(new SkillSystem(skills, Catalog, Tuning));
             World.Systems.Add(new DeathSystem(Tuning, Catalog));

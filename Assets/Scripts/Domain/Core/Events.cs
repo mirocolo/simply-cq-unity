@@ -190,4 +190,19 @@ namespace SimplyCQ.Domain
         public ActorId By;
         public string Reason;
     }
+
+    /// <summary>换图成功。表现层收到它要重新绑地表、重算相机边界、清掉上一张图的飘字与特效。</summary>
+    public struct MapChanged
+    {
+        public string FromMapId;
+        public string ToMapId;
+    }
+
+    /// <summary>传送没做成（目标地图不存在）。和别的「拒绝」一样，必须给玩家可见反馈。</summary>
+    public struct PortalRefused
+    {
+        public ActorId Id;
+        public string TargetMap;
+        public string Reason;
+    }
 }

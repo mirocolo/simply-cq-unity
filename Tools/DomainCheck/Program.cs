@@ -39,6 +39,7 @@ namespace DomainCheck
             TestDropRoller();
             TestConsumable();
             TestLootLoop();
+            TestMapSwitch();
             Console.WriteLine();
             Console.WriteLine(_failures == 0 ? "全部通过 ✓" : _failures + " 项失败 ✗");
             return _failures == 0 ? 0 : 1;
@@ -65,8 +66,60 @@ namespace DomainCheck
             return map;
         }
 
-        private static Entity MakeEntity(EntityKind kind, TilePos pos)
+        /// <summary>和 Map() 一样，只是能指定 id —— 多地图用例需要靠 id 区分。</summary>
+        private static GameMap NamedMap(string id, params string[] rows)
         {
+            int h = rows.Length;
+            int w = rows[0].Length;
+            byte[] tiles = new byte[w * h];
+            for (int y = 0; y < h; y++)
+            {
+                string row = rows[y];
+                for (int x = 0; x < w; x++)
+                {
+                    char c = x < row.Length ? row[x] : '#';
+                    tiles[y * w + x] = GameMap.Pack(0, c == '#');
+                }
+            }
+            GameMap map = new GameMap(id, id, w, h, tiles);
+            map.Spawn = new TilePos(1, 1);
+            return map;
+        }
+
+        private static void AddPortal(GameMap map, int x, int y, string targetMap, int tx, int ty)
+        {
+            Portal p = new Portal();
+            p.At = new TilePos(x, y);
+            p.TargetMap = targetMap;
+            p.TargetPos = new TilePos(tx, ty);
+            map.Portals.Add(p);
+        }
+
+        private static void AddSpawner(GameMap map, int x, int y, int w, int h, string monsterId, int max, int interval)
+        {
+            Spawner s = new Spawner();
+            s.X = x; s.Y = y; s.W = w; s.H = h;
+            s.MonsterId = monsterId;
+            s.Max = max;
+            s.IntervalTicks = interval;
+            map.Spawners.Add(s);
+        }
+
+        /// <summary>测试用的地图表：注册了哪几张就给哪几张，其余一律 null。</summary>
+        private sealed class FakeMapCatalog : IMapCatalog
+        {
+            private readonly Dictionary<string, GameMap> _maps = new Dictionary<string, GameMap>();
+
+            public void Add(GameMap map) { _maps[map.Id] = map; }
+
+            public GameMap GetMap(string mapId)
+            {
+                GameMap m;
+                return _maps.TryGetValue(mapId, out m) ? m : null;
+            }
+        }
+
+        private static Entity MakeEntity(EntityKind kind, TilePos pos)        {
             Entity e = new Entity();
             e.Kind = kind;
             e.DefId = kind == EntityKind.Player ? "player_warrior" : "mon_test";
@@ -969,6 +1022,133 @@ namespace DomainCheck
                 Check(ItemSystem.Equip(sim.World, p, p.Bag.IndexOf("sword"), cat), "把剑穿上了");
                 Check(p.MinDc > before, "攻击力从 " + before + " 提升到 " + p.MinDc);
             }
+        }
+
+        // ------------------------------------------------------------------ 多地图
+
+        private static void TestMapSwitch()
+        {
+            Console.WriteLine("[切换地图 / 传送]");
+
+            string[] open = { "..........", "..........", "..........", "..........", "..........",
+                              "..........", "..........", "..........", "..........", ".........." };
+
+            // map_a：走廊，(5,5) 是去 map_b 的传送点；也配个刷怪区，用来验证旧图账本被清
+            GameMap a = NamedMap("map_a", open);
+            AddPortal(a, 5, 5, "map_b", 3, 3);
+            AddSpawner(a, 6, 6, 3, 3, "mon_old", 2, 1);
+
+            // map_b：落点本身就是它自己的传送点（用来验证「落地不会再触发一次」），另配一个刷怪区
+            GameMap b = NamedMap("map_b", open);
+            AddPortal(b, 3, 3, "map_a", 5, 4);
+            AddSpawner(b, 6, 6, 3, 3, "mon_slime", 2, 1);
+
+            // map_c：传送点指向一张不存在的地图
+            GameMap c = NamedMap("map_c", open);
+            AddPortal(c, 5, 5, "map_nope", 1, 1);
+
+            FakeMapCatalog catalog = new FakeMapCatalog();
+            catalog.Add(a);
+            catalog.Add(b);
+            catalog.Add(c);
+
+            TestCatalog items = new TestCatalog();
+            items.Potion("potion", 30);
+
+            Func<string, Entity> factory = delegate(string id)
+            {
+                Entity m = MakeEntity(EntityKind.Monster, new TilePos(2, 2));
+                m.DefId = id;
+                m.MoveSpeed = 100;      // 别乱跑，方便断言
+                m.Vision = 0;
+                m.Aggressive = false;
+                return m;
+            };
+
+            Simulation sim = new Simulation(a, 5u, factory, null, items, null, null, catalog);
+            World w = sim.World;
+
+            Entity player = MakeFullPlayer(items, new TilePos(4, 5));
+            player.Gold = 123;
+            player.Level = 7;
+            player.Bag.Add(items.Get("potion"), 3);
+            w.Spawn(player);
+            w.Player = player;
+
+            Entity bystander = factory("mon_bystander");
+            bystander.Pos = new TilePos(2, 2);
+            bystander.HomePos = bystander.Pos;
+            w.Spawn(bystander);
+
+            int mapChanges = 0;
+            string lastFrom = null, lastTo = null;
+            sim.Bus.Subscribe<MapChanged>(delegate(MapChanged e) { mapChanges++; lastFrom = e.FromMapId; lastTo = e.ToMapId; });
+
+            int refused = 0;
+            sim.Bus.Subscribe<PortalRefused>(delegate(PortalRefused e) { refused++; });
+
+            // 首 tick 只记录，不该触发（否则「读档落在传送点上」会被误传送）
+            sim.Step(new List<Intent>());
+            Check(w.Map.Id == "map_a", "开局在第一张图 map_a");
+            Check(mapChanges == 0, "站着不动不会被传送");
+
+            // 走进传送点
+            List<Intent> acts = new List<Intent>();
+            acts.Add(Intent.Move(player.Id, Dir.Right));
+            sim.Step(acts);
+
+            Check(w.Map.Id == "map_b", "走进传送点后换到了 map_b（实际 " + w.Map.Id + "）");
+            Check(player.Pos == new TilePos(3, 3), "人在目标落点 (3,3)，实际 " + player.Pos);
+            Check(mapChanges == 1, "只换了一次图（实际 " + mapChanges + "）");
+            Check(lastFrom == "map_a" && lastTo == "map_b", "事件带对的 from/to");
+            Check(refused == 0, "成功的传送不会发 PortalRefused");
+
+            // 旧图的实体必须清干净，否则会在新图上占格、被 AI 继续驱动
+            Check(w.Get(bystander.Id) == null, "旧图的怪被清掉了");
+            bool onlyPlayerAndNewSpawns = true;
+            foreach (Entity e in w.Entities)
+                if (e.Id != player.Id && e.DefId != "mon_slime") onlyPlayerAndNewSpawns = false;
+            Check(onlyPlayerAndNewSpawns,
+                "换图后场上只剩玩家和新图刷出来的怪（实际 " + w.EntityCount + " 个实体）");
+            Check(!w.IsOccupied(new TilePos(5, 5)), "旧图传送点的占位已释放");
+            Check(w.IsOccupied(new TilePos(3, 3)), "新图落点被玩家占住");
+
+            // 角色数据跨图不能丢
+            Check(player.Level == 7 && player.Gold == 123, "等级和金币跨图保留");
+            Check(player.Bag.IndexOf("potion") >= 0, "背包跨图保留");
+            Check(player.HomePos == player.Pos, "HomePos 跟着人走（自检会校验它在界内）");
+
+            // 落地那格本身就是传送点：不能再触发一次，否则来回死循环
+            for (int i = 0; i < 5; i++) sim.Step(new List<Intent>());
+            Check(w.Map.Id == "map_b", "落地在传送点上不会被二次传送");
+            Check(mapChanges == 1, "不会来回弹（实际换了 " + mapChanges + " 次）");
+
+            // 新图的刷怪区要能自己补起来
+            for (int i = 0; i < 10; i++) sim.Step(new List<Intent>());
+            Check(w.Map.Id == "map_b" && b.Spawners[0].Alive.Count > 0,
+                "新图的刷怪区自动补刷（实际 " + b.Spawners[0].Alive.Count + " 只）");
+            Check(a.Spawners[0].Alive.Count == 0, "旧图的刷怪区账本被清空");
+
+            string broken = Invariants(w);
+            Check(broken == null, "换图后不变量成立" + (broken == null ? "" : "：" + broken));
+
+            // ---------------- 目标地图不存在：拒绝 + 留在原地，不能静默失败
+            Simulation sim2 = new Simulation(c, 6u, factory, null, items, null, null, catalog);
+            Entity p2 = MakeFullPlayer(items, new TilePos(4, 5));
+            sim2.World.Spawn(p2);
+            sim2.World.Player = p2;
+
+            int refused2 = 0;
+            sim2.Bus.Subscribe<PortalRefused>(delegate(PortalRefused e) { refused2++; });
+
+            sim2.Step(new List<Intent>());
+            List<Intent> walk = new List<Intent>();
+            walk.Add(Intent.Move(p2.Id, Dir.Right));
+            sim2.Step(walk);
+
+            Check(refused2 == 1, "目标地图不存在时发了 PortalRefused（实际 " + refused2 + "）");
+            Check(sim2.World.Map.Id == "map_c", "目标地图不存在时留在原地");
+            Check(p2.Pos == new TilePos(5, 5), "人停在传送点上，没有凭空消失");
         }
     }
 }

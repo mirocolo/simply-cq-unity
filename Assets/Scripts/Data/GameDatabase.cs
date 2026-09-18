@@ -7,18 +7,24 @@ using UnityEngine;
 namespace SimplyCQ.Data
 {
     /// <summary>运行时的数据表集合：balance.json / monsters.json / maps/*.json。</summary>
-    public sealed class GameDatabase
+    public sealed class GameDatabase : IMapCatalog
     {
         private readonly Dictionary<string, MonsterDto> _monsters = new Dictionary<string, MonsterDto>();
         private readonly Dictionary<string, NpcDef> _npcs = new Dictionary<string, NpcDef>();
+        private readonly Dictionary<string, GameMap> _maps = new Dictionary<string, GameMap>();
 
         public BalanceDto Balance { get; private set; }
         public CombatTuning Tuning { get; private set; }
         public ItemCatalog Items { get; private set; }
         public SkillCatalog Skills { get; private set; }
         public ShopTuning Shop { get; private set; }
+
+        /// <summary>起始地图（进游戏时站的那张）。其余地图用 GetMap / AllMaps 取。</summary>
         public GameMap Map { get; private set; }
+
         public int MonsterKindCount { get { return _monsters.Count; } }
+        public int MapCount { get { return _maps.Count; } }
+        public IEnumerable<GameMap> AllMaps { get { return _maps.Values; } }
 
         public static GameDatabase LoadFromStreamingAssets(string mapFile, string monsterFile, string balanceFile,
                                                           string itemFile = "Data/items.json",
@@ -72,14 +78,54 @@ namespace SimplyCQ.Data
 
             MapDto mapp = LoadJson<MapDto>(mapFile);
             db.Map = mapp != null ? MapLoader.FromDto(mapp) : MapLoader.CreateFallbackMap(40, 40);
+            db.RegisterMaps(mapFile);
 
             return db;
+        }
+
+        /// <summary>
+        /// 把起始地图和 Data/maps 目录下其它地图一起装进表里。
+        /// 用扫目录而不是写死文件名：以后往 maps/ 里丢一个新 json 就能生效，不用改代码。
+        /// 读不到目录就退化成「只有起始图」，不影响单图跑起来。
+        /// </summary>
+        private void RegisterMaps(string startMapFile)
+        {
+            _maps[Map.Id] = Map;
+
+            string folder = Path.GetDirectoryName(startMapFile);
+            if (string.IsNullOrEmpty(folder)) return;
+
+            string dir = Path.Combine(Application.streamingAssetsPath, folder);
+            if (!Directory.Exists(dir)) return;
+
+            string[] files = Directory.GetFiles(dir, "map_*.json");   // 约定：地图文件都叫 map_*.json
+            Array.Sort(files, StringComparer.Ordinal);   // 顺序确定，免得每次进游戏地图表顺序都不一样
+            string startName = Path.GetFileName(startMapFile);
+
+            for (int i = 0; i < files.Length; i++)
+            {
+                if (string.Equals(Path.GetFileName(files[i]), startName, StringComparison.Ordinal)) continue;
+
+                MapDto dto = LoadJsonAbsolute<MapDto>(files[i]);
+                if (dto == null || string.IsNullOrEmpty(dto.id)) continue;
+                if (_maps.ContainsKey(dto.id))
+                {
+                    Debug.LogWarning("[SimplyCQ] 地图 id 重复：" + dto.id + "（" + files[i] + "），忽略");
+                    continue;
+                }
+                _maps[dto.id] = MapLoader.FromDto(dto);
+            }
         }
 
         public static T LoadJson<T>(string relativePath) where T : class
         {
             if (string.IsNullOrEmpty(relativePath)) return null;
-            string path = Path.Combine(Application.streamingAssetsPath, relativePath);
+            return LoadJsonAbsolute<T>(Path.Combine(Application.streamingAssetsPath, relativePath));
+        }
+
+        private static T LoadJsonAbsolute<T>(string path) where T : class
+        {
+            if (string.IsNullOrEmpty(path)) return null;
             if (!File.Exists(path))
             {
                 Debug.LogError("[SimplyCQ] 找不到数据文件: " + path);
@@ -103,7 +149,15 @@ namespace SimplyCQ.Data
         /// </summary>
         public Simulation CreateSimulation(uint seed)
         {
-            return new Simulation(Map, seed, CreateMonster, Tuning, Items, Skills, Shop);
+            return new Simulation(Map, seed, CreateMonster, Tuning, Items, Skills, Shop, this);
+        }
+
+        /// <summary>按 id 取图（实现 IMapCatalog）。找不到返回 null，由调用方给玩家反馈。</summary>
+        public GameMap GetMap(string mapId)
+        {
+            if (string.IsNullOrEmpty(mapId)) return null;
+            GameMap m;
+            return _maps.TryGetValue(mapId, out m) ? m : null;
         }
 
         public NpcDef GetNpc(string npcId)
@@ -113,14 +167,18 @@ namespace SimplyCQ.Data
             return _npcs.TryGetValue(npcId, out def) ? def : null;
         }
 
-        /// <summary>把地图上摆的 NPC 生出来。商人的货来自 npcs.json。</summary>
+        /// <summary>
+        /// 把【当前地图】上摆的 NPC 生出来。商人的货来自 npcs.json。
+        /// 必须用 world.Map 而不是 db.Map —— 换图之后要生的是新图上的 NPC。
+        /// </summary>
         public void SpawnNpcs(World world)
         {
             if (world == null) return;
 
-            for (int i = 0; i < Map.Npcs.Count; i++)
+            List<NpcSpawn> spots = world.Map.Npcs;
+            for (int i = 0; i < spots.Count; i++)
             {
-                NpcSpawn spot = Map.Npcs[i];
+                NpcSpawn spot = spots[i];
                 NpcDef def = GetNpc(spot.NpcId);
                 if (def == null)
                 {

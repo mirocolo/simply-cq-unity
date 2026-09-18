@@ -51,21 +51,61 @@ namespace SimplyCQ.EditorTools
             Check(map.IsWalkable(map.Spawn), "出生点可站人（" + map.Spawn + "）");
             Check(map.Spawners.Count > 0, "地图配了刷怪区");
 
-            for (int i = 0; i < map.Spawners.Count; i++)
-            {
-                Spawner s = map.Spawners[i];
-                int walkable = 0;
-                for (int y = s.Y; y < s.Y + s.H; y++)
-                    for (int x = s.X; x < s.X + s.W; x++)
-                        if (map.IsWalkable(new TilePos(x, y))) walkable++;
-                Check(walkable > 0, "刷怪区 " + i + "（" + s.MonsterId + "）里有可站格：" + walkable + " 格");
-                Check(db.CreateMonster(s.MonsterId) != null, "monsters.json 里有 " + s.MonsterId);
-            }
+            // ---------------- 多地图 + 传送点的数据校验 ----------------
+            // 传送点这类数据出错（指向不存在的图、落点在墙里、落点本身又是传送点）
+            // 光看 JSON 是看不出来的，必须逐条算一遍。
+            Check(db.MapCount >= 1, "地图表加载了 " + db.MapCount + " 张图");
 
-            for (int i = 0; i < map.Portals.Count; i++)
+            int portalTotal = 0;
+            foreach (GameMap m in db.AllMaps)
             {
-                Check(map.InBounds(map.Portals[i].At), "传送点 " + i + " 在地图内");
+                Check(m.IsWalkable(m.Spawn), m.Id + " 的出生点可站人（" + m.Spawn + "）");
+
+                bool spawnOnPortal = false;
+                for (int i = 0; i < m.Portals.Count; i++)
+                    if (m.Portals[i].At == m.Spawn) spawnOnPortal = true;
+                Check(!spawnOnPortal, m.Id + " 的出生点没压在传送点上");
+
+                for (int i = 0; i < m.Spawners.Count; i++)
+                {
+                    Spawner s = m.Spawners[i];
+                    int walkable = 0;
+                    for (int y = s.Y; y < s.Y + s.H; y++)
+                        for (int x = s.X; x < s.X + s.W; x++)
+                            if (m.IsWalkable(new TilePos(x, y))) walkable++;
+
+                    Check(walkable > 0, m.Id + " 刷怪区 " + i + "（" + s.MonsterId + "）里有可站格：" + walkable + " 格");
+                    Check(db.CreateMonster(s.MonsterId) != null, "monsters.json 里有 " + s.MonsterId);
+                    Check(s.Max <= walkable, m.Id + " 刷怪区 " + i + " 上限 " + s.Max + " 不超过可站格数 " + walkable);
+                }
+
+                for (int i = 0; i < m.Portals.Count; i++)
+                {
+                    Portal p = m.Portals[i];
+                    portalTotal++;
+                    Check(m.IsWalkable(p.At), m.Id + " 传送点 " + i + " 可走（" + p.At + "）");
+
+                    GameMap target = db.GetMap(p.TargetMap);
+                    Check(target != null, m.Id + " 传送点 " + i + " 的目标地图存在：" + p.TargetMap);
+                    if (target == null) continue;
+
+                    Check(target.InBounds(p.TargetPos) && target.IsWalkable(p.TargetPos),
+                        m.Id + " -> " + p.TargetMap + " 的落点可走（" + p.TargetPos + "）");
+
+                    bool landingOnPortal = false;
+                    for (int k = 0; k < target.Portals.Count; k++)
+                        if (target.Portals[k].At == p.TargetPos) landingOnPortal = true;
+                    Check(!landingOnPortal, m.Id + " -> " + p.TargetMap + " 的落点不是传送点（否则会在两图之间来回弹）");
+                }
+
+                for (int i = 0; i < m.Npcs.Count; i++)
+                {
+                    NpcSpawn n = m.Npcs[i];
+                    Check(m.IsWalkable(n.Pos), m.Id + " 的 NPC「" + n.NpcId + "」落点可走（" + n.Pos + "）");
+                    Check(db.GetNpc(n.NpcId) != null, "npcs.json 里有 " + n.NpcId);
+                }
             }
+            Check(portalTotal > 0, "至少有一张图配了传送点（共 " + portalTotal + " 个）");
 
             // 从出生点随便找一块可走地，必须能寻路过去
             TilePos far = FindFarWalkable(map, map.Spawn);
@@ -73,10 +113,17 @@ namespace SimplyCQ.EditorTools
             bool found = new PathFinder(map).Find(map.Spawn, far, AlwaysFalse, path);
             Check(found && path.Count > 0, "从出生点能寻路到 " + far + "（" + path.Count + " 步）");
 
+            // 游走用例要用一份【独立的地图实例】：玩家绕圈走很容易踩到传送点，
+            // 而这个用例只想验证「走路/碰撞/追击/刷怪」，所以先在副本上把传送点摘掉。
+            // 用副本而不是直接改 db.Map，是为了不污染后面跨图用例要用的那份数据。
+            MapDto walkDto = GameDatabase.LoadJson<MapDto>("Data/maps/map_grassland.json");
+            GameMap walkMap = walkDto != null ? MapLoader.FromDto(walkDto) : MapLoader.CreateFallbackMap(48, 48);
+            walkMap.Portals.Clear();
+
             // 跑 600 个 tick，每一步都检查不变量
-            Simulation sim = new Simulation(map, (uint)db.Balance.worldSeed, db.CreateMonster, db.Tuning, db.Items, db.Skills, db.Shop);
+            Simulation sim = new Simulation(walkMap, (uint)db.Balance.worldSeed, db.CreateMonster, db.Tuning, db.Items, db.Skills, db.Shop);
             Entity player = db.CreatePlayer();
-            player.Pos = map.Spawn;
+            player.Pos = walkMap.Spawn;
             player.HomePos = player.Pos;
             sim.World.Spawn(player);
             sim.World.Player = player;
@@ -102,7 +149,8 @@ namespace SimplyCQ.EditorTools
 
                 broken = CheckInvariants(sim.World);
                 int monsters = 0;
-                for (int i = 0; i < map.Spawners.Count; i++) monsters += map.Spawners[i].Alive.Count;
+                List<Spawner> live = sim.World.Map.Spawners;
+                for (int i = 0; i < live.Count; i++) monsters += live[i].Alive.Count;
                 if (monsters > maxMonsters) maxMonsters = monsters;
                 if (monsters > maxSpawnerTotal) maxSpawnerTotal = monsters;
             }
@@ -113,7 +161,8 @@ namespace SimplyCQ.EditorTools
             Check(maxMonsters > 0, "刷出了怪（峰值 " + maxMonsters + " 只）");
 
             int cap = 0;
-            for (int i = 0; i < map.Spawners.Count; i++) cap += map.Spawners[i].Max;
+            List<Spawner> spawnersOf = sim.World.Map.Spawners;
+            for (int i = 0; i < spawnersOf.Count; i++) cap += spawnersOf[i].Max;
             Check(maxMonsters <= cap, "怪物总数没超过配置上限 " + cap);
 
             // ---------------- M2 战斗闭环（用真实数据表跑一遍）----------------
@@ -499,6 +548,75 @@ namespace SimplyCQ.EditorTools
                 Check(after.Gear.Get(EquipSlot.Weapon) != null, "装备栏恢复");
                 Check(after.Bag.IndexOf("mat_hide") >= 0, "背包恢复");
                 Check(after.Pos == before.Pos, "位置恢复（" + after.Pos + "）");
+            }
+
+            // ---------------- M5 跨图传送 + 跨图存档 ----------------
+            {
+                GameMap cave = db.GetMap("map_cave");
+                GameMap town = db.GetMap("map_town");
+                Check(cave != null && town != null, "地图表里同时有城镇和洞窟");
+
+                // 1) 真的从草原走进传送点，看看会不会切到城镇
+                Simulation walkSim = db.CreateSimulation(1357u);
+                Entity walker = db.CreatePlayer();
+                walker.Pos = walkSim.World.Map.Spawn;
+                walker.HomePos = walker.Pos;
+                walkSim.World.Spawn(walker);
+                walkSim.World.Player = walker;
+
+                GameMap startMap = walkSim.World.Map;
+                Portal startPortal = startMap.Portals.Count > 0 ? startMap.Portals[0] : null;
+                Check(startPortal != null, startMap.Id + " 配了传送点");
+
+                if (startPortal != null)
+                {
+                    int changes = 0;
+                    walkSim.Bus.Subscribe<MapChanged>(delegate(MapChanged e) { changes++; });
+
+                    // 先空跑一 tick：PortalSystem 的第一 tick 只记录位置，不做判定
+                    walkSim.Step(new List<Intent>());
+
+                    // 直接站到传送点旁边，然后走上去 —— 和玩家真的踩上去是同一条代码路径
+                    TilePos next = startPortal.At;
+                    TilePos beside = walkSim.World.FindFreeTileNear(new TilePos(next.X, next.Y - 1), 6);
+                    walkSim.World.PlaceEntity(walker, beside);
+                    walker.MoveCooldown = 0;
+                    walkSim.Step(new List<Intent>());   // 记下新位置，但还没踩到传送点
+
+                    int changesBefore = changes;
+                    List<Intent> step = new List<Intent>();
+                    step.Add(Intent.Move(walker.Id, DirHelper.FromDelta(next.X - beside.X, next.Y - beside.Y)));
+                    walkSim.Step(step);
+                    walkSim.Step(new List<Intent>());
+
+                    Check(changes - changesBefore == 1, "走上传送点触发了换图（" + (changes - changesBefore) + " 次）");
+                    Check(walkSim.World.Map.Id == startPortal.TargetMap,
+                        "换到了 " + startPortal.TargetMap + "（实际 " + walkSim.World.Map.Id + "）");
+                    Check(walker.Pos == startPortal.TargetPos, "落在目标落点 " + walker.Pos);
+                    Check(startMap.Portals.Count > 0, "旧图的传送点数据没被破坏");
+                    Check(CheckInvariants(walkSim.World) == null, "换图后不变量成立");
+
+                    // 2) 在城镇里存档 -> 用另一个「从草原开局」的 World 读档，应该被送回城镇
+                    walker.Gold = 888;
+                    SaveData townSave = SaveService.Capture(walkSim.World, 1357);
+                    Check(townSave.MapId == "map_town", "存档记下了地图 id（" + townSave.MapId + "）");
+                    Check(JsonUtility.ToJson(townSave, true).Contains("\"MapId\": \"map_town\""), "MapId 进了 JSON");
+
+                    Simulation freshSim = db.CreateSimulation(1357u);
+                    Entity freshHero = db.CreatePlayer();
+                    freshHero.Pos = freshSim.World.Map.Spawn;
+                    freshHero.HomePos = freshHero.Pos;
+                    freshSim.World.Spawn(freshHero);
+                    freshSim.World.Player = freshHero;
+
+                    Check(freshSim.World.Map.Id != "map_town", "新开的档在草原上（" + freshSim.World.Map.Id + "）");
+                    Check(SaveService.Apply(townSave, freshSim.World, db.Items, db), "跨图读档应用成功");
+                    Check(freshSim.World.Map.Id == "map_town", "读档后切到了城镇（实际 " + freshSim.World.Map.Id + "）");
+                    Check(freshHero.Pos == walker.Pos, "跨图读档位置正确（" + freshHero.Pos + "）");
+                    Check(freshHero.Gold == 888, "跨图读档金币正确（" + freshHero.Gold + "）");
+                    Check(freshHero.HomePos == freshHero.Pos, "跨图读档后 HomePos 跟着人");
+                    Check(CheckInvariants(freshSim.World) == null, "跨图读档后不变量成立");
+                }
             }
 
             // 键盘操作的成败取决于 Player Settings，这里用编译期宏直接断言，

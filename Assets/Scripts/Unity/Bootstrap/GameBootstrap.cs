@@ -90,7 +90,7 @@ namespace SimplyCQ.Unity
             _simulation = _database.CreateSimulation((uint)balance.worldSeed);
 
             Entity player = _database.CreatePlayer();
-            player.Pos = _database.Map.Spawn;
+            player.Pos = _simulation.World.Map.Spawn;
             player.HomePos = player.Pos;
             _simulation.World.Spawn(player);
             _simulation.World.Player = player;
@@ -98,15 +98,6 @@ namespace SimplyCQ.Unity
             _projection = new Projection(
                 balance.tileWidthPx / (float)balance.pixelsPerUnit,
                 balance.tileHeightPx / (float)balance.pixelsPerUnit);
-
-            // NPC 先放出来；再读档（读档会改玩家位置，相机要用最终位置）
-            _database.SpawnNpcs(_simulation.World);
-            if (SaveService.HasSave())
-            {
-                SaveData saved = SaveService.Load(SaveService.DefaultPath);
-                if (saved != null && SaveService.Apply(saved, _simulation.World, _database.Items))
-                    Debug.Log("[SimplyCQ] 已读取存档（" + saved.SavedAt + "）Lv" + saved.Level + " 金币 " + saved.Gold);
-            }
 
             _camera = Camera.main;
             if (_camera == null)
@@ -128,7 +119,7 @@ namespace SimplyCQ.Unity
             Transform entityRoot = new GameObject("Entities").transform;
             entityRoot.SetParent(transform, false);
 
-            _tilePool = new TileViewPool(groundRoot, _database.Map, _projection,
+            _tilePool = new TileViewPool(groundRoot, _simulation.World.Map, _projection,
                 balance.tileWidthPx, balance.tileHeightPx, balance.pixelsPerUnit);
 
             _entityViews = new EntityViewRegistry(entityRoot, _projection, _simulation.World,
@@ -141,10 +132,28 @@ namespace SimplyCQ.Unity
             _skillBar.TickRate = _tickRate;
 
             _cameraRig = new CameraRig(_camera, _entityViews.GetTransform(player.Id),
-                _projection.MapWorldRect(_database.Map.Width, _database.Map.Height), balance.cameraSmoothTime);
+                _projection.MapWorldRect(_simulation.World.Map.Width, _simulation.World.Map.Height),
+                balance.cameraSmoothTime);
 
             if (_database.Items == null || _database.Items.Count == 0)
                 Debug.LogError("[SimplyCQ] items.json 一件物品都没读到 —— 捡东西和穿装备都会失效！");
+
+            // 换图（走到传送点 / 跨图读档）统一走这个事件，见 OnMapChanged。
+            // 订阅必须排在「放 NPC」和「读档」之前 —— 跨图读档会触发换图，
+            // 那条路径也要能重新绑地表、重算相机边界、补新图的 NPC。
+            _simulation.Bus.Subscribe<MapChanged>(OnMapChanged);
+
+            _database.SpawnNpcs(_simulation.World);
+            if (SaveService.HasSave())
+            {
+                SaveData saved = SaveService.Load(SaveService.DefaultPath);
+                if (saved != null && SaveService.Apply(saved, _simulation.World, _database.Items, _database))
+                    Debug.Log("[SimplyCQ] 已读取存档（" + saved.SavedAt + "）" + saved.MapId
+                        + " Lv" + saved.Level + " 金币 " + saved.Gold);
+            }
+
+            // 读档可能把人挪到很远的地方（甚至换图），相机直接咬合过去，别飞
+            _cameraRig.Snap();
 
             _input = new PlayerInputSource();
             _inventoryUi = new InventoryUi(_simulation.World, _database.Items);
@@ -164,11 +173,36 @@ namespace SimplyCQ.Unity
             {
                 CombatTuning t = _database.Tuning;
                 Debug.Log(string.Format(
-                    "[SimplyCQ] 地图「{0}」{1}x{2}  怪物 {3} 种  刷怪区 {4}  tick {5}Hz  攻击间隔 {6} tick  升级曲线 {7}*Lv^{8}",
-                    _database.Map.Name, _database.Map.Width, _database.Map.Height,
-                    _database.MonsterKindCount, _database.Map.Spawners.Count, _tickRate,
+                    "[SimplyCQ] 起始地图「{0}」{1}x{2}  共 {3} 张图  怪物 {4} 种  刷怪区 {5}  tick {6}Hz  攻击间隔 {7} tick  升级曲线 {8}*Lv^{9}",
+                    _simulation.World.Map.Name, _simulation.World.Map.Width, _simulation.World.Map.Height,
+                    _database.MapCount, _database.MonsterKindCount, _simulation.World.Map.Spawners.Count, _tickRate,
                     t.PlayerAttackInterval, t.ExpCurveBase, t.ExpCurvePow));
             }
+        }
+
+        /// <summary>
+        /// 换图后的表现层收尾。走到传送点、跨图读档都会走到这里。
+        ///
+        /// 实体视图不用管：旧图的怪/NPC/掉落物在 World.ChangeMap 里被 Despawn，
+        /// EntityViewRegistry 收到 EntityRemoved 会自己销毁；新图的实体 Spawn 时也会自己建视图。
+        /// 玩家视图不会被销毁，所以相机手里的 target Transform 一直有效。
+        /// </summary>
+        private void OnMapChanged(MapChanged evt)
+        {
+            World world = _simulation.World;
+
+            _tilePool.Rebind(world.Map);
+            _cameraRig.SetBounds(_projection.MapWorldRect(world.Map.Width, world.Map.Height));
+            _cameraRig.Snap();
+
+            _floatingText.Clear();
+            _fxPool.Clear();
+
+            // 上一张图的 NPC 已经被 ChangeMap 清掉，这里补新图的
+            _database.SpawnNpcs(world);
+
+            Debug.Log("[SimplyCQ] 换图：" + evt.FromMapId + " -> " + evt.ToMapId
+                + "（" + world.Map.Name + " " + world.Map.Width + "x" + world.Map.Height + "）");
         }
 
         private void Update()
@@ -220,7 +254,7 @@ namespace SimplyCQ.Unity
             else if (saveLoad == 2)
             {
                 SaveData loaded = SaveService.Load(SaveService.DefaultPath);
-                if (loaded != null && SaveService.Apply(loaded, _simulation.World, _database.Items))
+                if (loaded != null && SaveService.Apply(loaded, _simulation.World, _database.Items, _database))
                     Debug.Log("[SimplyCQ] 读档成功 Lv" + loaded.Level);
             }
 
@@ -620,11 +654,12 @@ namespace SimplyCQ.Unity
                     _entityViews.ViewCount, _tilePool.VisibleCount, world.GroundItemCount);
 
                 string line2 = world.Player != null
-                    ? string.Format("玩家 {0}  朝向 {1}  位置 {2}  飘字 {3}",
-                        world.Player.Name, world.Player.Facing, world.Player.Pos, _floatingText.Count)
+                    ? string.Format("玩家 {0}  朝向 {1}  位置 {2}  地图 {3}  飘字 {4}",
+                        world.Player.Name, world.Player.Facing, world.Player.Pos,
+                        world.Map.Name + "(" + world.Map.Id + ")", _floatingText.Count)
                     : "玩家 -";
 
-                const string line3 = "WASD 走路 · 按住空格/左键 持续普攻 · 1~3 战士技能 · I 背包 · C 角色 · E 商店 · F5 存档 · F9 读档 · Esc 退出";
+                const string line3 = "WASD 走路 · 按住空格/左键 持续普攻 · 1~3 战士技能 · I 背包 · C 角色 · E 商店 · F5 存档 · F9 读档 · 走到传送点自动换图 · Esc 退出";
 
                 GUI.Label(UiScale.R(10f, 8f, 1000f, 22f), line1, _debugStyle);
                 GUI.Label(UiScale.R(10f, 28f, 1000f, 22f), line2, _debugStyle);

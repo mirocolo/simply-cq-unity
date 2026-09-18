@@ -113,7 +113,11 @@ namespace SimplyCQ.Data
 
         // ------------------------------------------------------------------ 应用
 
-        public static bool Apply(SaveData data, World world, IItemCatalog catalog)
+        /// <summary>
+        /// 把存档应用到当前 World。maps 传了就支持跨图读档（存档里记着 MapId）；
+        /// 不传则只会把玩家放在当前地图上（旧的三参调用行为不变）。
+        /// </summary>
+        public static bool Apply(SaveData data, World world, IItemCatalog catalog, IMapCatalog maps = null)
         {
             if (data == null || world == null) return false;
 
@@ -165,6 +169,25 @@ namespace SimplyCQ.Data
             if (p.Hp > p.MaxHp) p.Hp = p.MaxHp;
 
             TilePos at = new TilePos(data.X, data.Y);
+
+            // 存档在别的地图：先换图，再把玩家放过去。
+            // 换图的落点/占位/事件都由 ChangeMap 负责，这里不要再 PlaceEntity 一次 ——
+            // 否则会以「当前图」的规则把落点改掉，还多发一次 EntityTeleported。
+            GameMap target = null;
+            if (maps != null && !string.IsNullOrEmpty(data.MapId) && data.MapId != world.Map.Id)
+            {
+                target = maps.GetMap(data.MapId);
+                if (target == null)
+                    Debug.LogWarning("[SimplyCQ] 存档记录的地图已不存在：" + data.MapId + "，留在当前地图");
+            }
+
+            if (target != null)
+            {
+                if (!target.IsWalkable(at)) at = target.FindNearestWalkable(at, 16);
+                world.ChangeMap(target, at);
+                return true;
+            }
+
             if (!world.Map.IsWalkable(at)) at = world.FindFreeTileNear(world.Map.Spawn, 12);
             if (world.IsOccupied(at))
             {

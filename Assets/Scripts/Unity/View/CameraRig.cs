@@ -7,7 +7,7 @@ namespace SimplyCQ.Unity
     {
         private readonly Camera _camera;
         private readonly Transform _target;
-        private readonly Rect _bounds;
+        private Rect _bounds;
         private readonly float _smoothTime;
         private float _velocityX;
         private float _velocityY;
@@ -18,6 +18,28 @@ namespace SimplyCQ.Unity
             _target = target;
             _bounds = mapBounds;
             _smoothTime = Mathf.Max(0.001f, smoothTime);
+        }
+
+        /// <summary>换图后必须重新给边界，否则相机会拿旧图的尺寸夹取。</summary>
+        public void SetBounds(Rect mapBounds)
+        {
+            _bounds = mapBounds;
+        }
+
+        /// <summary>
+        /// 立刻咬合到目标位置。换图/读档时用 —— 平滑跟会长距离飞行，
+        /// 看起来像是"从上一张图一路飘过去"。
+        /// </summary>
+        public void Snap()
+        {
+            if (_camera == null || _target == null) return;
+
+            _velocityX = 0f;
+            _velocityY = 0f;
+
+            Vector3 desired = _target.position;
+            desired.z = _camera.transform.position.z;
+            _camera.transform.position = ClampToBounds(desired);
         }
 
         public void Update(float dt)

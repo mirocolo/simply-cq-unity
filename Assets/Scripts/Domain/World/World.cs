@@ -13,10 +13,10 @@ namespace SimplyCQ.Domain
     /// </summary>
     public sealed class World
     {
-        public readonly GameMap Map;
+        public GameMap Map { get; private set; }
         public readonly Rng Rng;
         public readonly IEventBus Events;
-        public readonly PathFinder Paths;
+        public PathFinder Paths { get; private set; }
         public readonly List<ISystem> Systems = new List<ISystem>();
 
         public long Tick;
@@ -68,6 +68,63 @@ namespace SimplyCQ.Domain
         {
             Entity e;
             return _entities.TryGetValue(id, out e) ? e : null;
+        }
+
+        /// <summary>
+        /// 换一张图（传送点、跨图读档都走这里）。
+        ///
+        /// 顺序是【硬约束】，不能图省事调换：
+        ///   1) 先把除玩家外的实体按【旧图】Despawn —— Untrack 里的 Key(p) 用的是 Map.Width，
+        ///      要是先换了 Map，就再也删不掉旧图的 key（不报错，但索引会残）。
+        ///   2) 清空两张空间索引（上一步已逐个清过，这里是兜底）。
+        ///   3) 换 Map + 重建 PathFinder（它的缓冲按图预分配）。
+        ///   4) 旧图的刷怪区账本清空 —— 怪物已经没了，别让 Spawner.Alive 留着幽灵 id。
+        ///   5) 放玩家，并同步 HomePos（自检会校验 HomePos 在界内）。
+        ///   6) 最后才发 MapChanged，订阅者（表现层）此时看到的世界已经是自洽的。
+        ///
+        /// 玩家不 Despawn：保住 World.Player 引用，也保住表现层手里那个玩家视图（相机跟着它）。
+        /// Tick / Rng / _nextId 都不重置 —— 冷却、复活计时是绝对 tick，id 重置会和旧图残留撞车。
+        /// </summary>
+        public void ChangeMap(GameMap map, TilePos at)
+        {
+            if (map == null) throw new ArgumentNullException("map");
+
+            if (ReferenceEquals(map, Map))
+            {
+                // 同一张图里的传送：只需要挪人，不要把全图怪清掉。
+                PlacePlayer(at);
+                return;
+            }
+
+            GameMap old = Map;
+
+            List<Entity> snapshot = SnapshotEntities();
+            for (int i = 0; i < snapshot.Count; i++)
+            {
+                Entity e = snapshot[i];
+                if (Player != null && e.Id == Player.Id) continue;
+                Despawn(e.Id);
+            }
+
+            _occupancy.Clear();
+            _groundItems.Clear();
+
+            Map = map;
+            Paths = new PathFinder(map);
+
+            for (int i = 0; i < old.Spawners.Count; i++) old.Spawners[i].Alive.Clear();
+
+            PlacePlayer(at);
+
+            Events.Publish(new MapChanged { FromMapId = old.Id, ToMapId = map.Id });
+        }
+
+        private void PlacePlayer(TilePos at)
+        {
+            if (Player == null) return;
+            TilePos target = FindFreeTileNear(at, 16);
+            Player.HomePos = target;
+            PlaceEntity(Player, target);
         }
 
         public bool TryGet(ActorId id, out Entity e) { return _entities.TryGetValue(id, out e); }

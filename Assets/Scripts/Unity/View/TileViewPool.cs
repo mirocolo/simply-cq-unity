@@ -14,7 +14,7 @@ namespace SimplyCQ.Unity
         public const int GroundSortOrder = -30000;
 
         private readonly Transform _root;
-        private readonly GameMap _map;
+        private GameMap _map;
         private readonly Projection _projection;
         private readonly int _tileWidthPx;
         private readonly int _tileHeightPx;
@@ -36,6 +36,22 @@ namespace SimplyCQ.Unity
 
         public int VisibleCount { get; private set; }
         public int PooledCount { get { return _pool.Count; } }
+
+        /// <summary>
+        /// 换一张地表。对象池原样复用，下一次 Refresh 会把视野内的格子重画成新图的地表、
+        /// 并把多出来的格子关掉 —— 所以这里只需要换引用 + 先把旧的清干净（避免换图当帧闪一眼旧图）。
+        /// </summary>
+        public void Rebind(GameMap map)
+        {
+            _map = map;
+            Clear();
+        }
+
+        public void Clear()
+        {
+            for (int i = 0; i < _pool.Count; i++) _pool[i].enabled = false;
+            VisibleCount = 0;
+        }
 
         public void Refresh(Vector3 cameraCenter, float halfWidth, float halfHeight)
         {
