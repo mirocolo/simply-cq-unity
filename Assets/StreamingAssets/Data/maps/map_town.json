@@ -69,6 +69,11 @@
       "x": 17,
       "y": 17,
       "npcId": "npc_merchant"
+    },
+    {
+      "x": 23,
+      "y": 17,
+      "npcId": "npc_teleporter"
     }
   ]
 }

@@ -34,6 +34,19 @@ namespace SimplyCQ.Data
         public string sprite;
         public string dialog;
         public string[] stock;
+        /// <summary>传送员的目的地列表。不填就是普通 NPC。</summary>
+        public NpcTeleportDto[] teleports;
+    }
+
+    [Serializable]
+    public class NpcTeleportDto
+    {
+        public string targetMap;
+        public int x;
+        public int y;
+        /// <summary>菜单上显示的名字，留空用地图名。</summary>
+        public string name;
+        public int cost;
     }
 
     [Serializable]

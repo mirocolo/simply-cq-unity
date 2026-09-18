@@ -68,6 +68,8 @@ def build_town():
         "spawners": [],
         "npcs": [
             {"x": 17, "y": 17, "npcId": "npc_merchant"},
+            # 传送员摆在广场东侧，和杂货商分开，免得两个人挤在一格里
+            {"x": 23, "y": 17, "npcId": "npc_teleporter"},
         ],
     }
 

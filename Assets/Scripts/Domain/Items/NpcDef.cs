@@ -36,7 +36,23 @@ namespace SimplyCQ.Domain
         }
     }
 
-    /// <summary>NPC 定义：名字 + 卖什么。</summary>
+    /// <summary>
+    /// 传送员的一个目的地。写在 npcs.json 的 teleports 里 —— 加一条就多一个可去的地方，不用碰代码。
+    /// </summary>
+    [Serializable]
+    public sealed class NpcTeleport
+    {
+        /// <summary>目标地图 id。</summary>
+        public string TargetMap;
+        /// <summary>落点。数据自检会保证它可走、且不是传送点。</summary>
+        public TilePos TargetPos;
+        /// <summary>菜单上显示的名字（"幽暗石洞"），不填就用地图名。</summary>
+        public string Name;
+        /// <summary>路费。0 = 免费。</summary>
+        public int Cost;
+    }
+
+    /// <summary>NPC 定义：名字 + 卖什么 + 能传送到哪。一个 NPC 可以只会一样，也可以两样都会。</summary>
     public sealed class NpcDef
     {
         public string Id;
@@ -44,7 +60,9 @@ namespace SimplyCQ.Domain
         public string SpriteId;
         public string Dialog;
         public readonly List<string> Stock = new List<string>();
+        public readonly List<NpcTeleport> Teleports = new List<NpcTeleport>();
 
         public bool IsMerchant { get { return Stock.Count > 0; } }
+        public bool IsTeleporter { get { return Teleports.Count > 0; } }
     }
 }

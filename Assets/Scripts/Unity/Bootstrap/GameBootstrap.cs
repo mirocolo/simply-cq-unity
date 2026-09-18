@@ -33,6 +33,7 @@ namespace SimplyCQ.Unity
         private PlayerInputSource _input;
         private InventoryUi _inventoryUi;
         private ShopUi _shopUi;
+        private TeleportUi _teleportUi;
         private Camera _camera;
 
         private GUIStyle _hudStyle;
@@ -159,6 +160,7 @@ namespace SimplyCQ.Unity
             _inventoryUi = new InventoryUi(_simulation.World, _database.Items, _database.Shop);
             _inventoryUi.TickRate = _tickRate;   // 必须在这之后赋值，否则 Awake 直接 NRE
             _shopUi = new ShopUi(_simulation.World, _database.Items, _database.Shop);
+            _teleportUi = new TeleportUi(_simulation.World, _database);
 
             ParseCommandLine();
 
@@ -247,7 +249,7 @@ namespace SimplyCQ.Unity
                 PrepareDemoShop();
             }
 
-            if (_input.ReadShopToggle()) _shopUi.Toggle();
+            if (_input.ReadInteractKey()) ToggleNpcPanel();
 
             int saveLoad = _input.ReadSaveLoad();
             if (saveLoad == 1) SaveService.Save(_simulation.World, _database.Balance.worldSeed, SaveService.DefaultPath);
@@ -272,7 +274,7 @@ namespace SimplyCQ.Unity
 
             // 鼠标在面板上时，左键是"点物品"而不是"挥砍"
             Dir attackDir;
-            if (player != null && !_inventoryUi.ConsumesMouse && !_shopUi.ConsumesMouse
+            if (player != null && !AnyPanelConsumesMouse()
                 && _input.TryReadAttack(player.Facing, out attackDir))
             {
                 _attackQueued = true;
@@ -280,7 +282,7 @@ namespace SimplyCQ.Unity
             }
 
             // 按住空格/左键 = 持续普攻，由攻击间隔节流（这样攻速才有感觉）
-            _attackHeld = player != null && !_inventoryUi.ConsumesMouse && !_shopUi.ConsumesMouse && _input.IsAttackHeld();
+            _attackHeld = player != null && !AnyPanelConsumesMouse() && _input.IsAttackHeld();
             if (_attackHeld) _attackDir = player.Facing;
 
             int skillSlot = _input.ReadSkillSlot();
@@ -543,6 +545,37 @@ namespace SimplyCQ.Unity
             Debug.Log("[SimplyCQ] 已放置 " + ids.Length + " 件演示掉落物，用来检查地面名字");
         }
 
+        /// <summary>
+        /// E 键：按【身边这个 NPC 会什么】决定开哪个面板。
+        /// 传送员优先 —— 一个 NPC 两样都会时，先给传送菜单（去别处比买东西更少见）。
+        /// 附近没有 NPC 时不弹任何东西（不然按 E 会莫名闪一下商店）。
+        /// </summary>
+        private void ToggleNpcPanel()
+        {
+            World world = _simulation != null ? _simulation.World : null;
+            Entity p = world != null ? world.Player : null;
+            if (p == null) return;
+
+            if (TeleportSystem.NearestTeleporter(world, p) != null)
+            {
+                _shopUi.Close();
+                _teleportUi.Toggle();
+                return;
+            }
+
+            if (ShopSystem.NearestMerchant(world, p) != null)
+            {
+                _teleportUi.Close();
+                _shopUi.Toggle();
+            }
+        }
+
+        /// <summary>鼠标正压在某个面板上时，左键是"点面板"而不是"挥砍"。</summary>
+        private bool AnyPanelConsumesMouse()
+        {
+            return _inventoryUi.ConsumesMouse || _shopUi.ConsumesMouse || _teleportUi.ConsumesMouse;
+        }
+
         /// <summary>把玩家挪到商人旁边并打开商店面板，用来截图检查界面。</summary>
         private void PrepareDemoShop()
         {
@@ -613,6 +646,7 @@ namespace SimplyCQ.Unity
 
             _inventoryUi.DrainInto(_intents);
             _shopUi.DrainInto(_intents);
+            _teleportUi.DrainInto(_intents);
             _simulation.Step(_intents);
         }
 
@@ -687,6 +721,7 @@ namespace SimplyCQ.Unity
             DrawHud(world);
             _inventoryUi.Draw();
             _shopUi.Draw();
+            _teleportUi.Draw();
             _skillBar.Draw(world.Player, _database.Skills);
             _floatingText.Draw();
         }

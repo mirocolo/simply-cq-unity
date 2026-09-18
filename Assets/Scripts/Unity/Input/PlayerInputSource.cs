@@ -126,8 +126,8 @@ namespace SimplyCQ.Unity
             return -1;
         }
 
-        /// <summary>E：开关商店。</summary>
-        public bool ReadShopToggle()
+        /// <summary>E：和身边的 NPC 交互（商人开商店、传送员开目的地菜单）。</summary>
+        public bool ReadInteractKey()
         {
             if (!Enabled) return false;
 #if ENABLE_LEGACY_INPUT_MANAGER

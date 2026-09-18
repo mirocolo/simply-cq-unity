@@ -68,6 +68,20 @@ namespace SimplyCQ.Data
                     def.Dialog = dto.dialog;
                     if (dto.stock != null)
                         for (int k = 0; k < dto.stock.Length; k++) def.Stock.Add(dto.stock[k]);
+                    if (dto.teleports != null)
+                    {
+                        for (int k = 0; k < dto.teleports.Length; k++)
+                        {
+                            NpcTeleportDto t = dto.teleports[k];
+                            if (t == null || string.IsNullOrEmpty(t.targetMap)) continue;
+                            NpcTeleport spot = new NpcTeleport();
+                            spot.TargetMap = t.targetMap;
+                            spot.TargetPos = new TilePos(t.x, t.y);
+                            spot.Name = string.IsNullOrEmpty(t.name) ? t.targetMap : t.name;
+                            spot.Cost = t.cost > 0 ? t.cost : 0;
+                            def.Teleports.Add(spot);
+                        }
+                    }
                     db._npcs[def.Id] = def;
                 }
             }

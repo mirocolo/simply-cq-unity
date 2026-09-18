@@ -107,6 +107,69 @@ namespace SimplyCQ.EditorTools
             }
             Check(portalTotal > 0, "至少有一张图配了传送点（共 " + portalTotal + " 个）");
 
+            // ---------------- M5e 传送员：目的地必须真的到得了 ----------------
+            {
+                HashSet<string> seenNpc = new HashSet<string>();
+                int teleporters = 0, destinations = 0, badSpot = 0;
+                string badSpotWhere = "";
+                foreach (GameMap m in db.AllMaps)
+                {
+                    for (int i = 0; i < m.Npcs.Count; i++)
+                    {
+                        NpcDef npc = db.GetNpc(m.Npcs[i].NpcId);
+                        if (npc == null || !npc.IsTeleporter) continue;
+                        if (!seenNpc.Add(npc.Id)) continue;   // 同一个 NPC 摆多张图只查一次
+                        teleporters++;
+
+                        for (int k = 0; k < npc.Teleports.Count; k++)
+                        {
+                            NpcTeleport spot = npc.Teleports[k];
+                            destinations++;
+                            if (spot.Cost < 0) { badSpot++; continue; }
+
+                            GameMap target = db.GetMap(spot.TargetMap);
+                            if (target == null)
+                            {
+                                badSpot++;
+                                if (badSpotWhere.Length < 60) badSpotWhere += npc.Id + "->" + spot.TargetMap + " ";
+                                continue;
+                            }
+                            // 落点必须在图里、可走，而且不能是传送点（否则一到就被弹回去）
+                            bool onPortal = false;
+                            for (int q = 0; q < target.Portals.Count; q++)
+                                if (target.Portals[q].At == spot.TargetPos) onPortal = true;
+                            if (!target.IsWalkable(spot.TargetPos) || onPortal)
+                            {
+                                badSpot++;
+                                if (badSpotWhere.Length < 60)
+                                    badSpotWhere += npc.Id + "->" + spot.TargetMap + spot.TargetPos + " ";
+                            }
+                        }
+                    }
+                }
+                Check(teleporters > 0, "有 " + teleporters + " 个传送员 NPC");
+                Check(badSpot == 0,
+                    teleporters + " 个传送员的 " + destinations + " 个目的地：地图存在、落点可走、不是传送点"
+                    + (badSpot > 0 ? "，有问题：" + badSpotWhere : ""));
+
+                // 传送员边上得站得住人，否则玩家永远点不到他
+                int unreachable = 0;
+                foreach (GameMap m in db.AllMaps)
+                    for (int i = 0; i < m.Npcs.Count; i++)
+                    {
+                        NpcDef npc = db.GetNpc(m.Npcs[i].NpcId);
+                        if (npc == null || !npc.IsTeleporter) continue;
+                        bool neighbour = false;
+                        for (int d = 0; d < 8; d++)
+                        {
+                            TilePos p = m.Npcs[i].Pos + DirHelper.Delta((Dir)d);
+                            if (m.IsWalkable(p)) neighbour = true;
+                        }
+                        if (!neighbour) unreachable++;
+                    }
+                Check(unreachable == 0, "传送员边上至少有一格站得住（不然交互不了）");
+            }
+
             // ---------------- M5d 怪：名单、AI、难度分层 ----------------
             {
                 int kinds = 0;
@@ -727,6 +790,68 @@ namespace SimplyCQ.EditorTools
                         shopSim.World.Step(poorActs);
 
                         Check(refusedShop == 1 && trader.Gold == 0, "没钱时拒绝交易并给出理由，且不扣钱");
+                    }
+                }
+            }
+
+            // ---------------- M5e 传送员（用真实数据表跑一遍）----------------
+            {
+                GameMap town = db.GetMap("map_town");
+                if (town != null)
+                {
+                    Simulation tpSim = new Simulation(town, 909u, db.CreateMonster, db.Tuning,
+                                                      db.Items, db.Skills, db.Shop, db, db.Loot);
+                    Entity tpHero = db.CreatePlayer();
+                    tpHero.Gold = 100;
+                    tpHero.Pos = tpSim.World.FindFreeTileNear(town.Spawn, 6);
+                    tpHero.HomePos = tpHero.Pos;
+                    tpSim.World.Spawn(tpHero);
+                    tpSim.World.Player = tpHero;
+                    db.SpawnNpcs(tpSim.World);   // 把杂货商和传送员都放出来
+
+                    // 先按"是不是传送员"把 NPC 找出来，再站到他旁边 ——
+                    // 站在别处会同时测到"距离太远"，两件事混在一起就说不清了
+                    Entity tel = null;
+                    foreach (Entity e in tpSim.World.Entities)
+                        if (e.Shop != null && e.Shop.IsTeleporter) tel = e;
+                    Check(tel != null, "比邻镇里有传送员 NPC"
+                        + (tel != null ? "（" + tel.Name + "@" + tel.Pos + "）" : ""));
+
+                    if (tel != null)
+                    {
+                        TilePos beside = tpSim.World.FindFreeTileNear(tel.Pos, 2);
+                        tpSim.World.PlaceEntity(tpHero, beside);
+                        Check(TeleportSystem.NearestTeleporter(tpSim.World, tpHero) == tel,
+                            "站到传送员旁边（" + beside + "）就能交互");
+
+                        // 走远了不该还能隔空传送
+                        tpSim.World.PlaceEntity(tpHero, tpSim.World.FindFreeTileNear(town.Spawn, 12));
+                        Check(TeleportSystem.NearestTeleporter(tpSim.World, tpHero) == null,
+                            "走远之后交互不到传送员");
+
+                        // 回到旁边，挑一个收费目的地真走一次
+                        tpSim.World.PlaceEntity(tpHero, beside);
+                        int index = -1;
+                        for (int i = 0; i < tel.Shop.Teleports.Count; i++)
+                            if (tel.Shop.Teleports[i].Cost > 0) { index = i; break; }
+                        Check(index >= 0, "传送员有收费目的地，可以测扣费");
+
+                        if (index >= 0)
+                        {
+                            NpcTeleport spot = tel.Shop.Teleports[index];
+                            int goldBefore = tpHero.Gold;
+                            List<Intent> acts = new List<Intent>();
+                            acts.Add(Intent.BagAction(tpHero.Id, IntentKind.TeleportTo, index));
+                            tpSim.World.Step(acts);
+
+                            Check(tpSim.World.Map.Id == spot.TargetMap,
+                                "传送到了 " + spot.TargetMap + "（实际 " + tpSim.World.Map.Id + "）");
+                            Check(tpHero.Gold == goldBefore - spot.Cost,
+                                "扣了 " + spot.Cost + " 路费（" + goldBefore + " -> " + tpHero.Gold + "）");
+                            Check(tpSim.World.Map.IsWalkable(tpHero.Pos), "落点在图里且可走（" + tpHero.Pos + "）");
+                            Check(tpHero.HomePos == tpHero.Pos, "传送后 HomePos 跟着人");
+                            Check(CheckInvariants(tpSim.World) == null, "传送后不变量成立");
+                        }
                     }
                 }
             }

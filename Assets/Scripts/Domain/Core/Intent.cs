@@ -12,7 +12,9 @@ namespace SimplyCQ.Domain
         UnequipItem = 7,
         DropItem = 8,
         BuyItem = 9,
-        SellItem = 10
+        SellItem = 10,
+        /// <summary>找传送员去某个目的地。Slot = 目的地下标。</summary>
+        TeleportTo = 11
     }
 
     /// <summary>玩家（或以后 AI 玩家）每 tick 提出的「意图」。合法性由 Domain 判定，表现层无权直接改世界。</summary>

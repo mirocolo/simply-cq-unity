@@ -43,6 +43,7 @@ namespace DomainCheck
             TestConsumable();
             TestLootLoop();
             TestMapSwitch();
+            TestNpcTeleport();
             Console.WriteLine();
             Console.WriteLine(_failures == 0 ? "全部通过 ✓" : _failures + " 项失败 ✗");
             return _failures == 0 ? 0 : 1;
@@ -151,6 +152,178 @@ namespace DomainCheck
         }
 
         // ---------------------------------------------------------------- tests
+
+        // ---------------------------------------------------------------- M5e 传送员
+
+        private static NpcTeleport Spot(string mapId, int x, int y, int cost, string name)
+        {
+            NpcTeleport t = new NpcTeleport();
+            t.TargetMap = mapId;
+            t.TargetPos = new TilePos(x, y);
+            t.Cost = cost;
+            t.Name = name;
+            return t;
+        }
+
+        private static Entity MakeTeleporter(TilePos at, params NpcTeleport[] spots)
+        {
+            Entity e = MakeEntity(EntityKind.Npc, at);
+            e.DefId = "npc_teleporter";
+            e.Name = "传送员";
+            NpcDef def = new NpcDef();
+            def.Id = "npc_teleporter";
+            def.Name = "传送员";
+            def.Dialog = "想去哪儿？";
+            for (int i = 0; i < spots.Length; i++) def.Teleports.Add(spots[i]);
+            e.Shop = def;
+            e.BlocksTile = true;
+            return e;
+        }
+
+        /// <summary>传送员用例的固定场景：一张城、一张洞，传送员站在城里。</summary>
+        private sealed class TeleportFixture
+        {
+            public Simulation Sim;
+            public World World;
+            public Entity Player;
+            public Entity Npc;
+            public int Refused;
+            public int MapChanges;
+        }
+
+        private static TeleportFixture MakeTeleportFixture(int playerGold, out GameMap town, out GameMap cave)
+        {
+            string[] open = { "..........", "..........", "..........", "..........", "..........",
+                              "..........", "..........", "..........", "..........", ".........." };
+
+            town = NamedMap("map_town_t", open);
+            cave = NamedMap("map_cave_t", open);
+            cave.Spawn = new TilePos(3, 3);
+
+            FakeMapCatalog catalog = new FakeMapCatalog();
+            catalog.Add(town);
+            catalog.Add(cave);
+
+            TestCatalog items = new TestCatalog();
+            items.Potion("potion", 30);
+
+            Func<string, Entity> factory = delegate(string id)
+            {
+                Entity m = MakeEntity(EntityKind.Monster, new TilePos(8, 8));
+                m.DefId = id;
+                m.MoveSpeed = 100;
+                m.Vision = 0;
+                m.Aggressive = false;
+                return m;
+            };
+
+            TeleportFixture f = new TeleportFixture();
+            f.Sim = new Simulation(town, 11u, factory, null, items, null, null, catalog);
+            f.World = f.Sim.World;
+
+            f.Npc = MakeTeleporter(new TilePos(4, 4),
+                Spot("map_cave_t", 3, 3, 30, "幽暗石洞"),
+                Spot("map_missing", 1, 1, 0, "不存在的地方"),
+                Spot("map_town_t", 7, 7, 0, "城里另一头"));
+            f.World.Spawn(f.Npc);
+
+            f.Player = MakeFullPlayer(items, new TilePos(4, 5));
+            f.Player.Gold = playerGold;
+            f.World.Spawn(f.Player);
+            f.World.Player = f.Player;
+
+            f.Sim.Bus.Subscribe<PortalRefused>(delegate(PortalRefused e) { f.Refused++; });
+            f.Sim.Bus.Subscribe<MapChanged>(delegate(MapChanged e) { f.MapChanges++; });
+            return f;
+        }
+
+        private static void TeleportTo(TeleportFixture f, int index)
+        {
+            List<Intent> acts = new List<Intent>();
+            acts.Add(Intent.BagAction(f.Player.Id, IntentKind.TeleportTo, index));
+            f.Sim.Step(acts);
+        }
+
+        private static void TestNpcTeleport()
+        {
+            Console.WriteLine("[NPC 传送员]");
+
+            GameMap town, cave;
+
+            // 找不到人：站太远（交互距离 2 格）
+            TeleportFixture far = MakeTeleportFixture(100, out town, out cave);
+            far.World.PlaceEntity(far.Player, new TilePos(9, 9));
+            TeleportTo(far, 0);
+            Check(far.Refused == 1 && far.World.Map.Id == "map_town_t", "离得太远 -> 拒绝传送");
+
+            // 附近根本没有传送员
+            TeleportFixture none = MakeTeleportFixture(100, out town, out cave);
+            none.World.Despawn(none.Npc.Id);
+            TeleportTo(none, 0);
+            Check(none.Refused == 1 && none.World.Map.Id == "map_town_t", "附近没有传送员 -> 拒绝");
+
+            // 目的地下标越界：静默失败，不该扣钱也不该换图
+            TeleportFixture bad = MakeTeleportFixture(100, out town, out cave);
+            TeleportTo(bad, 99);
+            Check(bad.Player.Gold == 100 && bad.World.Map.Id == "map_town_t", "目的地下标越界 -> 什么都没发生");
+
+            // 目的地地图不存在
+            TeleportFixture missing = MakeTeleportFixture(100, out town, out cave);
+            TeleportTo(missing, 1);
+            Check(missing.Refused == 1, "目的地地图不存在 -> 拒绝并给理由");
+            Check(missing.Player.Gold == 100 && missing.World.Map.Id == "map_town_t",
+                "被拒绝时不扣钱、不换图");
+
+            // 钱不够
+            TeleportFixture poor = MakeTeleportFixture(10, out town, out cave);
+            TeleportTo(poor, 0);
+            Check(poor.Refused == 1 && poor.Player.Gold == 10 && poor.World.Map.Id == "map_town_t",
+                "路费不够 -> 拒绝、不扣钱、不换图");
+
+            // 成功：扣路费 + 换图 + 落在目标点
+            TeleportFixture ok = MakeTeleportFixture(100, out town, out cave);
+            Entity townMonster = MakeEntity(EntityKind.Monster, new TilePos(8, 8));
+            townMonster.DefId = "mon_town";
+            ok.World.Spawn(townMonster);
+
+            TeleportTo(ok, 0);
+            Check(ok.Player.Gold == 70, "成功传送扣了 30 路费（100 -> " + ok.Player.Gold + "）");
+            Check(ok.World.Map.Id == "map_cave_t", "换到了洞窟（实际 " + ok.World.Map.Id + "）");
+            Check(ok.Player.Pos == new TilePos(3, 3), "落在目的地 (3,3)，实际 " + ok.Player.Pos);
+            Check(ok.MapChanges == 1, "发了一次 MapChanged");
+            Check(ok.Refused == 0, "成功时不发 PortalRefused");
+            Check(ok.Player.HomePos == ok.Player.Pos, "HomePos 跟着人走");
+            Check(ok.World.Get(townMonster.Id) == null, "跨图传送把旧图的怪清掉了（和踩传送点一致）");
+
+            // 同图传送：只挪人，不要把全图怪清掉
+            TeleportFixture same = MakeTeleportFixture(100, out town, out cave);
+            Entity keep = MakeEntity(EntityKind.Monster, new TilePos(8, 8));
+            keep.DefId = "mon_keep";
+            same.World.Spawn(keep);
+
+            TeleportTo(same, 2);
+            Check(same.World.Map.Id == "map_town_t", "同图传送还在这张图");
+            Check(same.Player.Pos == new TilePos(7, 7), "同图传送落在目的地，实际 " + same.Player.Pos);
+            Check(same.World.Get(keep.Id) != null, "同图传送不清怪（城里的怪还在）");
+            Check(same.Player.Gold == 100, "免费目的地不扣钱");
+            Check(same.MapChanges == 0, "同图传送不发 MapChanged");
+
+            // 死了不能传送
+            TeleportFixture dead = MakeTeleportFixture(100, out town, out cave);
+            dead.Player.Hp = 0;
+            TeleportTo(dead, 0);
+            Check(dead.World.Map.Id == "map_town_t" && dead.Player.Gold == 100, "死了不能找传送员");
+
+            // 一次 tick 点两下：不能扣两次钱、也不能连着传两次
+            TeleportFixture twice = MakeTeleportFixture(100, out town, out cave);
+            List<Intent> two = new List<Intent>();
+            two.Add(Intent.BagAction(twice.Player.Id, IntentKind.TeleportTo, 0));
+            two.Add(Intent.BagAction(twice.Player.Id, IntentKind.TeleportTo, 0));
+            twice.Sim.Step(two);
+            // 第二下时玩家已经在洞窟、身边没有传送员了，所以只会成功一次
+            Check(twice.Player.Gold == 70, "同一 tick 点两下不会重复扣费（实际 " + twice.Player.Gold + "）");
+            Check(twice.MapChanges == 1, "同一 tick 点两下只换一次图（实际 " + twice.MapChanges + "）");
+        }
 
         private static void TestTilePos()
         {

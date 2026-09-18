@@ -21,6 +21,29 @@
         "ar_padded",
         "he_leather"
       ]
+    },
+    {
+      "id": "npc_teleporter",
+      "name": "传送员",
+      "sprite": "npc_teleporter",
+      "dialog": "想去哪儿？给点路费就行。洞窟那趟可不便宜。",
+      "stock": [],
+      "teleports": [
+        {
+          "targetMap": "map_grassland",
+          "x": 24,
+          "y": 40,
+          "name": "新手草原",
+          "cost": 0
+        },
+        {
+          "targetMap": "map_cave",
+          "x": 20,
+          "y": 34,
+          "name": "幽暗石洞",
+          "cost": 30
+        }
+      ]
     }
   ]
 }

@@ -40,6 +40,8 @@ namespace SimplyCQ.Domain
             World.Systems.Add(new LootSystem(Catalog));
             World.Systems.Add(new ItemSystem(Catalog));
             World.Systems.Add(new ShopSystem(Catalog, shop));
+            // 传送员要查目标地图，所以只有拿得到地图表时才加
+            if (maps != null) World.Systems.Add(new TeleportSystem(maps));
             if (monsterFactory != null) World.Systems.Add(new SpawnerSystem(monsterFactory));
         }
 
