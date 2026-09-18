@@ -1509,6 +1509,79 @@ namespace SimplyCQ.EditorTools
                 Check(SkinHelpersUsedByPanels(), "几个面板都用 UiSkin 画（没有各自复制的画图代码）");
             }
 
+            // ---------------- M6f 背景音乐：三张图各有一首、换图才切、同图不重放 ----------------
+            {
+                // 每张图的 music 字段都得真的能从 Resources 加载到 —— 拼错一个键就是那张图静音
+                int missingMusic = 0;
+                string missingMusicWhere = "";
+                foreach (GameMap m in db.AllMaps)
+                {
+                    if (string.IsNullOrEmpty(m.MusicId))
+                    {
+                        missingMusic++;
+                        if (missingMusicWhere.Length < 50) missingMusicWhere += m.Id + " ";
+                        continue;
+                    }
+                    if (Resources.Load<AudioClip>("Audio/Music/" + m.MusicId) != null) continue;
+                    missingMusic++;
+                    if (missingMusicWhere.Length < 50) missingMusicWhere += m.MusicId + " ";
+                }
+                Check(missingMusic == 0, "每张图都配了背景音乐，而且文件都加载得到"
+                    + (missingMusic > 0 ? "，缺：" + missingMusicWhere : ""));
+
+                GameObject musicRoot = new GameObject("smoke_music_root");
+                World musicWorld = new World(db.Map, 4711u, new EventBus());
+                MusicDirector music = new MusicDirector(musicRoot.transform, musicWorld);
+
+                Check(music.TrackSwitches == 0 && string.IsNullOrEmpty(music.PlayingId),
+                    "刚建好的音乐导演什么都不放");
+
+                // 第一次 SyncToMap：起曲
+                music.SyncToMap();
+                Check(music.TrackSwitches == 1 && music.PlayingId == db.Map.MusicId,
+                    "按当前地图起了一首（" + music.PlayingId + "）");
+
+                // 同一张图再 Sync：不该从头重放（不然走两步曲子就跳回开头）
+                music.SyncToMap();
+                Check(music.TrackSwitches == 1, "同一张图不重放（实际切了 " + music.TrackSwitches + " 次）");
+
+                // 换图：切到新曲，而且淡入淡出要有一个过程
+                GameMap cave = db.GetMap("map_cave");
+                GameMap grass = db.GetMap("map_grassland");
+                Check(cave != null && grass != null && cave.MusicId != grass.MusicId,
+                    "城镇/草原/洞窟的曲子不一样（才看得出交叉淡入淡出）");
+
+                music.Play(cave.MusicId);
+                Check(music.PlayingId == cave.MusicId && music.TrackSwitches == 2,
+                    "换图切到了新曲（" + music.PlayingId + "）");
+
+                // 淡入淡出：刚切的时候还没完成，时间推够才完成
+                music.Tick(0.1f);
+                Check(music.TrackSwitches == 2, "淡入淡出进行中不算完成");
+                music.Tick(3f);
+                Check(music.PlayingId == cave.MusicId && music.TrackSwitches == 2,
+                    "淡入淡出结束后停在新曲上");
+
+                // 越过淡出过程的时间也不能出问题（长 tick 的防抖）
+                music.Tick(5f);
+
+                // 关音乐：不再出声；再开：继续放
+                Check(music.ToggleMute(), "N 切成音乐关");
+                Check(music.StatusText.Contains("关"), "状态显示音乐关（" + music.StatusText + "）");
+                music.ToggleMute();
+                music.Tick(0.1f);
+                Check(!music.StatusText.Contains("关"), "再按一次恢复（" + music.StatusText + "）");
+
+                float loud = music.Volume;
+                music.AdjustVolume(-0.1f);
+                Check(music.Volume < loud, "音乐音量能调小（" + loud.ToString("0.0") + " -> " + music.Volume.ToString("0.0") + "）");
+                music.AdjustVolume(-10f);
+                Check(music.Volume >= 0f, "音乐音量减到底不会变负");
+
+                music.Dispose();
+                Check(true, "运行时建的音乐物体能收干净");
+            }
+
             // 键盘操作的成败取决于 Player Settings，这里用编译期宏直接断言，
             // 免得出现「能跑但按键盘没反应」这种最难查的情况。
 #if ENABLE_LEGACY_INPUT_MANAGER

@@ -37,6 +37,7 @@ namespace SimplyCQ.Unity
         private ShopUi _shopUi;
         private TeleportUi _teleportUi;
         private AudioDirector _audio;
+        private MusicDirector _music;
         /// <summary>上一帧开着的面板数，用来在"开/关面板"的那一刻各响一声。</summary>
         private int _openPanels;
         private Camera _camera;
@@ -167,6 +168,8 @@ namespace SimplyCQ.Unity
             _teleportUi = new TeleportUi(_simulation.World, _database);
             _tuning = new TuningPanel(_simulation.World, _database);
             _audio = new AudioDirector(_simulation.World, _projection, _camera);
+            _music = new MusicDirector(entityRoot, _simulation.World);
+            _music.SyncToMap();          // 开局先按当前地图起一首
 
             ParseCommandLine();
 
@@ -258,6 +261,8 @@ namespace SimplyCQ.Unity
 
             if (_input.ReadInteractKey()) ToggleNpcPanel();
             if (_input.ReadTuningToggle()) _tuning.Toggle();
+            if (_input.ReadMusicToggle())
+                Debug.Log("[SimplyCQ] 背景音乐：" + (_music.ToggleMute() ? "已关闭" : "已打开"));
 
             int audioKey = _input.ReadAudioToggle();
             if (audioKey == 1) Debug.Log("[SimplyCQ] 音效：" + (_audio.ToggleMute() ? "已静音" : "已打开"));
@@ -319,6 +324,7 @@ namespace SimplyCQ.Unity
             _lootBeams.Tick(dt);
             _floatingText.Tick(dt);
             _audio.Tick(dt);
+            _music.Tick(dt);
             PlayPanelSound();
 
             _secondTimer += dt;
@@ -639,6 +645,7 @@ namespace SimplyCQ.Unity
         {
             SaveService.Save(_simulation.World, _database.Balance.worldSeed, SaveService.DefaultPath);
             if (_audio != null) { _audio.Dispose(); _audio = null; }
+            if (_music != null) { _music.Dispose(); _music = null; }
             Debug.Log("[SimplyCQ] 退出（已自动存档）");
 #if UNITY_EDITOR
             UnityEditor.EditorApplication.isPlaying = false;
@@ -770,7 +777,7 @@ namespace SimplyCQ.Unity
             y += h + 6f;
             string status = "Lv." + p.Level + "    金币 " + p.Gold + "    攻 " + p.MinDc + "-" + p.MaxDc + "    防 " + p.Ac;
             if (!p.IsAlive) status += "    （死亡，等待复活…）";
-            status += "    音效 " + _audio.StatusText + "（M 静音）";
+            status += "    音效 " + _audio.StatusText + "（M 静音）    " + _music.StatusText + "（N 开关）";
             GUI.Label(UiScale.R(x, y, 640f, 20f), status, UiSkin.Styles.Label);
         }
     }

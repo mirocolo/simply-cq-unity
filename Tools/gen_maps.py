@@ -58,6 +58,7 @@ def build_town():
         "height": H,
         "spawnX": 20,
         "spawnY": 20,
+        "music": "town",
         "rows": ["".join(r) for r in g],
         "portals": [
             # 回新手草原（落点在草原传送点北边两格，免得一落地就又被送回来）
@@ -112,6 +113,7 @@ def build_cave():
         "height": H,
         "spawnX": 20,
         "spawnY": 34,
+        "music": "cave",
         "rows": ["".join(r) for r in g],
         "portals": [
             {"x": 20, "y": 36, "targetMap": "map_town", "targetX": 30, "targetY": 20},

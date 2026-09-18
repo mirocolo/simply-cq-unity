@@ -149,6 +149,17 @@ namespace SimplyCQ.Unity
             return 0;
         }
 
+        /// <summary>N：单独开关背景音乐（M 是全部静音）。</summary>
+        public bool ReadMusicToggle()
+        {
+            if (!Enabled) return false;
+#if ENABLE_LEGACY_INPUT_MANAGER
+            return Input.GetKeyDown(KeyCode.N);
+#else
+            return false;
+#endif
+        }
+
         /// <summary>F1：开关手感调参面板。</summary>
         public bool ReadTuningToggle()
         {

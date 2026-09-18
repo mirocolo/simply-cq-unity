@@ -39,6 +39,7 @@ namespace SimplyCQ.Data
                 w, h, tiles);
 
             map.Spawn = new TilePos(dto.spawnX, dto.spawnY);
+            map.MusicId = dto.music ?? "";
 
             if (dto.portals != null)
             {

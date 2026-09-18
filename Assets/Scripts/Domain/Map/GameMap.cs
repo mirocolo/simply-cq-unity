@@ -20,6 +20,8 @@ namespace SimplyCQ.Domain
 
         public readonly string Id;
         public readonly string Name;
+        /// <summary>这张图的背景音乐键（哪张图放哪首写在 map_*.json 的 music 字段里）。</summary>
+        public string MusicId = "";
         public readonly int Width;
         public readonly int Height;
 

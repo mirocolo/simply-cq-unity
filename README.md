@@ -233,8 +233,24 @@
 掉血量能在 21 和 42 之间跳 —— 单遍的结论不可信。现在每只怪**打 5 遍取平均**，
 并且要求 5 遍全部打得死才算数。定标靠平均，不靠手气。
 
-**还没做**：背景音乐（音效有了，BGM 要循环/混音/按地图切换，是独立的一件事）；法师与道士暂缓。
-**M5 内容 + M6 打磨（音效 / 特效 / 数值 / 皮肤）都已完成。**
+**背景音乐（M6f）**
+
+- **三张图各一首循环 BGM**，换图时**交叉淡入淡出**（不是硬切，也不是"停下来再放"）
+- **哪张图放哪首写在 `maps/*.json` 的 `music` 字段里** —— 换曲子只改数据，不碰代码：
+
+  ```json
+  { "id": "map_cave", "name": "幽暗石洞", "music": "cave", "rows": [...] }
+  ```
+
+  值就是 `Resources/Audio/Music/` 下的文件名。留空 = 这张图静音
+- **音乐和音效分开**：音乐走独立音量，`N` 单独开关（`M` 是全部静音）；HUD 上都显示状态
+- **同一张图不重放**：走到传送点换图换到同一首曲子时，不会从头再来
+- 素材同样是 CC0：Juhani Junkala 的 Chiptune Adventures（作者在包内 INFO.txt 写明 CC0，
+  "You can do anything you want with these tunes"），挑了 3 首无缝循环（草原 / 洞窟 / 城镇）
+- **查证过**：FreePD.com 已经关站（2026 查证），所以 BGM 走 OpenGameArt 的 CC0 资源
+
+**还没做**：战斗音乐（进战斗切一首）；法师与道士暂缓。
+**M5 内容 + M6 打磨（音效 / 特效 / 数值 / 皮肤 / 音乐）都已完成。**
 
 ---
 
@@ -277,6 +293,7 @@
 | C | 开关角色面板：属性 + 8 个部位，左键点装备栏 = 卸下 |
 | E | 站在 NPC 旁边开关对应面板：商人 = 买卖，传送员 = 选目的地 |
 | F1 | 开手感调参面板：改数值立刻生效，可导出回 balance.json |
+| N | 单独开关背景音乐（M 是全部静音） |
 | 拖标题栏 | 移动面板（背包 / 角色 / 商店 / 传送 / 调参都能拖，位置本次运行内保留） |
 | F5 / F9 | 手动存档 / 读档（Esc 退出会自动存一次） |
 | M | 静音开关（HUD 上显示当前音量） |
@@ -323,6 +340,7 @@ Assets/
 │   │   ├── View/        #   Projection / PlaceholderArt / TileViewPool / EntityViewRegistry / CameraRig
 │   │   │                #   CombatFxPool（特效池）/ LootBeamOverlay（掉落光柱）/ FloatingTextOverlay
 │   │   ├── Audio/       #   SfxTable（音效表）/ AudioDirector（事件 -> 声音 + 声像）
+│   │   │                #   MusicDirector（按地图换 BGM + 交叉淡入淡出）
 │   │   ├── UI/          #   UiSkin（唯一的皮肤）+ PanelDrag（拖动）
 │   │   │                #   背包/角色/商店/传送面板 + TuningPanel + SkillBar
 │   │   ├── Input/       #   PlayerInputSource
@@ -543,7 +561,8 @@ bash Tools/run-compile-check.sh
 | **M6b** 战斗特效 | 命中/暴击/死亡/升级/技能/掉落光柱、镜头震动、池化复用 | ✅ 完成（见 `docs/计划-M6b-战斗特效.md`） |
 | **M6c** 数值审计 + 调参 | 模拟战斗审计成长曲线、20 种怪重新定标、F1 调参面板 + 导出 | ✅ 完成（见 `docs/计划-M6c-数值审计与调参面板.md`） |
 | **M6d** UI 皮肤 | `UiSkin` 统一配色/字号/画法、五个面板块改读它、分段进度条、面板可拖 | ✅ 完成（见 `docs/计划-M6d-UI皮肤.md`） |
-| **M6** 打磨 | UI 皮肤、音效、特效、数值平衡、手感调参面板 | ✅ 完成 |
+| **M6f** 背景音乐 | 三张图各一首循环、按地图换曲（数据驱动）、交叉淡入淡出 | ✅ 完成 |
+| **M6** 打磨 | UI 皮肤、音效、特效、数值平衡、手感调参面板、背景音乐 | ✅ 完成 |
 | **M6e** 装备阶梯 | 等级段 3 → 5（Lv10 / Lv13），装备 60 → 100 件，审计扩到五档 | ✅ 完成 |
 
 ### 已通过的真实验证（Unity 6000.6.1f1 批处理）
@@ -551,7 +570,7 @@ bash Tools/run-compile-check.sh
 ```
 四层程序集编译：SimplyCQ.Domain / .Data / .Unity / .Editor 全部 0 error
 场景生成：      Assets/Scenes/GameM1.unity（Main Camera + CQ.Bootstrap）
-内建冒烟自检：  288 项全部通过（跑的是真 StreamingAssets 数据 + 真 Resources 音效）
+内建冒烟自检：  302 项全部通过（跑的是真 StreamingAssets 数据 + 真 Resources 音效/音乐）
 数值审计：      22 项全部通过（用真伤害公式模拟 20 组对局）
 失败项合计：    0
 Unity 退出码：  0
@@ -585,7 +604,8 @@ Unity 退出码：  0
 - 只有三张图：`portals` 数据已就位，切图逻辑也做了；加图只要往 `Data/maps/` 丢 `map_*.json`
 - **数值是审计出来的，不是玩出来的**：审计能保证「打得死、打得动、有压力、换装有意义」这些硬指标，
   但"爽不爽"还得人来玩。`F1` 就是为这个留的 —— 觉得哪里不对，当场调完导出
-- **美术还是代码画的占位图**：音效已经是真素材了，特效也是代码画的；地表/角色/怪物仍是 `PlaceholderArt` 运行时生成
+- **美术还是代码画的占位图**：音效和 BGM 已经是真素材了，特效也是代码画的；
+  地表/角色/怪物仍是 `PlaceholderArt` 运行时生成
 - **没有背景音乐**：这版只做音效；BGM 要循环、要混音、要按地图切换，是另一件事
 - **不含任何原版素材**：音效是 Kenney 的 CC0 素材（见 `Assets/Resources/Audio/LICENSE.md`），
   美术是自己画的，没有原版的地图文件 / 名称 / LOGO

@@ -13,6 +13,8 @@ namespace SimplyCQ.Data
         public int spawnX;
         public int spawnY;
         public string[] rows;
+        /// <summary>这张图放哪首背景音乐（Resources/Audio/Music/ 下的文件名，不带扩展名）。留空就静音。</summary>
+        public string music;
         public PortalDto[] portals;
         public SpawnerDto[] spawners;
         public NpcSpawnDto[] npcs;
