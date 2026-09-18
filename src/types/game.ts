@@ -31,6 +31,7 @@ export interface ItemDef {
   name: string;
   type: ItemType;
   slot?: EquipSlot;
+  tier: number; // 0 ~ 9 飞升阶数
   baseQuality: ItemQuality;
   minDC: number;
   maxDC: number;
@@ -41,6 +42,11 @@ export interface ItemDef {
   critBonus?: number;
   hasteBonus?: number;
   lifestealBonus?: number; // 稀有生命吸血百分比加成 (如 2 代表 +2%)
+  luck?: number; // 永久幸运加成
+  damageMultRatio?: number; // 终极倍攻加成
+  defenseIgnoreRate?: number; // 破甲无视防御率
+  setName?: string; // 套装标识 (如 'wooma', 'zuma', 'shengzhan', 'leiting', 'zhanshen', 'hongmeng')
+  specialEffect?: string; // 特戒特效 (如 'paralyze', 'revive', 'protect', 'wind', 'luck', 'greed')
   recoverHp?: number;
   recoverMp?: number;
   levelReq: number;
@@ -55,6 +61,7 @@ export interface ItemInstance {
   name: string;
   type: ItemType;
   slot?: EquipSlot;
+  tier: number; // 0 ~ 9 飞升阶数
   quality: ItemQuality;
   minDC: number;
   maxDC: number;
@@ -65,6 +72,11 @@ export interface ItemInstance {
   critBonus: number;
   hasteBonus: number;
   lifestealBonus?: number; // 稀有生命吸血百分比加成 (如 2 代表 +2%)
+  luck?: number;
+  damageMultRatio?: number;
+  defenseIgnoreRate?: number;
+  setName?: string;
+  specialEffect?: string;
   recoverHp?: number;
   recoverMp?: number;
   levelReq: number;
@@ -76,6 +88,10 @@ export interface ItemInstance {
 
 export interface EntityStats {
   level: number;
+  ascensionTier: number; // 0 ~ 9 飞升阶数
+  luck: number; // 幸运值 (达到 9 刀刀发挥最大攻击上限)
+  damageMultRatio: number; // 稀有倍攻乘数 (0.15 = +15% 倍攻)
+  defenseIgnoreRate: number; // 破甲无视防御率 (0 ~ 1.0)
   hp: number;
   maxHp: number;
   mp: number;
@@ -126,6 +142,7 @@ export interface Entity {
   poisonTicks?: number; // 中毒持续时间
   isBossEnraged?: boolean; // Boss生命低狂暴
   bossSkillTimer?: number; // Boss技能施放计时
+  reviveCooldownTicks?: number; // 复活特戒冷却 (900 ticks = 90秒)
 }
 
 export type SkillId = 
@@ -150,6 +167,8 @@ export interface SkillDef {
   manaCost: number;
   unlockLevel: number;
   currentCdTicks: number;
+  isAwakened?: boolean; // 是否已飞升觉醒
+  awakenedName?: string; // 觉醒后专属神通名
 }
 
 export interface GroundItem {

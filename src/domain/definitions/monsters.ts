@@ -48,7 +48,7 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     color: '#a16207',
     icon: '🌾',
     lootTable: [
-      { defId: 'pot_hp_small', chance: 0.5, minCount: 1, maxCount: 2 },
+      { defId: 'pot_hp_large', chance: 0.5, minCount: 1, maxCount: 2 },
       { defId: 'w_wood_sword', chance: 0.2 },
       { defId: 'a_buyi', chance: 0.15 }
     ]
@@ -72,7 +72,7 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     color: '#ca8a04',
     icon: '🐱',
     lootTable: [
-      { defId: 'pot_hp_small', chance: 0.6, minCount: 1, maxCount: 3 },
+      { defId: 'pot_hp_large', chance: 0.6, minCount: 1, maxCount: 2 },
       { defId: 'w_bronze_sword', chance: 0.18 },
       { defId: 'h_qingtong', chance: 0.12 },
       { defId: 'b_tieshou', chance: 0.15 }
@@ -150,10 +150,10 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     icon: '🧟',
     lootTable: [
       { defId: 'pot_hp_large', chance: 0.7, minCount: 3, maxCount: 5 },
-      { defId: 'w_zhanma', chance: 0.12 },
-      { defId: 'n_kuangfeng', chance: 0.08 },
+      { defId: 'w_zhanma', chance: 0.15 },
+      { defId: 'n_kuangfeng', chance: 0.10 },
       { defId: 'r_shanhu', chance: 0.15 },
-      { defId: 'a_zhongkai', chance: 0.1 }
+      { defId: 'a_zhongkai', chance: 0.12 }
     ]
   },
   'm_white_pig': {
@@ -177,11 +177,13 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     icon: '🐗',
     lootTable: [
       { defId: 'pot_sun', chance: 1.0, minCount: 3, maxCount: 6 },
-      { defId: 'w_lianyu', chance: 0.40 }, // 爆率大幅提升
-      { defId: 'w_jingzhongyue', chance: 0.25 },
-      { defId: 'h_heitie', chance: 0.28 },
-      { defId: 'b_qishi', chance: 0.28 },
-      { defId: 'r_liliang', chance: 0.22 }
+      { defId: 'w_lianyu', chance: 0.40 }, // 沃玛套装神兵
+      { defId: 'w_yinshe', chance: 0.35 },
+      { defId: 'a_youling', chance: 0.30 },
+      { defId: 'h_wooma', chance: 0.35 },
+      { defId: 'n_youling', chance: 0.30 },
+      { defId: 'b_yanluo', chance: 0.30 },
+      { defId: 'r_hongbaoshi', chance: 0.30 }
     ]
   },
   'm_wooma_boss': {
@@ -205,11 +207,17 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     icon: '👹',
     lootTable: [
       { defId: 'pot_sun', chance: 1.0, minCount: 6, maxCount: 10 },
+      { defId: 'pot_liaoshang', chance: 0.4, minCount: 1, maxCount: 3 },
+      { defId: 'w_jingzhongyue', chance: 0.50 }, // 祖玛套装
       { defId: 'w_caijue', chance: 0.55 }, // 55% 爆裁决之杖！
+      { defId: 'a_linghun', chance: 0.45 },
       { defId: 'a_zhanshen', chance: 0.48 },
-      { defId: 'n_jiyi', chance: 0.45 },
+      { defId: 'h_heitie', chance: 0.40 },
+      { defId: 'n_lvse', chance: 0.40 },
+      { defId: 'b_qishi', chance: 0.45 },
       { defId: 'r_liliang', chance: 0.50 },
-      { defId: 'r_mabi', chance: 0.15 } // 15% 爆麻痹戒指 (原 5%)
+      { defId: 'r_mabi', chance: 0.18 }, // 18% 爆麻痹戒指
+      { defId: 'r_kuangfeng_ring', chance: 0.15 } // 15% 狂风特戒
     ]
   },
   'm_red_moon': {
@@ -233,9 +241,18 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     icon: '👿',
     lootTable: [
       { defId: 'pot_sun', chance: 1.0, minCount: 10, maxCount: 20 },
+      { defId: 'pot_liaoshang', chance: 0.8, minCount: 3, maxCount: 6 },
       { defId: 'w_tulong', chance: 0.70 }, // 70% 爆烈焰屠龙！
-      { defId: 'a_shengzhan', chance: 0.75 },
-      { defId: 'r_mabi', chance: 0.35 } // 35% 爆特戒麻痹 (原 15%)
+      { defId: 'w_bazhe', chance: 0.50 }, // 霸者之刃
+      { defId: 'a_shengzhan', chance: 0.75 }, // 圣战神铠
+      { defId: 'h_shengzhan', chance: 0.60 },
+      { defId: 'n_shengzhan', chance: 0.60 },
+      { defId: 'b_shengzhan', chance: 0.65 },
+      { defId: 'r_shengzhan', chance: 0.65 },
+      { defId: 'r_mabi', chance: 0.35 }, // 35% 爆特戒麻痹
+      { defId: 'r_fuhuo', chance: 0.25 }, // 25% 爆复活戒指！
+      { defId: 'r_hushen', chance: 0.25 }, // 25% 爆护身戒指！
+      { defId: 'r_xingyun', chance: 0.20 }  // 20% 幸运特戒！
     ]
   }
 };

@@ -37,8 +37,17 @@ export class CombatSystem {
       };
     }
 
-    // 1. 基础攻击力投掷 (DC 浮动)
-    const rawDC = this.randomBetween(attacker.stats.minDC, attacker.stats.maxDC);
+    // 1. 基础攻击力投掷 (DC 浮动与经典幸运运9机制)
+    // 幸运 >= 9 时，刀刀恒定发挥 maxDC 最大攻击上限！
+    let rawDC: number;
+    const luck = attacker.stats.luck || 0;
+    if (luck >= 9) {
+      rawDC = attacker.stats.maxDC;
+    } else if (luck > 0 && Math.random() < luck * 0.1) {
+      rawDC = attacker.stats.maxDC;
+    } else {
+      rawDC = this.randomBetween(attacker.stats.minDC, attacker.stats.maxDC);
+    }
 
     // 2. 技能加成乘数 (顺劈次要目标造成 60% 溅射伤害)
     let skillMultiplier = skill ? skill.damageMult : 1.0;
@@ -47,10 +56,13 @@ export class CombatSystem {
     }
     let attackPower = Math.floor(rawDC * skillMultiplier);
 
-    // 3. 目标防御抵扣 (AC 浮动)
+    // 3. 目标防御抵扣 (AC 浮动与破甲机制)
     // 刺杀剑术与开天斩无视目标护甲防御；其他攻击扣减防御
     if (!skill || (skill.id !== 'assassinate' && skill.id !== 'heaven_splitter')) {
-      const targetAC = this.randomBetween(defender.stats.minAC, defender.stats.maxAC);
+      let targetAC = this.randomBetween(defender.stats.minAC, defender.stats.maxAC);
+      if (attacker.stats.defenseIgnoreRate && attacker.stats.defenseIgnoreRate > 0) {
+        targetAC = Math.floor(targetAC * (1 - Math.min(1.0, attacker.stats.defenseIgnoreRate)));
+      }
       attackPower = Math.max(isSecondaryCleave ? 5 : 8, attackPower - targetAC);
     }
 
@@ -65,6 +77,11 @@ export class CombatSystem {
       attackPower = Math.floor(attackPower * 1.5);
     } else if (skill?.id === 'sun_slash') {
       attackPower = Math.floor(attackPower * 1.8);
+    }
+
+    // 5. 稀有倍攻独立乘区放大 (Damage Multiplier Ratio)
+    if (attacker.stats.damageMultRatio && attacker.stats.damageMultRatio > 0) {
+      attackPower = Math.floor(attackPower * (1 + attacker.stats.damageMultRatio));
     }
 
     const finalDamage = Math.max(1, attackPower);

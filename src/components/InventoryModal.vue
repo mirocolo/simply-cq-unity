@@ -48,6 +48,14 @@
               >
                 {{ getQualityName(inventory[index - 1].quality) }}
               </span>
+
+              <!-- 装备阶数小标 -->
+              <span 
+                v-if="inventory[index - 1] && inventory[index - 1].tier"
+                class="absolute top-0.5 right-0.5 text-[8px] font-black text-amber-300 bg-black/90 px-0.5 rounded leading-none border border-amber-600/40 font-mono"
+              >
+                {{ inventory[index - 1].tier }}阶
+              </span>
             </div>
           </div>
         </div>
@@ -59,12 +67,24 @@
             <div class="flex items-center gap-2 border-b border-zinc-800 pb-2">
               <span class="text-3xl">{{ selectedItem.icon }}</span>
               <div class="flex flex-col">
-                <span class="text-sm font-bold" :class="getQualityTextClass(selectedItem.quality)">
-                  {{ selectedItem.name }}
-                </span>
+                <div class="flex items-center gap-1 flex-wrap">
+                  <span class="text-sm font-bold" :class="getQualityTextClass(selectedItem.quality)">
+                    {{ selectedItem.name }}
+                  </span>
+                  <span v-if="selectedItem.tier" class="text-[9px] px-1 py-0.2 bg-amber-950/80 text-amber-300 border border-amber-600/40 rounded font-bold">
+                    {{ selectedItem.tier }}阶
+                  </span>
+                  <span v-if="selectedItem.setName" class="text-[9px] px-1 py-0.2 bg-purple-950/80 text-purple-300 border border-purple-600/40 rounded font-bold">
+                    {{ selectedItem.setName }}
+                  </span>
+                </div>
                 <span class="text-[10px] text-zinc-400">
                   {{ selectedItem.type === 'potion' ? '消耗品' : `部位: ${getSlotName(selectedItem.slot)}` }}
                   (Lv.{{ selectedItem.levelReq }})
+                </span>
+                <span v-if="selectedItem.specialEffect" class="text-[10px] text-orange-400 font-bold flex items-center gap-1">
+                  <span>✨</span>
+                  <span>神技: {{ selectedItem.specialEffect }}</span>
                 </span>
                 <span v-if="selectedItem.type === 'equipment'" class="text-[11px] text-yellow-400 font-mono font-bold flex items-center gap-1">
                   <span>战力评分:</span>
@@ -120,6 +140,21 @@
                 <div v-if="selectedItem.lifestealBonus && selectedItem.lifestealBonus > 0" class="flex justify-between">
                   <span class="text-zinc-400">生命吸血词条:</span>
                   <span class="font-bold text-emerald-400">+{{ selectedItem.lifestealBonus }}%</span>
+                </div>
+
+                <div v-if="selectedItem.luck && selectedItem.luck > 0" class="flex justify-between">
+                  <span class="text-zinc-400">永久幸运加成:</span>
+                  <span class="font-bold text-amber-400">+{{ selectedItem.luck }} (气运极境)</span>
+                </div>
+
+                <div v-if="selectedItem.damageMultRatio && selectedItem.damageMultRatio > 0" class="flex justify-between">
+                  <span class="text-zinc-400">终极倍攻乘数:</span>
+                  <span class="font-bold text-orange-400">+{{ (selectedItem.damageMultRatio * 100).toFixed(0) }}% 独立增伤</span>
+                </div>
+
+                <div v-if="selectedItem.defenseIgnoreRate && selectedItem.defenseIgnoreRate > 0" class="flex justify-between">
+                  <span class="text-zinc-400">神圣破甲穿透:</span>
+                  <span class="font-bold text-sky-400">{{ (selectedItem.defenseIgnoreRate * 100).toFixed(0) }}% 忽视防御</span>
                 </div>
               </template>
 

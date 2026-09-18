@@ -20,6 +20,8 @@ import { AutoPilot } from './AutoPilot';
 import { MONSTER_TEMPLATES } from './definitions/monsters';
 import { SKILL_DEFINITIONS } from './definitions/skills';
 import { StorageManager } from './StorageManager';
+import { ASCENSION_DEFINITIONS } from './definitions/ascension';
+import { SET_DEFINITIONS } from './definitions/sets';
 
 const DIR_OFFSETS: Record<Direction8, { x: number; y: number }> = {
   0: { x: 0, y: -1 },
@@ -110,8 +112,78 @@ export class GameWorld {
     return !this.obstacles.has(`${x},${y}`);
   };
 
+  hasSpecialEffect(effect: string): boolean {
+    for (const it of Object.values(this.equipped)) {
+      if (it && it.specialEffect === effect) return true;
+    }
+    return false;
+  }
+
+  canAscend(): boolean {
+    const currentTier = this.player?.stats?.ascensionTier || 0;
+    if (currentTier >= 9) return false;
+    const nextDef = ASCENSION_DEFINITIONS[currentTier + 1];
+    if (!nextDef) return false;
+    return (this.player?.stats?.level || 1) >= nextDef.requiredLevel;
+  }
+
+  ascend(): boolean {
+    if (!this.canAscend()) return false;
+    const currentTier = this.player.stats.ascensionTier || 0;
+    const nextTier = currentTier + 1;
+    const nextDef = ASCENSION_DEFINITIONS[nextTier];
+    if (!nextDef) return false;
+
+    this.player.stats.ascensionTier = nextTier;
+
+    // 技能神通觉醒
+    if (nextDef.awakenedSkillId) {
+      const sk = this.skills.find(s => s.id === nextDef.awakenedSkillId);
+      if (sk) {
+        sk.isAwakened = true;
+        sk.awakenedName = nextDef.awakenedSkillName;
+        if (nextDef.awakenedSkillName) {
+          sk.name = nextDef.awakenedSkillName;
+        }
+      }
+    }
+
+    // 重算人物四维与战力
+    const base = StatCalculator.getBaseStatsForLevel(this.player.stats.level, nextTier);
+    this.player.stats = StatCalculator.applyEquipment(base, this.equipped);
+    this.player.stats.hp = this.player.stats.maxHp;
+    this.player.stats.mp = this.player.stats.maxMp;
+
+    // 重新刷新怪物强度与位面
+    this.updateMonstersForAscension();
+
+    this.onSound?.('levelup');
+    this.screenShake = 15;
+    this.addDamagePopup(this.player.gridPos, `飞升突破【${nextDef.title}】!`, '#f59e0b', true);
+    this.addBattleLog(
+      `【九转飞升】恭喜大侠渡劫破镜，晋升【${nextDef.title}】！晋入【${nextDef.mapName}】，全属性飙升，战力达 ${this.player.stats.combatPower}！`,
+      'system'
+    );
+    return true;
+  }
+
+  updateMonstersForAscension(): void {
+    const tier = this.player.stats.ascensionTier || 0;
+    const hpMult = 1 + tier * 1.5;
+    const dcMult = 1 + tier * 0.4;
+    for (const m of this.monsters) {
+      const tmpl = Object.values(MONSTER_TEMPLATES).find(t => t.name === m.name);
+      if (tmpl) {
+        m.stats.maxHp = Math.floor(tmpl.hp * hpMult);
+        m.stats.hp = m.stats.maxHp;
+        m.stats.minDC = Math.floor(tmpl.minDC * dcMult);
+        m.stats.maxDC = Math.floor(tmpl.maxDC * dcMult);
+      }
+    }
+  }
+
   private createPlayer(): Entity {
-    const base = StatCalculator.getBaseStatsForLevel(1);
+    const base = StatCalculator.getBaseStatsForLevel(1, 0);
     return {
       id: 'player_1',
       name: '至尊战神',
@@ -131,7 +203,7 @@ export class GameWorld {
   private initStartingInventory(): void {
     const sword = DropSystem.createItemInstance('w_wood_sword', 0);
     const armor = DropSystem.createItemInstance('a_buyi', 0);
-    const hpPot = DropSystem.createItemInstance('pot_hp_small', 0, 50);
+    const hpPot = DropSystem.createItemInstance('pot_hp_large', 1, 50);
     const mpPot = DropSystem.createItemInstance('pot_mp_large', 1, 30);
 
     if (sword) this.equipItem(sword);
@@ -149,10 +221,14 @@ export class GameWorld {
       { templateId: 'm_spider', count: 4, center: { x: 14, y: 24 }, radius: 5 },
       { templateId: 'm_skeleton', count: 5, center: { x: 24, y: 25 }, radius: 6 },
       { templateId: 'm_zombie', count: 4, center: { x: 10, y: 18 }, radius: 5 },
-      { templateId: 'm_white_pig', count: 5, center: { x: 28, y: 10 }, radius: 6 }, // 增加至 5 只白野猪精英
-      { templateId: 'm_wooma_boss', count: 2, center: { x: 28, y: 28 }, radius: 4 }, // 增加至 2 只沃玛教主首领
+      { templateId: 'm_white_pig', count: 5, center: { x: 28, y: 10 }, radius: 6 },
+      { templateId: 'm_wooma_boss', count: 2, center: { x: 28, y: 28 }, radius: 4 },
       { templateId: 'm_red_moon', count: 1, center: { x: 8, y: 28 }, radius: 3 }
     ];
+
+    const tier = this.player?.stats?.ascensionTier || 0;
+    const hpMult = 1 + tier * 1.5;
+    const dcMult = 1 + tier * 0.4;
 
     let idGen = 1;
     for (const dist of monsterDistributions) {
@@ -167,14 +243,15 @@ export class GameWorld {
         gy = Math.max(2, Math.min(this.MAP_HEIGHT - 3, gy));
 
         const baseStats = StatCalculator.getBaseStatsForLevel(template.level);
+        const scaledHp = Math.floor(template.hp * hpMult);
         const stats = {
           ...baseStats,
-          hp: template.hp,
-          maxHp: template.hp,
+          hp: scaledHp,
+          maxHp: scaledHp,
           mp: template.mp,
           maxMp: template.mp,
-          minDC: template.minDC,
-          maxDC: template.maxDC,
+          minDC: Math.floor(template.minDC * dcMult),
+          maxDC: Math.floor(template.maxDC * dcMult),
           minAC: template.minAC,
           maxAC: template.maxAC,
           critRate: template.critRate,
@@ -233,9 +310,22 @@ export class GameWorld {
       }
     }
 
-    // 玩家护体神盾与中毒倒计时
+    // 玩家护体神盾、中毒与复活CD倒计时
     if (this.player.shieldAegisTicks && this.player.shieldAegisTicks > 0) {
       this.player.shieldAegisTicks--;
+      // 4转觉醒【太虚混元罡气】：持续期间每秒对周围1格释放神圣冲击波
+      if ((this.player.stats.ascensionTier || 0) >= 4 && this.currentTick % 10 === 0 && this.player.state !== 'dead') {
+        for (const m of this.monsters) {
+          if (m.state !== 'dead' && PathFinder.chebyshevDistance(this.player.gridPos, m.gridPos) <= 1) {
+            const holyDmg = Math.floor(this.player.stats.maxDC * 0.8);
+            m.stats.hp = Math.max(0, m.stats.hp - holyDmg);
+            this.addDamagePopup(m.gridPos, `🌟罡气 -${holyDmg}`, '#facc15', false);
+            if (m.stats.hp <= 0) {
+              this.handleEntityDeath(m, this.player);
+            }
+          }
+        }
+      }
     }
     if (this.player.poisonTicks && this.player.poisonTicks > 0) {
       this.player.poisonTicks--;
@@ -243,6 +333,9 @@ export class GameWorld {
         this.player.stats.hp = Math.max(1, this.player.stats.hp - 18);
         this.addDamagePopup(this.player.gridPos, '-18 毒', '#22c55e', false);
       }
+    }
+    if (this.player.reviveCooldownTicks && this.player.reviveCooldownTicks > 0) {
+      this.player.reviveCooldownTicks--;
     }
 
     // 掉落喷泉抛物线动画
@@ -304,6 +397,15 @@ export class GameWorld {
           m.respawnTicks--;
           if (m.respawnTicks <= 0) {
             m.state = 'idle';
+            const tier = this.player.stats.ascensionTier || 0;
+            const hpMult = 1 + tier * 1.5;
+            const dcMult = 1 + tier * 0.4;
+            const tmpl = Object.values(MONSTER_TEMPLATES).find(t => t.name === m.name);
+            if (tmpl) {
+              m.stats.maxHp = Math.floor(tmpl.hp * hpMult);
+              m.stats.minDC = Math.floor(tmpl.minDC * dcMult);
+              m.stats.maxDC = Math.floor(tmpl.maxDC * dcMult);
+            }
             m.stats.hp = m.stats.maxHp;
             if (m.spawnOrigin) {
               m.gridPos = { ...m.spawnOrigin };
@@ -450,8 +552,10 @@ export class GameWorld {
       skill.currentCdTicks = skill.cdTicks;
       attacker.shieldAegisTicks = 50;
       this.onSound?.('crit');
-      this.addDamagePopup(attacker.gridPos, '🛡️护体神盾!', '#38bdf8', true);
-      this.addBattleLog('【护体神盾】玄金罡气护体！受到伤害大幅降低 40% 并反震 40% 受击伤害！', 'system');
+      const isAwakenedShield = (attacker.stats.ascensionTier || 0) >= 4;
+      const shieldText = isAwakenedShield ? '🛡️太虚混元罡气!' : '🛡️护体神盾!';
+      this.addDamagePopup(attacker.gridPos, shieldText, '#38bdf8', true);
+      this.addBattleLog(`【${shieldText}】玄金罡气护体！受到伤害大幅降低并反震受击伤害！`, 'system');
       this.gainSkillProficiency(skill, 20);
       return true;
     }
@@ -496,9 +600,11 @@ export class GameWorld {
 
     const effectiveSkill = skill || (attacker.isPlayer ? this.skills.find(s => s.id === 'basic_slash') : undefined);
 
-    // 1. 直线贯穿神技处理：开天斩 (3格贯穿巨刃) 与 逐日剑法 (4格贯穿烈阳极光)
+    // 1. 直线贯穿神技处理：开天斩 (3~5格贯穿巨刃) 与 逐日剑法 (4~6格贯穿烈阳极光)
     if (attacker.isPlayer && (isHeaven || isSun)) {
-      const maxRange = isSun ? 4 : 3;
+      const isAwakenedHeaven = isHeaven && (attacker.stats.ascensionTier || 0) >= 5;
+      const isAwakenedSun = isSun && (attacker.stats.ascensionTier || 0) >= 7;
+      const maxRange = isAwakenedSun ? 6 : (isSun ? 4 : (isAwakenedHeaven ? 5 : 3));
       const offset = DIR_OFFSETS[attacker.direction] || { x: 0, y: 1 };
       const hitMonsters = new Set<string>();
 
@@ -520,16 +626,29 @@ export class GameWorld {
         this.applyHitToEntity(attacker, primaryTarget, effectiveSkill, false);
       }
 
-      // 逐日剑法 100% 触发双重残影极速追击！
+      // 逐日剑法 100% 触发双重或四重残影极速追击！
       if (isSun) {
-        this.applyPhantomHit(attacker, primaryTarget, 1);
-        this.applyPhantomHit(attacker, primaryTarget, 2);
+        const phantomCount = isAwakenedSun ? 4 : 2;
+        for (let p = 1; p <= phantomCount; p++) {
+          this.applyPhantomHit(attacker, primaryTarget, p);
+        }
       }
     } else {
       // 普通攻击/烈火/刺杀/攻杀：打主目标
       this.applyHitToEntity(attacker, primaryTarget, effectiveSkill, false);
 
-      // 2. 经典战士【半月弯刀】顺劈斩机制 (清怪极度爽快！顺劈身边最多2只额外小怪)
+      // 6转烈火觉醒【九幽双重真火】：连续两段真火爆发
+      const isAwakenedFire = isFire && (attacker.stats.ascensionTier || 0) >= 6;
+      if (isAwakenedFire && primaryTarget.state !== 'dead') {
+        setTimeout(() => {
+          if (primaryTarget.state !== 'dead') {
+            this.applyHitToEntity(attacker, primaryTarget, effectiveSkill, false);
+            this.addDamagePopup(primaryTarget.gridPos, '🔥双烈火爆裂!', '#ea580c', true);
+          }
+        }, 150);
+      }
+
+      // 2. 经典战士【半月弯刀】顺劈斩机制 (1转基础剑法觉醒【神威无影斩】普攻也顺劈身边怪)
       if (attacker.isPlayer) {
         let cleaveHits = 0;
         for (const other of this.monsters) {
@@ -645,10 +764,31 @@ export class GameWorld {
 
     let finalDamage = result.damage;
 
-    // 护体神盾：受到伤害降低 40%，并将 40% 伤害反震攻击者
+    // 护身戒指神威：受到伤害的 80% 优先由 MP 抵扣
+    if (target.isPlayer && this.hasSpecialEffect('protect') && target.stats.mp > 0) {
+      const mpAbsorb = Math.min(target.stats.mp, Math.floor(finalDamage * 0.80));
+      target.stats.mp -= mpAbsorb;
+      finalDamage -= mpAbsorb;
+      if (mpAbsorb > 0) {
+        this.addDamagePopup(target.gridPos, `🛡️护身抵扣 -${mpAbsorb}MP`, '#06b6d4', false);
+      }
+    }
+
+    // 麻痹戒指神威：攻击时 25% 几率石化麻痹敌人 2.5 秒
+    if (attacker.isPlayer && !target.isPlayer && this.hasSpecialEffect('paralyze')) {
+      if (Math.random() < 0.25) {
+        target.hitStunTicks = 25;
+        this.addDamagePopup(target.gridPos, '⚡石化麻痹!', '#eab308', true);
+      }
+    }
+
+    // 护体神盾：受到伤害降低 40%~55%，并将 40%~60% 伤害反震攻击者
     if (target.isPlayer && target.shieldAegisTicks && target.shieldAegisTicks > 0) {
-      const reduced = Math.max(1, Math.floor(finalDamage * 0.60));
-      const reflect = Math.max(1, Math.floor(finalDamage * 0.40));
+      const isAwakenedShield = (this.player.stats.ascensionTier || 0) >= 4;
+      const reduceRatio = isAwakenedShield ? 0.45 : 0.60;
+      const reflectRatio = isAwakenedShield ? 0.60 : 0.40;
+      const reduced = Math.max(1, Math.floor(finalDamage * reduceRatio));
+      const reflect = Math.max(1, Math.floor(finalDamage * reflectRatio));
       finalDamage = reduced;
 
       if (!attacker.isPlayer && attacker.state !== 'dead') {
@@ -662,8 +802,9 @@ export class GameWorld {
 
     target.stats.hp = Math.max(0, target.stats.hp - finalDamage);
 
-    // 受击物理反馈：怪物受击硬直与微击退
-    target.hitStunTicks = isSun ? 5 : (isHeaven ? 4 : 3);
+    // 受击物理反馈：怪物受击硬直与微击退 (5转开天斩觉醒造成击晕)
+    const isAwakenedHeaven = isHeaven && (attacker.stats.ascensionTier || 0) >= 5;
+    target.hitStunTicks = isAwakenedHeaven ? 10 : (isSun ? 5 : (isHeaven ? 4 : 3));
     const kx = Math.sign(target.gridPos.x - attacker.gridPos.x) * (isHeaven ? 10 : 6);
     const ky = Math.sign(target.gridPos.y - attacker.gridPos.y) * (isHeaven ? 8 : 4);
     target.knockbackOffset = { x: kx, y: ky };
@@ -723,15 +864,20 @@ export class GameWorld {
       if (tmpl) {
         const minG = tmpl.goldDrop[0];
         const maxG = tmpl.goldDrop[1];
-        const gold = Math.floor(Math.random() * (maxG - minG + 1)) + minG;
+        let gold = Math.floor(Math.random() * (maxG - minG + 1)) + minG;
+        if (this.hasSpecialEffect('greed')) {
+          gold = Math.floor(gold * 2.5); // 贪婪特戒加成
+        }
         this.player.stats.gold += gold;
         this.autoStats.goldGained += gold;
         this.autoStats.killCount++;
 
-        this.addExp(tmpl.expReward);
+        const tier = this.player.stats.ascensionTier || 0;
+        const expReward = Math.floor(tmpl.expReward * (1 + tier * 2.0));
+        this.addExp(expReward);
 
-        // 爆装并开启喷泉起跳动画
-        const drops = DropSystem.rollMonsterDrops(tmpl, deadEntity.gridPos, this.currentTick);
+        // 爆装并开启喷泉起跳动画 (智能阶数保底过滤)
+        const drops = DropSystem.rollMonsterDrops(tmpl, deadEntity.gridPos, this.currentTick, tier);
         for (const drop of drops) {
           this.groundItems.push(drop);
           if (drop.item.quality === 2) this.autoStats.blueDrops++;
@@ -744,9 +890,22 @@ export class GameWorld {
         }
 
         // 击杀普通日志
-        this.addBattleLog(`击杀【${deadEntity.name}】，经验 +${tmpl.expReward}，金币 +${gold}`, 'kill');
+        this.addBattleLog(`击杀【${deadEntity.name}】，经验 +${expReward}，金币 +${gold}`, 'kill');
       }
     } else {
+      // 检查复活戒指 (specialEffect === 'revive')
+      if (this.hasSpecialEffect('revive') && (!deadEntity.reviveCooldownTicks || deadEntity.reviveCooldownTicks <= 0)) {
+        deadEntity.state = 'idle';
+        deadEntity.stats.hp = deadEntity.stats.maxHp;
+        deadEntity.stats.mp = deadEntity.stats.maxMp;
+        deadEntity.reviveCooldownTicks = 900; // 90秒
+        this.onSound?.('levelup');
+        this.screenShake = 16;
+        this.addDamagePopup(deadEntity.gridPos, '💖特戒复活涅槃!', '#ec4899', true);
+        this.addBattleLog('【特戒复活】受到致命伤害触发【复活戒指】至尊神威！免除阵亡，生命与魔法全满恢复！', 'system');
+        return;
+      }
+
       this.addBattleLog('【阵亡】大侠在战斗中力竭倒下，将在 3 秒后回血复苏！', 'system');
       setTimeout(() => {
         this.player.state = 'idle';
@@ -764,7 +923,7 @@ export class GameWorld {
       this.player.stats.exp -= this.player.stats.maxExp;
       this.player.stats.level++;
       
-      const base = StatCalculator.getBaseStatsForLevel(this.player.stats.level);
+      const base = StatCalculator.getBaseStatsForLevel(this.player.stats.level, this.player.stats.ascensionTier || 0);
       this.player.stats = StatCalculator.applyEquipment(base, this.equipped);
       this.player.stats.hp = this.player.stats.maxHp;
       this.player.stats.mp = this.player.stats.maxMp;
@@ -889,7 +1048,7 @@ export class GameWorld {
     this.equipped[targetSlot] = item;
 
     const oldCp = this.player.stats.combatPower;
-    const base = StatCalculator.getBaseStatsForLevel(this.player.stats.level);
+    const base = StatCalculator.getBaseStatsForLevel(this.player.stats.level, this.player.stats.ascensionTier || 0);
     this.player.stats = StatCalculator.applyEquipment(base, this.equipped);
     const cpDiff = this.player.stats.combatPower - oldCp;
 
@@ -944,7 +1103,7 @@ export class GameWorld {
 
     // 重新计算全身属性与战力
     const oldCp = this.player.stats.combatPower;
-    const base = StatCalculator.getBaseStatsForLevel(this.player.stats.level);
+    const base = StatCalculator.getBaseStatsForLevel(this.player.stats.level, this.player.stats.ascensionTier || 0);
     this.player.stats = StatCalculator.applyEquipment(base, this.equipped);
     const cpDiff = this.player.stats.combatPower - oldCp;
 
@@ -1056,7 +1215,7 @@ export class GameWorld {
     delete this.equipped[slot];
     this.addItemToInventory(item);
 
-    const base = StatCalculator.getBaseStatsForLevel(this.player.stats.level);
+    const base = StatCalculator.getBaseStatsForLevel(this.player.stats.level, this.player.stats.ascensionTier || 0);
     this.player.stats = StatCalculator.applyEquipment(base, this.equipped);
     return true;
   }
@@ -1261,7 +1420,8 @@ export class GameWorld {
         hp: this.player.stats.hp,
         mp: this.player.stats.mp,
         exp: this.player.stats.exp,
-        gold: this.player.stats.gold
+        gold: this.player.stats.gold,
+        ascensionTier: this.player.stats.ascensionTier || 0
       },
       equipped: this.equipped,
       inventory: this.inventory,
@@ -1277,6 +1437,7 @@ export class GameWorld {
     this.player.stats.level = saved.player.level;
     this.player.stats.gold = saved.player.gold;
     this.player.stats.exp = saved.player.exp;
+    this.player.stats.ascensionTier = saved.player.ascensionTier || 0;
     this.equipped = saved.equipped || {};
     this.inventory = saved.inventory || [];
     this.autoConfig = { ...this.autoConfig, ...saved.autoConfig };
@@ -1294,7 +1455,23 @@ export class GameWorld {
       }
     }
 
-    const base = StatCalculator.getBaseStatsForLevel(this.player.stats.level);
+    // 重新根据飞升阶数觉醒技能
+    for (let t = 1; t <= (this.player.stats.ascensionTier || 0); t++) {
+      const ascDef = ASCENSION_DEFINITIONS[t];
+      if (ascDef && ascDef.awakenedSkillId) {
+        const skill = this.skills.find(s => s.id === ascDef.awakenedSkillId);
+        if (skill && ascDef.awakenedSkillName) {
+          skill.isAwakened = true;
+          skill.awakenedName = ascDef.awakenedSkillName;
+          skill.name = ascDef.awakenedSkillName;
+        }
+      }
+    }
+
+    // 重新更新怪物阶数血量与属性
+    this.updateMonstersForAscension();
+
+    const base = StatCalculator.getBaseStatsForLevel(this.player.stats.level, this.player.stats.ascensionTier || 0);
     this.player.stats = StatCalculator.applyEquipment(base, this.equipped);
     this.player.stats.hp = saved.player.hp || this.player.stats.maxHp;
     this.player.stats.mp = saved.player.mp || this.player.stats.maxMp;

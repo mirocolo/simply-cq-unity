@@ -119,6 +119,14 @@
             {{ index + 1 }}
           </span>
 
+          <!-- 觉醒神通光标 -->
+          <span 
+            v-if="skill.isAwakened"
+            class="absolute -top-1.5 -left-1 text-[8px] font-black text-amber-950 bg-gradient-to-r from-amber-300 to-yellow-400 px-1 rounded-sm shadow-gold-glow border border-amber-500 leading-tight z-10 scale-90"
+          >
+            神通
+          </span>
+
           <!-- 技能等级金标 (支持无限升级) / 未解锁提示 -->
           <span 
             v-if="player.stats.level >= skill.unlockLevel"
@@ -133,7 +141,10 @@
             {{ skill.unlockLevel }}级
           </span>
 
-          <span class="text-[8px] text-zinc-300 truncate max-w-[42px] leading-tight font-sans">
+          <span 
+            class="text-[8px] truncate max-w-[42px] leading-tight font-sans"
+            :class="skill.isAwakened ? 'text-amber-300 font-bold' : 'text-zinc-300'"
+          >
             {{ skill.name }}
           </span>
 
@@ -154,9 +165,12 @@
           </div>
 
           <!-- 鼠标悬浮 Tooltip 技能详情卡 -->
-          <div class="absolute bottom-14 left-1/2 -translate-x-1/2 hidden group-hover:flex flex-col gap-1 w-48 p-2 bg-black/95 border border-amber-600/60 rounded shadow-2xl z-50 text-left pointer-events-none animate-fadeIn">
+          <div class="absolute bottom-14 left-1/2 -translate-x-1/2 hidden group-hover:flex flex-col gap-1 w-52 p-2 bg-black/95 border border-amber-600/60 rounded shadow-2xl z-50 text-left pointer-events-none animate-fadeIn">
             <div class="flex items-center justify-between border-b border-zinc-800 pb-1">
-              <span class="text-xs font-bold text-amber-400">{{ skill.name }}</span>
+              <span class="text-xs font-bold text-amber-400 flex items-center gap-1">
+                <span>{{ skill.name }}</span>
+                <span v-if="skill.isAwakened" class="text-[9px] text-amber-300 font-bold bg-amber-950/80 px-1 py-0.2 rounded border border-amber-600/40">神通</span>
+              </span>
               <span v-if="player.stats.level >= skill.unlockLevel" class="text-[10px] text-yellow-300 font-mono font-bold">Lv.{{ skill.level }}</span>
               <span v-else class="text-[10px] text-red-400 font-mono font-bold">Lv.{{ skill.unlockLevel }} 解锁</span>
             </div>
@@ -165,6 +179,9 @@
               <span>冷却时间: <b class="text-amber-300 font-mono">{{ (skill.cdTicks * 0.1).toFixed(1) }}s</b></span>
               <span v-if="skill.manaCost > 0">法力消耗: <b class="text-cyan-400 font-mono">{{ skill.manaCost }} MP</b></span>
               <span v-if="player.stats.level >= skill.unlockLevel">熟练进度: <b class="text-emerald-400 font-mono">{{ skill.proficiency || 0 }}/{{ skill.maxProficiency }}</b></span>
+            </div>
+            <div v-if="skill.isAwakened" class="text-[9px] text-amber-300 font-bold bg-gradient-to-r from-amber-950/60 to-yellow-950/30 px-1.5 py-0.5 rounded border border-amber-500/40">
+              ⚡ 飞升觉醒神通 · 威能与范围发生质变！
             </div>
             <p class="text-[9px] text-zinc-400 italic border-t border-zinc-900 pt-1 leading-snug">
               {{ skill.desc }}

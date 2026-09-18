@@ -52,6 +52,7 @@ export class DropSystem {
       name: def.name,
       type: def.type,
       slot: def.slot,
+      tier: def.tier ?? 0,
       quality,
       minDC,
       maxDC,
@@ -62,6 +63,11 @@ export class DropSystem {
       critBonus,
       hasteBonus,
       lifestealBonus: lifestealBonus > 0 ? lifestealBonus : undefined,
+      luck: def.luck,
+      damageMultRatio: def.damageMultRatio,
+      defenseIgnoreRate: def.defenseIgnoreRate,
+      setName: def.setName,
+      specialEffect: def.specialEffect,
       recoverHp: def.recoverHp,
       recoverMp: def.recoverMp,
       levelReq: def.levelReq,
@@ -83,12 +89,13 @@ export class DropSystem {
   }
 
   /**
-   * 击杀怪物大爆：带大爆喷泉与初速度散落
+   * 击杀怪物大爆：带大爆喷泉与初速度散落，以及高阶位面保底机制
    */
   static rollMonsterDrops(
     monster: MonsterTemplate, 
     deathPos: { x: number; y: number },
-    currentTick: number
+    currentTick: number,
+    minTier = 0
   ): GroundItem[] {
     const dropped: GroundItem[] = [];
 
@@ -110,6 +117,11 @@ export class DropSystem {
 
         const item = this.createItemInstance(loot.defId, quality, count);
         if (item) {
+          // 智能阶数保底：绝不掉落低于当前位面阶数的低阶装备 (木剑/布衣彻底淘汰)
+          if (minTier > 0 && item.type === 'equipment' && item.tier < minTier) {
+            continue;
+          }
+
           const off = offsets[offsetIdx % offsets.length];
           offsetIdx++;
 
@@ -122,6 +134,34 @@ export class DropSystem {
             burstOrigin: { x: deathPos.x, y: deathPos.y },
             burstProgress: 0 // 开始喷泉起跳
           });
+        }
+      }
+    }
+
+    // 高阶飞升位面专属掉落 (动态掉落当前阶数的高级装备与套装)
+    if (minTier > 0 && (monster.isBoss || monster.isElite || Math.random() < 0.20)) {
+      const tierEquipDefs = Object.values(ITEM_DEFINITIONS).filter(
+        d => d.type === 'equipment' && d.tier === minTier
+      );
+      if (tierEquipDefs.length > 0) {
+        const rollChance = monster.isBoss ? 0.85 : (monster.isElite ? 0.45 : 0.20);
+        if (Math.random() < rollChance) {
+          const randomDef = tierEquipDefs[Math.floor(Math.random() * tierEquipDefs.length)];
+          const quality = this.rollQuality(monster.isBoss, monster.isElite);
+          const bonusItem = this.createItemInstance(randomDef.id, quality, 1);
+          if (bonusItem) {
+            const off = offsets[offsetIdx % offsets.length];
+            offsetIdx++;
+            dropped.push({
+              id: `ground_${this.generateId()}`,
+              item: bonusItem,
+              gridPos: { x: deathPos.x + off.x, y: deathPos.y + off.y },
+              dropTick: currentTick,
+              beamColor: this.getBeamColor(bonusItem.quality),
+              burstOrigin: { x: deathPos.x, y: deathPos.y },
+              burstProgress: 0
+            });
+          }
         }
       }
     }

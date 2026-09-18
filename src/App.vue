@@ -37,6 +37,7 @@
       :equipped="world.equipped"
       @close="activeModal = null"
       @unequip="handleUnequip"
+      @ascend="handleAscend"
     />
 
     <!-- 模态弹窗：40格随身包裹 (B) -->
@@ -148,6 +149,10 @@ const openModal = (name: string) => {
 
 const handleUnequip = (slot: EquipSlot) => {
   world.unequipItem(slot);
+};
+
+const handleAscend = () => {
+  world.ascend();
 };
 
 const handleUseItem = (item: ItemInstance) => {

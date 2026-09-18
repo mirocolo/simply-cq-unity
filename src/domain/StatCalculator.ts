@@ -1,4 +1,6 @@
 import { EntityStats, EquipSlot, ItemInstance } from '../types/game';
+import { ASCENSION_DEFINITIONS } from './definitions/ascension';
+import { SET_DEFINITIONS, SetBonus, SetDef } from './definitions/sets';
 
 export interface LevelMilestone {
   title: string;
@@ -24,22 +26,54 @@ export class StatCalculator {
     return { title: '初出茅庐', haste: 0, critRate: 0, critMult: 0, dodgeRate: 0.02 };
   }
 
-  static getBaseStatsForLevel(level: number): EntityStats {
-    const baseHp = 150 + (level - 1) * 45;
-    const baseMp = 80 + (level - 1) * 20;
-    const minDC = 6 + Math.floor(level * 2.2);
-    const maxDC = 12 + Math.floor(level * 3.5);
-    const minAC = 2 + Math.floor(level * 1.0);
-    const maxAC = 4 + Math.floor(level * 1.6);
+  static getBaseStatsForLevel(level: number, ascensionTier = 0): EntityStats {
+    let baseHp = 150 + (level - 1) * 45;
+    let baseMp = 80 + (level - 1) * 20;
+    let minDC = 6 + Math.floor(level * 2.2);
+    let maxDC = 12 + Math.floor(level * 3.5);
+    let minAC = 2 + Math.floor(level * 1.0);
+    let maxAC = 4 + Math.floor(level * 1.6);
     const maxExp = Math.floor(80 * Math.pow(1.3, level - 1));
 
     const milestone = this.getLevelMilestone(level);
-    const critRate = 0.08 + milestone.critRate;
-    const critMult = 1.6 + milestone.critMult;
-    const haste = milestone.haste;
-    const dodgeRate = milestone.dodgeRate;
+    let critRate = 0.08 + milestone.critRate;
+    let critMult = 1.6 + milestone.critMult;
+    let haste = milestone.haste;
+    let dodgeRate = milestone.dodgeRate;
+    let lifestealRate = 0.02; // 出厂 2%
+    let luck = 0;
+    let damageMultRatio = 0;
+    let defenseIgnoreRate = 0;
 
-    const baseAttackInterval = 4; // 默认加快至 4 ticks (400ms 一刀，爽快节奏！)
+    // 飞升阶数全面增益与质变
+    if (ascensionTier > 0) {
+      const ascDef = ASCENSION_DEFINITIONS[ascensionTier];
+      if (ascDef) {
+        // 基础四维乘数缩放
+        const mult = 1 + ascDef.statMultiplier;
+        baseHp = Math.floor(baseHp * mult);
+        baseMp = Math.floor(baseMp * mult);
+        minDC = Math.floor(minDC * mult);
+        maxDC = Math.floor(maxDC * mult);
+        minAC = Math.floor(minAC * mult);
+        maxAC = Math.floor(maxAC * mult);
+
+        // 累积全阶数幸运与稀有词条
+        for (let t = 1; t <= ascensionTier; t++) {
+          const prev = ASCENSION_DEFINITIONS[t];
+          if (prev) {
+            luck += prev.luckBonus;
+            lifestealRate += prev.lifestealBonus;
+            critRate += prev.critRateBonus;
+            critMult += prev.critMultBonus;
+          }
+        }
+        damageMultRatio = ascDef.damageMultRatio;
+        defenseIgnoreRate = ascDef.defenseIgnoreRate;
+      }
+    }
+
+    const baseAttackInterval = 4; // 默认 400ms 一刀
     const effectiveAttackInterval = Math.max(
       2,
       Math.floor((baseAttackInterval * 100) / (100 + haste))
@@ -49,6 +83,10 @@ export class StatCalculator {
 
     return {
       level,
+      ascensionTier,
+      luck,
+      damageMultRatio,
+      defenseIgnoreRate,
       hp: baseHp,
       maxHp: baseHp,
       mp: baseMp,
@@ -57,11 +95,11 @@ export class StatCalculator {
       maxDC,
       minAC,
       maxAC,
-      critRate,
+      critRate: Math.min(0.85, critRate),
       critMult,
       haste,
       dodgeRate,
-      lifestealRate: 0.02, // 人物出厂自带 2% 稀有生命吸血
+      lifestealRate: Number(lifestealRate.toFixed(3)),
       baseAttackInterval,
       effectiveAttackInterval,
       phantomStrikeRate,
@@ -70,6 +108,27 @@ export class StatCalculator {
       exp: 0,
       maxExp
     };
+  }
+
+  /**
+   * 收集当前穿戴激活的所有套装羁绊
+   */
+  static getActiveSets(equipped: Partial<Record<EquipSlot, ItemInstance>>) {
+    const counts: Record<string, number> = {};
+    for (const it of Object.values(equipped)) {
+      if (it && it.setName) {
+        counts[it.setName] = (counts[it.setName] || 0) + 1;
+      }
+    }
+    const result: { set: SetDef; count: number; activeBonuses: SetBonus[] }[] = [];
+    for (const [setId, setDef] of Object.entries(SET_DEFINITIONS)) {
+      const count = counts[setId] || 0;
+      if (count >= 2) {
+        const activeBonuses = setDef.bonuses.filter(b => count >= b.count);
+        result.push({ set: setDef, count, activeBonuses });
+      }
+    }
+    return result;
   }
 
   static applyEquipment(
@@ -85,6 +144,9 @@ export class StatCalculator {
     let addCritBonus = 0;
     let addHasteBonus = 0;
     let addLifestealBonus = 0;
+    let addLuck = 0;
+    let addDamageMult = 0;
+    let addDefenseIgnore = 0;
 
     for (const item of Object.values(equipped)) {
       if (!item) continue;
@@ -97,20 +159,55 @@ export class StatCalculator {
       addCritBonus += item.critBonus;
       addHasteBonus += item.hasteBonus;
       addLifestealBonus += item.lifestealBonus || 0;
+      addLuck += item.luck || 0;
+      addDamageMult += item.damageMultRatio || 0;
+      addDefenseIgnore += item.defenseIgnoreRate || 0;
+
+      // 幸运特戒直接增加幸运
+      if (item.specialEffect === 'luck') {
+        addLuck += 3;
+      }
     }
 
-    const maxHp = baseStats.maxHp + addHp;
-    const maxMp = baseStats.maxMp + addMp;
-    const minDC = baseStats.minDC + addMinDC;
-    const maxDC = baseStats.maxDC + addMaxDC;
-    const minAC = baseStats.minAC + addMinAC;
-    const maxAC = baseStats.maxAC + addMaxAC;
+    // 套装羁绊加成结算
+    const activeSets = this.getActiveSets(equipped);
+    let setDcMult = 0;
+    let setAcMult = 0;
+    let setHpMult = 0;
+    let setCritRate = 0;
+    let setLifestealRate = 0;
+    let setDodgeRate = 0;
+    let setDamageMultRatio = 0;
+    let setHaste = 0;
 
-    const critRate = Math.min(0.85, baseStats.critRate + addCritBonus / 100);
-    const haste = baseStats.haste + addHasteBonus;
-    const dodgeRate = baseStats.dodgeRate;
+    for (const act of activeSets) {
+      for (const b of act.activeBonuses) {
+        if (b.dcMult) setDcMult += b.dcMult;
+        if (b.acMult) setAcMult += b.acMult;
+        if (b.hpMult) setHpMult += b.hpMult;
+        if (b.critRate) setCritRate += b.critRate;
+        if (b.lifestealRate) setLifestealRate += b.lifestealRate;
+        if (b.dodgeRate) setDodgeRate += b.dodgeRate;
+        if (b.damageMultRatio) setDamageMultRatio += b.damageMultRatio;
+        if (b.hasteBonus) setHaste += b.hasteBonus;
+      }
+    }
+
+    let maxHp = Math.floor((baseStats.maxHp + addHp) * (1 + setHpMult));
+    let maxMp = baseStats.maxMp + addMp;
+    let minDC = Math.floor((baseStats.minDC + addMinDC) * (1 + setDcMult));
+    let maxDC = Math.floor((baseStats.maxDC + addMaxDC) * (1 + setDcMult));
+    let minAC = Math.floor((baseStats.minAC + addMinAC) * (1 + setAcMult));
+    let maxAC = Math.floor((baseStats.maxAC + addMaxAC) * (1 + setAcMult));
+
+    const critRate = Math.min(0.95, baseStats.critRate + addCritBonus / 100 + setCritRate);
+    const haste = baseStats.haste + addHasteBonus + setHaste;
+    const dodgeRate = Math.min(0.50, baseStats.dodgeRate + setDodgeRate);
     const critMult = baseStats.critMult;
-    const lifestealRate = Number((baseStats.lifestealRate + addLifestealBonus / 100).toFixed(3));
+    const lifestealRate = Number((baseStats.lifestealRate + addLifestealBonus / 100 + setLifestealRate).toFixed(3));
+    const luck = baseStats.luck + addLuck;
+    const damageMultRatio = Number((baseStats.damageMultRatio + setDamageMultRatio + addDamageMult).toFixed(2));
+    const defenseIgnoreRate = Number((baseStats.defenseIgnoreRate + addDefenseIgnore).toFixed(2));
 
     // 有效出手间隔：最低 2 ticks (200ms 一刀，极速如风)
     const effectiveAttackInterval = Math.max(
@@ -119,14 +216,13 @@ export class StatCalculator {
     );
 
     // 攻速溢出转化机制 (方案 A: 风雷残影·连击斩)
-    // 当急速超出 34 点 (已达到极限 0.20s/刀)，每 1 点溢出急速转化为 1.5% 残影连击率
     const overflowHaste = Math.max(0, haste - 34);
     const phantomStrikeRate = overflowHaste > 0 ? Number((overflowHaste * 0.015).toFixed(3)) : 0;
 
     const midDC = (minDC + maxDC) / 2;
     const midAC = (minAC + maxAC) / 2;
     const combatPower = Math.floor(
-      midDC * 3.8 + 
+      (midDC * 3.8 + 
       midAC * 2.8 + 
       maxHp * 0.45 + 
       maxMp * 0.25 + 
@@ -136,11 +232,16 @@ export class StatCalculator {
       lifestealRate * 2500 +
       haste * 12 +
       phantomStrikeRate * 2000 +
-      baseStats.level * 35
+      luck * 1500 +
+      baseStats.level * 35) * (1 + damageMultRatio)
     );
 
     return {
       ...baseStats,
+      ascensionTier: baseStats.ascensionTier,
+      luck,
+      damageMultRatio,
+      defenseIgnoreRate,
       hp: Math.min(baseStats.hp, maxHp),
       maxHp,
       mp: Math.min(baseStats.mp, maxMp),

@@ -6,6 +6,7 @@ export interface SaveData {
   savedAt: number;
   player: {
     level: number;
+    ascensionTier?: number;
     hp: number;
     mp: number;
     exp: number;

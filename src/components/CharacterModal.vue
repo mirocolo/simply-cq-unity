@@ -1,7 +1,7 @@
 <template>
   <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 select-none">
     <!-- 人物主面板容器 -->
-    <div class="relative w-full max-w-xl legend-box p-4 rounded-lg flex flex-col gap-3 animate-fadeIn text-zinc-200">
+    <div class="relative w-full max-w-2xl max-h-[92vh] overflow-y-auto legend-box p-4 rounded-lg flex flex-col gap-3 animate-fadeIn text-zinc-200 custom-scrollbar">
       <!-- 弹窗标题 -->
       <div class="flex items-center justify-between border-b border-legend-border pb-2">
         <div class="flex items-center gap-2">
@@ -20,7 +20,7 @@
         <!-- 左半部：经典纸娃娃装备位 -->
         <div class="bg-zinc-950/80 p-3 rounded-lg border border-legend-border flex flex-col justify-between">
           <div class="text-center text-xs font-bold text-amber-400/90 mb-2">
-            【武林尊者 · 战神之躯】
+            【{{ currentAscensionTitle }} · 战神之躯】
           </div>
 
           <div class="grid grid-cols-3 gap-2 items-center">
@@ -52,6 +52,7 @@
                 <span class="text-5xl">🛡️</span>
               </div>
               <span class="mt-2 text-xs font-bold text-amber-300">Lv.{{ player.stats.level }} 战士</span>
+              <span class="text-[10px] text-amber-500/90 font-mono">{{ currentAscensionTitle }}</span>
             </div>
 
             <!-- 右侧 4 槽位 -->
@@ -82,8 +83,8 @@
           </div>
         </div>
 
-        <!-- 右半部：数值与战力汇总明细 -->
-        <div class="bg-zinc-950/80 p-4 rounded-lg border border-legend-border flex flex-col justify-between">
+        <!-- 右半部：数值、飞升与战力汇总明细 -->
+        <div class="bg-zinc-950/80 p-4 rounded-lg border border-legend-border flex flex-col gap-2.5">
           <!-- 战力大字标题 -->
           <div class="bg-amber-950/30 border border-amber-900/60 p-2.5 rounded-lg flex items-center justify-between shadow-inner">
             <span class="text-xs text-amber-200 font-bold">综合战斗力</span>
@@ -92,8 +93,39 @@
             </span>
           </div>
 
+          <!-- 飞升位面与突破横幅 -->
+          <div class="bg-gradient-to-r from-amber-950/60 via-yellow-950/30 to-black p-2.5 rounded-lg border border-amber-600/50 flex items-center justify-between shadow-md">
+            <div class="flex flex-col">
+              <div class="flex items-center gap-1.5">
+                <span class="text-amber-400 text-sm">🌌</span>
+                <span class="text-xs font-bold text-amber-200">飞升境界:</span>
+                <span class="font-black text-xs text-gold-gradient">{{ currentAscensionTitle }}</span>
+              </div>
+              <span class="text-[10px] text-zinc-400 mt-0.5">
+                当前位面: <span class="text-amber-300 font-bold">{{ currentMapName }}</span>
+              </span>
+            </div>
+
+            <!-- 飞升突破按钮 -->
+            <button 
+              v-if="nextAscension"
+              @click="$emit('ascend')"
+              :disabled="player.stats.level < nextAscension.requiredLevel"
+              class="px-2.5 py-1.5 rounded text-xs font-bold transition-all flex items-center gap-1 shadow"
+              :class="player.stats.level >= nextAscension.requiredLevel 
+                ? 'bg-gradient-to-r from-amber-600 to-yellow-500 hover:from-amber-500 hover:to-yellow-400 text-white shadow-gold-glow animate-pulse cursor-pointer' 
+                : 'bg-zinc-900 text-zinc-500 cursor-not-allowed border border-zinc-800'"
+            >
+              <span>⚡</span>
+              <span>{{ player.stats.level >= nextAscension.requiredLevel ? '飞升突破!' : `Lv.${nextAscension.requiredLevel} 突破` }}</span>
+            </button>
+            <div v-else class="text-[10px] text-amber-300 font-bold px-2 py-1 bg-amber-950/60 rounded border border-amber-600/40">
+              九转大圆满 👑
+            </div>
+          </div>
+
           <!-- 详细数值列表 -->
-          <div class="flex flex-col gap-2 my-2 text-xs divide-y divide-zinc-800/80">
+          <div class="flex flex-col gap-1.5 text-xs divide-y divide-zinc-800/80">
             <div class="flex justify-between py-1">
               <span class="text-zinc-400">生命上限 (HP):</span>
               <span class="font-bold text-red-400">{{ player.stats.hp }} / {{ player.stats.maxHp }}</span>
@@ -119,10 +151,6 @@
               <span class="font-bold text-rose-400">{{ (player.stats.critMult * 100).toFixed(0) }}%</span>
             </div>
             <div class="flex justify-between py-1">
-              <span class="text-zinc-400">物理闪避 (Dodge):</span>
-              <span class="font-bold text-sky-400">{{ (player.stats.dodgeRate * 100).toFixed(1) }}% (触发MISS)</span>
-            </div>
-            <div class="flex justify-between py-1">
               <span class="text-zinc-400">生命吸血 (Lifesteal):</span>
               <span class="font-bold text-emerald-400">{{ (player.stats.lifestealRate * 100).toFixed(1) }}% (伤害回血)</span>
             </div>
@@ -130,6 +158,36 @@
               <span class="text-zinc-400">攻速急速 (Haste):</span>
               <span class="font-bold text-cyan-400">
                 +{{ player.stats.haste }} ({{ (player.stats.effectiveAttackInterval * 0.1).toFixed(2) }}s/刀{{ player.stats.haste >= 34 ? ' · 极速MAX' : '' }})
+              </span>
+            </div>
+            <!-- 气运极境 (运9极境判定) -->
+            <div class="flex justify-between py-1" :class="(player.stats.luck || 0) >= 9 ? 'bg-amber-950/40 px-1.5 rounded border border-amber-500/50' : ''">
+              <span class="text-zinc-400 flex items-center gap-1">
+                <span>🍀</span>
+                <span>气运极境 (Luck):</span>
+              </span>
+              <span class="font-bold font-mono" :class="(player.stats.luck || 0) >= 9 ? 'text-amber-300 font-black text-gold-glow' : 'text-yellow-300'">
+                +{{ player.stats.luck || 0 }} {{ (player.stats.luck || 0) >= 9 ? '【运9极境·刀刀真神伤】' : `(${Math.min(100, (player.stats.luck || 0) * 10)}% 几率极值)` }}
+              </span>
+            </div>
+            <!-- 终极倍攻乘数 -->
+            <div v-if="player.stats.damageMultRatio" class="flex justify-between py-1 bg-orange-950/30 px-1.5 rounded border border-orange-600/40">
+              <span class="text-orange-300 font-bold flex items-center gap-1">
+                <span>💥</span>
+                <span>终极倍攻加成:</span>
+              </span>
+              <span class="font-black text-orange-400 font-mono">
+                +{{ ((player.stats.damageMultRatio || 0) * 100).toFixed(0) }}% 独立增伤
+              </span>
+            </div>
+            <!-- 神圣破甲穿透 -->
+            <div v-if="player.stats.defenseIgnoreRate" class="flex justify-between py-1 bg-sky-950/30 px-1.5 rounded border border-sky-600/40">
+              <span class="text-sky-300 font-bold flex items-center gap-1">
+                <span>⚔️</span>
+                <span>神圣破甲穿透:</span>
+              </span>
+              <span class="font-black text-sky-400 font-mono">
+                {{ ((player.stats.defenseIgnoreRate || 0) * 100).toFixed(0) }}% 忽视防御
               </span>
             </div>
             <!-- 攻速溢出转化为风雷残影连击 -->
@@ -144,11 +202,33 @@
             </div>
           </div>
 
+          <!-- 套装神力羁绊卡片 -->
+          <div v-if="activeSets.length > 0" class="bg-gradient-to-r from-purple-950/50 via-zinc-950 to-black p-2.5 rounded-lg border border-purple-600/50 flex flex-col gap-1.5 shadow-md">
+            <div class="flex items-center justify-between text-xs font-bold text-purple-300">
+              <span class="flex items-center gap-1">
+                <span>👑</span>
+                <span>套装神力羁绊</span>
+              </span>
+              <span class="text-purple-200 font-mono text-[11px]">{{ activeSets.length }} 套激活</span>
+            </div>
+            <div class="flex flex-col gap-1 text-[10px]">
+              <div v-for="item in activeSets" :key="item.set.id" class="bg-black/60 p-1.5 rounded border border-purple-900/40">
+                <div class="flex justify-between text-purple-200 font-bold">
+                  <span>{{ item.set.name }}</span>
+                  <span class="text-amber-400 font-mono">{{ item.count }} 件已穿戴</span>
+                </div>
+                <div v-for="bonus in item.activeBonuses" :key="bonus.count" class="text-emerald-400 text-[9px] mt-0.5">
+                  ✓ [{{ bonus.count }}件套] {{ bonus.desc }}
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- 等级境界里程碑特权卡片 -->
           <div class="bg-gradient-to-r from-amber-950/50 via-yellow-950/30 to-black p-2.5 rounded-lg border border-amber-600/40 flex flex-col gap-1.5 shadow-md">
             <div class="flex items-center justify-between text-xs font-bold text-amber-300">
               <span class="flex items-center gap-1">
-                <span>👑</span>
+                <span>🎖️</span>
                 <span>等级境界特权</span>
               </span>
               <span class="text-gold-gradient font-black text-sm">【{{ currentMilestone.title }}】</span>
@@ -169,11 +249,32 @@
 import { computed } from 'vue';
 import { Entity, EquipSlot, ItemInstance, ItemQuality } from '../types/game';
 import { StatCalculator } from '../domain/StatCalculator';
+import { ASCENSION_DEFINITIONS } from '../domain/definitions/ascension';
 
 const props = defineProps<{
   player: Entity;
   equipped: Partial<Record<EquipSlot, ItemInstance>>;
 }>();
+
+const currentTier = computed(() => props.player.stats.ascensionTier || 0);
+
+const currentAscensionTitle = computed(() => {
+  if (currentTier.value === 0) return '凡体·未飞升';
+  return ASCENSION_DEFINITIONS[currentTier.value]?.title || `${currentTier.value}转修士`;
+});
+
+const currentMapName = computed(() => {
+  if (currentTier.value === 0) return '【比奇省·祖玛神殿】';
+  return ASCENSION_DEFINITIONS[currentTier.value]?.mapName || '上界神域';
+});
+
+const nextAscension = computed(() => {
+  return ASCENSION_DEFINITIONS[currentTier.value + 1] || null;
+});
+
+const activeSets = computed(() => {
+  return StatCalculator.getActiveSets(props.equipped);
+});
 
 const currentMilestone = computed(() => {
   return StatCalculator.getLevelMilestone(props.player.stats.level);
@@ -182,6 +283,7 @@ const currentMilestone = computed(() => {
 const emit = defineEmits<{
   (e: 'close'): void;
   (e: 'unequip', slot: EquipSlot): void;
+  (e: 'ascend'): void;
 }>();
 
 const leftSlots: { key: EquipSlot; name: string; placeholder: string }[] = [
