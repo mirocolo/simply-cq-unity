@@ -64,53 +64,42 @@ export class AutoPilot {
       }
     }
 
-    // 3. 自动拾取附近掉落物 (5 格以内优先踩格拾取)
-    if (config.autoPickup && groundItems.length > 0) {
-      let nearestItem: GroundItem | null = null;
-      let minItemDist = 6;
-
-      for (const item of groundItems) {
-        const dist = PathFinder.chebyshevDistance(player.gridPos, item.gridPos);
-        if (dist < minItemDist) {
-          minItemDist = dist;
-          nearestItem = item;
-        }
-      }
-
-      if (nearestItem) {
-        // 如果就在脚下，已经触发拾取；如果在周围，走过去
-        if (minItemDist > 0) {
-          const path = PathFinder.findPath(player.gridPos, nearestItem.gridPos, isWalkable, 100);
-          if (path.length > 0) {
-            return { type: 'move', targetPos: path[0] };
-          }
-        }
-      }
-    }
-
-    // 4. 索敌与锁定最近活动怪物
-    let targetMonster: Entity | null = null;
-    let minMonsterDist = config.searchRadius + 1;
-
-    for (const m of monsters) {
-      if (m.state === 'dead') continue;
-      const dist = PathFinder.chebyshevDistance(player.gridPos, m.gridPos);
-      if (dist < minMonsterDist) {
-        minMonsterDist = dist;
-        targetMonster = m;
-      }
-    }
-
-    if (!targetMonster) {
+    // 3. 如果玩家当前正在网格过渡移动中，等待当前步伐自然走完，不发起新位移打断
+    if (player.targetGridPos) {
       return { type: 'none' };
     }
 
-    // 5. 战斗与位移判定
-    const distToTarget = PathFinder.chebyshevDistance(player.gridPos, targetMonster.gridPos);
+    // 4. 自动拾取附近掉落物 (6 格以内优先踩格拾取)
+    if (config.autoPickup && groundItems.length > 0) {
+      const nearItems = groundItems
+        .map(item => ({ item, dist: PathFinder.chebyshevDistance(player.gridPos, item.gridPos) }))
+        .filter(entry => entry.dist <= 6 && entry.dist > 0)
+        .sort((a, b) => a.dist - b.dist);
+
+      for (const entry of nearItems) {
+        const path = PathFinder.findPath(player.gridPos, entry.item.gridPos, isWalkable, 80);
+        if (path.length > 0) {
+          return { type: 'move', targetPos: path[0] };
+        }
+      }
+    }
+
+    // 5. 索敌与战斗：获取所有活着的怪物并按距离由近及远排序
+    const aliveMonsters = monsters
+      .filter(m => m.state !== 'dead')
+      .map(m => ({
+        monster: m,
+        dist: PathFinder.chebyshevDistance(player.gridPos, m.gridPos)
+      }))
+      .sort((a, b) => a.dist - b.dist);
+
+    if (aliveMonsters.length === 0) {
+      return { type: 'none' };
+    }
 
     // 贴身贴脸 (距离 <= 1)，直接出手
-    if (distToTarget <= 1) {
-      // 检查技能释放优先级：烈火(高爆发) -> 刺杀(破防) -> 攻杀 -> 普攻
+    const closest = aliveMonsters[0];
+    if (closest.dist <= 1) {
       let selectedSkill: SkillDef | undefined;
       if (config.autoSkill) {
         const fire = skills.find(s => s.id === 'fire_slash' && s.currentCdTicks === 0 && player.stats.mp >= s.manaCost);
@@ -121,18 +110,22 @@ export class AutoPilot {
 
       return {
         type: 'attack',
-        targetEntity: targetMonster,
+        targetEntity: closest.monster,
         skillToUse: selectedSkill
       };
     }
 
-    // 距离 > 1，寻路靠近
-    const path = PathFinder.findPath(player.gridPos, targetMonster.gridPos, isWalkable, 150);
-    if (path.length > 0) {
-      return {
-        type: 'move',
-        targetPos: path[0]
-      };
+    // 距离 > 1，遍历附近怪物列表，寻找首个可达目标顺畅走位靠近
+    const effectiveRadius = Math.max(config.searchRadius, 25);
+    for (const entry of aliveMonsters) {
+      if (entry.dist > effectiveRadius) break;
+      const path = PathFinder.findPath(player.gridPos, entry.monster.gridPos, isWalkable, 180);
+      if (path.length > 0) {
+        return {
+          type: 'move',
+          targetPos: path[0]
+        };
+      }
     }
 
     return { type: 'none' };

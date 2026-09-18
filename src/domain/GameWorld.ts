@@ -35,12 +35,12 @@ export class GameWorld {
   
   autoPilot = new AutoPilot();
   autoConfig: AutoPilotConfig = {
-    enabled: false,
+    enabled: true,
     autoPotionHpPercent: 50,
     autoPotionMpPercent: 30,
     autoSkill: true,
     autoPickup: true,
-    searchRadius: 14
+    searchRadius: 16
   };
   autoStats: AutoPilotStats = {
     activeTimeSeconds: 0,
@@ -255,8 +255,17 @@ export class GameWorld {
       }
     }
 
+    // 出刀后平滑恢复站立闲置
+    if (this.player.state === 'attacking' && this.currentTick - this.player.lastAttackTick >= 2) {
+      this.player.state = 'idle';
+    }
+
     // 怪物状态与受击硬直消退
     for (const m of this.monsters) {
+      if (m.state === 'attacking' && this.currentTick - m.lastAttackTick >= 2) {
+        m.state = 'idle';
+      }
+
       if (m.hitStunTicks && m.hitStunTicks > 0) {
         m.hitStunTicks--;
         if (m.hitStunTicks <= 0) {
@@ -321,9 +330,9 @@ export class GameWorld {
   private updateEntityMovement(entity: Entity): void {
     if (!entity.targetGridPos) return;
 
-    // 狂暴模式大幅提速步伐
-    const speedBonus = (entity.isPlayer && this.isBerserk) ? 0.08 : 0;
-    const speed = (entity.isPlayer ? 0.28 : 0.18) + speedBonus;
+    // 移动步伐速率 (普通 0.34 约 300ms 一步，狂暴 0.50 约 200ms 一步，如风疾走)
+    const speedBonus = (entity.isPlayer && this.isBerserk) ? 0.16 : 0;
+    const speed = (entity.isPlayer ? 0.34 : 0.20) + speedBonus;
     entity.moveProgress += speed;
 
     if (entity.moveProgress >= 1.0) {
@@ -335,6 +344,8 @@ export class GameWorld {
   }
 
   private startEntityMove(entity: Entity, targetPos: GridCoord): void {
+    // 正在跨格位移中，绝不重复重置进度，彻底根除移动抽搐与卡顿
+    if (entity.targetGridPos) return;
     if (!this.isWalkable(targetPos.x, targetPos.y)) return;
     entity.direction = PathFinder.getDirection(entity.gridPos, targetPos);
     entity.targetGridPos = { ...targetPos };
