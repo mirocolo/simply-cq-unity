@@ -12,20 +12,20 @@ export class DropSystem {
   static rollQuality(isBoss = false, isElite = false): ItemQuality {
     const roll = Math.random();
     if (isBoss) {
-      if (roll < 0.30) return 4; // 30% 传说橙
-      if (roll < 0.75) return 3; // 45% 史诗紫
-      return 2; // 25% 精良蓝
+      if (roll < 0.45) return 4; // 45% 传说橙神装！
+      if (roll < 0.85) return 3; // 40% 史诗紫装
+      return 2; // 15% 精良蓝
     }
     if (isElite) {
-      if (roll < 0.08) return 4; // 8% 传说橙
-      if (roll < 0.35) return 3; // 27% 史诗紫
-      if (roll < 0.80) return 2; // 45% 精良蓝
-      return 1; // 20% 优秀绿
+      if (roll < 0.16) return 4; // 16% 传说橙 (原 8%)
+      if (roll < 0.56) return 3; // 40% 史诗紫 (原 27%)
+      if (roll < 0.90) return 2; // 34% 精良蓝
+      return 1; // 10% 优秀绿
     }
-    if (roll < 0.03) return 3; // 3% 史诗紫
-    if (roll < 0.15) return 2; // 12% 精良蓝
-    if (roll < 0.45) return 1; // 30% 优秀绿
-    return 0; // 55% 普通白
+    if (roll < 0.05) return 3; // 5% 史诗紫
+    if (roll < 0.20) return 2; // 15% 精良蓝
+    if (roll < 0.50) return 1; // 30% 优秀绿
+    return 0; // 50% 普通白
   }
 
   static createItemInstance(defId: string, forcedQuality?: ItemQuality, count = 1): ItemInstance | null {
@@ -36,6 +36,8 @@ export class DropSystem {
     const qualityScale = [1.0, 1.3, 1.7, 2.3, 3.5][quality];
     const critBonus = (def.critBonus || 0) + [0, 2, 4, 8, 15][quality];
     const hasteBonus = (def.hasteBonus || 0) + [0, 3, 6, 12, 20][quality];
+    // 高品质装备具有额外稀有生命吸血属性 (紫装 +1%，橙装 +2%)
+    const lifestealBonus = (def.lifestealBonus || 0) + [0, 0, 0, 1, 2][quality];
 
     const minDC = Math.floor(def.minDC * qualityScale);
     const maxDC = Math.floor(def.maxDC * qualityScale);
@@ -59,6 +61,7 @@ export class DropSystem {
       maxMp,
       critBonus,
       hasteBonus,
+      lifestealBonus: lifestealBonus > 0 ? lifestealBonus : undefined,
       recoverHp: def.recoverHp,
       recoverMp: def.recoverMp,
       levelReq: def.levelReq,

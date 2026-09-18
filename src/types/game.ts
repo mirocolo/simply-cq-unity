@@ -40,6 +40,7 @@ export interface ItemDef {
   maxMp: number;
   critBonus?: number;
   hasteBonus?: number;
+  lifestealBonus?: number; // 稀有生命吸血百分比加成 (如 2 代表 +2%)
   recoverHp?: number;
   recoverMp?: number;
   levelReq: number;
@@ -63,6 +64,7 @@ export interface ItemInstance {
   maxMp: number;
   critBonus: number;
   hasteBonus: number;
+  lifestealBonus?: number; // 稀有生命吸血百分比加成 (如 2 代表 +2%)
   recoverHp?: number;
   recoverMp?: number;
   levelReq: number;
@@ -86,6 +88,7 @@ export interface EntityStats {
   critMult: number;
   haste: number;
   dodgeRate: number;
+  lifestealRate: number; // 稀有生命吸血率 (出厂 0.02 即 2%)
   baseAttackInterval: number; // 默认 4~5 ticks
   effectiveAttackInterval: number;
   phantomStrikeRate: number; // 攻速溢出转化的风雷残影连击率 (0 ~ 1.0+)

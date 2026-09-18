@@ -104,6 +104,7 @@ export const ITEM_DEFINITIONS: Record<string, ItemDef> = {
     maxHp: 120,
     maxMp: 0,
     critBonus: 5,
+    lifestealBonus: 1, // 炼狱吸血 1%
     levelReq: 26,
     price: 8500,
     icon: '🪓',
@@ -123,6 +124,7 @@ export const ITEM_DEFINITIONS: Record<string, ItemDef> = {
     maxMp: 0,
     critBonus: 6,
     hasteBonus: 8,
+    lifestealBonus: 2, // 井中月吸血 2%
     levelReq: 30,
     price: 25000,
     icon: '🌙',
@@ -141,6 +143,7 @@ export const ITEM_DEFINITIONS: Record<string, ItemDef> = {
     maxHp: 350,
     maxMp: 0,
     critBonus: 10,
+    lifestealBonus: 3, // 裁决之杖吸血 3%
     levelReq: 35,
     price: 60000,
     icon: '🏏',
@@ -160,6 +163,7 @@ export const ITEM_DEFINITIONS: Record<string, ItemDef> = {
     maxMp: 200,
     critBonus: 15,
     hasteBonus: 15,
+    lifestealBonus: 5, // 烈焰屠龙吸血 5%
     levelReq: 40,
     price: 200000,
     icon: '🔥',
@@ -231,6 +235,7 @@ export const ITEM_DEFINITIONS: Record<string, ItemDef> = {
     maxHp: 380,
     maxMp: 80,
     critBonus: 3,
+    lifestealBonus: 1, // 战神盔甲吸血 1%
     levelReq: 33,
     price: 35000,
     icon: '🛡️',
@@ -250,6 +255,7 @@ export const ITEM_DEFINITIONS: Record<string, ItemDef> = {
     maxMp: 150,
     critBonus: 5,
     hasteBonus: 5,
+    lifestealBonus: 3, // 圣战宝甲吸血 3%
     levelReq: 40,
     price: 150000,
     icon: '👑',
@@ -304,6 +310,7 @@ export const ITEM_DEFINITIONS: Record<string, ItemDef> = {
     maxHp: 180,
     maxMp: 30,
     critBonus: 2,
+    lifestealBonus: 1, // 黑铁头盔吸血 1%
     levelReq: 30,
     price: 18000,
     icon: '🪖',
@@ -360,6 +367,7 @@ export const ITEM_DEFINITIONS: Record<string, ItemDef> = {
     maxMp: 50,
     critBonus: 5,
     hasteBonus: 8,
+    lifestealBonus: 2, // 记忆项链吸血 2%
     levelReq: 32,
     price: 32000,
     icon: '💎',
@@ -416,6 +424,7 @@ export const ITEM_DEFINITIONS: Record<string, ItemDef> = {
     maxMp: 0,
     critBonus: 3,
     hasteBonus: 6,
+    lifestealBonus: 2, // 骑士手镯吸血 2%
     levelReq: 30,
     price: 26000,
     icon: '🛡️',
@@ -471,6 +480,7 @@ export const ITEM_DEFINITIONS: Record<string, ItemDef> = {
     maxHp: 90,
     maxMp: 0,
     critBonus: 6,
+    lifestealBonus: 2, // 力量戒指吸血 2%
     levelReq: 32,
     price: 38000,
     icon: '💪',
@@ -490,6 +500,7 @@ export const ITEM_DEFINITIONS: Record<string, ItemDef> = {
     maxMp: 100,
     critBonus: 10,
     hasteBonus: 12,
+    lifestealBonus: 3, // 麻痹特戒吸血 3%
     levelReq: 40,
     price: 250000,
     icon: '⚡',

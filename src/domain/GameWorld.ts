@@ -138,8 +138,8 @@ export class GameWorld {
       { templateId: 'm_spider', count: 6, center: { x: 14, y: 24 }, radius: 5 },
       { templateId: 'm_skeleton', count: 8, center: { x: 24, y: 25 }, radius: 6 },
       { templateId: 'm_zombie', count: 5, center: { x: 10, y: 18 }, radius: 5 },
-      { templateId: 'm_white_pig', count: 3, center: { x: 28, y: 10 }, radius: 4 },
-      { templateId: 'm_wooma_boss', count: 1, center: { x: 28, y: 28 }, radius: 3 },
+      { templateId: 'm_white_pig', count: 5, center: { x: 28, y: 10 }, radius: 6 }, // 增加至 5 只白野猪精英
+      { templateId: 'm_wooma_boss', count: 2, center: { x: 28, y: 28 }, radius: 4 }, // 增加至 2 只沃玛教主首领
       { templateId: 'm_red_moon', count: 1, center: { x: 8, y: 28 }, radius: 3 }
     ];
 
@@ -487,6 +487,15 @@ export class GameWorld {
     const text = result.isCrit ? `⚡残影暴击 -${phantomDamage}!` : `⚡连击 -${phantomDamage}!`;
     this.addDamagePopup(target.gridPos, text, '#facc15', true);
 
+    // 玩家稀有吸血判定 (残影连击生命吸取)
+    if (attacker.isPlayer && attacker.stats.lifestealRate > 0 && phantomDamage > 0) {
+      const heal = Math.max(1, Math.floor(phantomDamage * attacker.stats.lifestealRate));
+      if (attacker.stats.hp < attacker.stats.maxHp) {
+        attacker.stats.hp = Math.min(attacker.stats.maxHp, attacker.stats.hp + heal);
+        this.addDamagePopup(attacker.gridPos, `+${heal}`, '#22c55e', false, true);
+      }
+    }
+
     // 积累连斩怒气
     this.comboCount++;
 
@@ -533,6 +542,15 @@ export class GameWorld {
 
     const text = isFire ? `烈火 -${result.damage}!` : (result.isCrit ? `暴击 -${result.damage}!` : `-${result.damage}`);
     this.addDamagePopup(target.gridPos, text, color, result.isCrit || isFire);
+
+    // 玩家稀有吸血判定 (出厂2% + 装备累加)
+    if (attacker.isPlayer && attacker.stats.lifestealRate > 0 && result.damage > 0) {
+      const heal = Math.max(1, Math.floor(result.damage * attacker.stats.lifestealRate));
+      if (attacker.stats.hp < attacker.stats.maxHp) {
+        attacker.stats.hp = Math.min(attacker.stats.maxHp, attacker.stats.hp + heal);
+        this.addDamagePopup(attacker.gridPos, `+${heal}`, '#22c55e', false, true);
+      }
+    }
 
     if (target.stats.hp <= 0) {
       this.handleEntityDeath(target, attacker);

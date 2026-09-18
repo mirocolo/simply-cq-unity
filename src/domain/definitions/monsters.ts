@@ -160,7 +160,7 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     templateId: 'm_white_pig',
     name: '★ 白野猪(精英)',
     level: 30,
-    hp: 2000,
+    hp: 4200, // 合理增加精英怪血量 (原 2000)
     mp: 0,
     minDC: 35,
     maxDC: 65,
@@ -169,73 +169,73 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     critRate: 0.18,
     haste: 12,
     baseAttackInterval: 7,
-    goldDrop: [800, 2000],
-    expReward: 1200,
+    goldDrop: [1200, 3000],
+    expReward: 1600,
     isElite: true,
-    respawnTicks: 120, // 12秒复活
+    respawnTicks: 70, // 7秒极速复活 (原 12秒)
     color: '#e11d48',
     icon: '🐗',
     lootTable: [
-      { defId: 'pot_sun', chance: 0.8, minCount: 2, maxCount: 4 },
-      { defId: 'w_lianyu', chance: 0.25 },
-      { defId: 'w_jingzhongyue', chance: 0.12 },
-      { defId: 'h_heitie', chance: 0.15 },
-      { defId: 'b_qishi', chance: 0.15 },
-      { defId: 'r_liliang', chance: 0.1 }
+      { defId: 'pot_sun', chance: 1.0, minCount: 3, maxCount: 6 },
+      { defId: 'w_lianyu', chance: 0.40 }, // 爆率大幅提升
+      { defId: 'w_jingzhongyue', chance: 0.25 },
+      { defId: 'h_heitie', chance: 0.28 },
+      { defId: 'b_qishi', chance: 0.28 },
+      { defId: 'r_liliang', chance: 0.22 }
     ]
   },
   'm_wooma_boss': {
     templateId: 'm_wooma_boss',
     name: '★★ 沃玛教主(首领)',
     level: 38,
-    hp: 6000,
+    hp: 13500, // 合理增加首领血量 (原 6000)
     mp: 1000,
-    minDC: 60,
-    maxDC: 110,
+    minDC: 65,
+    maxDC: 120,
     minAC: 20,
     maxAC: 35,
     critRate: 0.25,
     haste: 20,
     baseAttackInterval: 6,
-    goldDrop: [3000, 8000],
-    expReward: 4500,
+    goldDrop: [5000, 15000],
+    expReward: 6500,
     isBoss: true,
-    respawnTicks: 250, // 25秒复活
+    respawnTicks: 140, // 14秒复活 (原 25秒)
     color: '#dc2626',
     icon: '👹',
     lootTable: [
-      { defId: 'pot_sun', chance: 1.0, minCount: 4, maxCount: 8 },
-      { defId: 'w_caijue', chance: 0.35 }, // 35% 裁决！
-      { defId: 'a_zhanshen', chance: 0.3 },
-      { defId: 'n_jiyi', chance: 0.25 },
-      { defId: 'r_liliang', chance: 0.3 },
-      { defId: 'r_mabi', chance: 0.05 } // 5% 概率出麻痹戒指
+      { defId: 'pot_sun', chance: 1.0, minCount: 6, maxCount: 10 },
+      { defId: 'w_caijue', chance: 0.55 }, // 55% 爆裁决之杖！
+      { defId: 'a_zhanshen', chance: 0.48 },
+      { defId: 'n_jiyi', chance: 0.45 },
+      { defId: 'r_liliang', chance: 0.50 },
+      { defId: 'r_mabi', chance: 0.15 } // 15% 爆麻痹戒指 (原 5%)
     ]
   },
   'm_red_moon': {
     templateId: 'm_red_moon',
     name: '★★★ 赤月恶魔(神话)',
     level: 45,
-    hp: 15000,
+    hp: 32000, // 合理增加神话Boss血量 (原 15000)
     mp: 3000,
-    minDC: 90,
-    maxDC: 170,
-    minAC: 30,
-    maxAC: 50,
+    minDC: 95,
+    maxDC: 180,
+    minAC: 32,
+    maxAC: 52,
     critRate: 0.35,
     haste: 25,
     baseAttackInterval: 5,
-    goldDrop: [10000, 30000],
-    expReward: 15000,
+    goldDrop: [20000, 50000],
+    expReward: 20000,
     isBoss: true,
-    respawnTicks: 400,
+    respawnTicks: 200, // 20秒复活 (原 40秒)
     color: '#b91c1c',
     icon: '👿',
     lootTable: [
-      { defId: 'pot_sun', chance: 1.0, minCount: 8, maxCount: 15 },
-      { defId: 'w_tulong', chance: 0.4 }, // 40% 烈焰屠龙！
-      { defId: 'a_shengzhan', chance: 0.45 },
-      { defId: 'r_mabi', chance: 0.15 } // 15% 特戒麻痹
+      { defId: 'pot_sun', chance: 1.0, minCount: 10, maxCount: 20 },
+      { defId: 'w_tulong', chance: 0.70 }, // 70% 爆烈焰屠龙！
+      { defId: 'a_shengzhan', chance: 0.75 },
+      { defId: 'r_mabi', chance: 0.35 } // 35% 爆特戒麻痹 (原 15%)
     ]
   }
 };

@@ -123,6 +123,10 @@
               <span class="font-bold text-sky-400">{{ (player.stats.dodgeRate * 100).toFixed(1) }}% (触发MISS)</span>
             </div>
             <div class="flex justify-between py-1">
+              <span class="text-zinc-400">生命吸血 (Lifesteal):</span>
+              <span class="font-bold text-emerald-400">{{ (player.stats.lifestealRate * 100).toFixed(1) }}% (伤害回血)</span>
+            </div>
+            <div class="flex justify-between py-1">
               <span class="text-zinc-400">攻速急速 (Haste):</span>
               <span class="font-bold text-cyan-400">
                 +{{ player.stats.haste }} ({{ (player.stats.effectiveAttackInterval * 0.1).toFixed(2) }}s/刀{{ player.stats.haste >= 34 ? ' · 极速MAX' : '' }})

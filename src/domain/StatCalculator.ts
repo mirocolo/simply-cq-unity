@@ -61,6 +61,7 @@ export class StatCalculator {
       critMult,
       haste,
       dodgeRate,
+      lifestealRate: 0.02, // 人物出厂自带 2% 稀有生命吸血
       baseAttackInterval,
       effectiveAttackInterval,
       phantomStrikeRate,
@@ -83,6 +84,7 @@ export class StatCalculator {
     let addMp = 0;
     let addCritBonus = 0;
     let addHasteBonus = 0;
+    let addLifestealBonus = 0;
 
     for (const item of Object.values(equipped)) {
       if (!item) continue;
@@ -94,6 +96,7 @@ export class StatCalculator {
       addMp += item.maxMp;
       addCritBonus += item.critBonus;
       addHasteBonus += item.hasteBonus;
+      addLifestealBonus += item.lifestealBonus || 0;
     }
 
     const maxHp = baseStats.maxHp + addHp;
@@ -107,6 +110,7 @@ export class StatCalculator {
     const haste = baseStats.haste + addHasteBonus;
     const dodgeRate = baseStats.dodgeRate;
     const critMult = baseStats.critMult;
+    const lifestealRate = Number((baseStats.lifestealRate + addLifestealBonus / 100).toFixed(3));
 
     // 有效出手间隔：最低 2 ticks (200ms 一刀，极速如风)
     const effectiveAttackInterval = Math.max(
@@ -129,6 +133,7 @@ export class StatCalculator {
       critRate * 1600 + 
       (critMult - 1) * 200 +
       dodgeRate * 1400 +
+      lifestealRate * 2500 +
       haste * 12 +
       phantomStrikeRate * 2000 +
       baseStats.level * 35
@@ -148,6 +153,7 @@ export class StatCalculator {
       critMult,
       haste,
       dodgeRate,
+      lifestealRate,
       effectiveAttackInterval,
       phantomStrikeRate,
       combatPower
@@ -167,7 +173,8 @@ export class StatCalculator {
       (item.maxHp || 0) * 0.45 +
       (item.maxMp || 0) * 0.25 +
       (item.critBonus || 0) * 15 +
-      (item.hasteBonus || 0) * 10 +
+      (item.hasteBonus || 0) * 12 +
+      (item.lifestealBonus || 0) * 35 +
       (item.quality || 0) * 25
     );
   }

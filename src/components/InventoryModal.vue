@@ -116,6 +116,11 @@
                   <span class="text-zinc-400">攻速急速词条:</span>
                   <span class="font-bold text-cyan-400">+{{ selectedItem.hasteBonus }}</span>
                 </div>
+
+                <div v-if="selectedItem.lifestealBonus && selectedItem.lifestealBonus > 0" class="flex justify-between">
+                  <span class="text-zinc-400">生命吸血词条:</span>
+                  <span class="font-bold text-emerald-400">+{{ selectedItem.lifestealBonus }}%</span>
+                </div>
               </template>
 
               <div class="text-[10px] text-zinc-500 italic mt-1 border-t border-zinc-900 pt-1">
