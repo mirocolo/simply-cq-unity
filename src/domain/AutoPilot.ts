@@ -71,9 +71,20 @@ export class AutoPilot {
 
     // 4. 自动拾取附近掉落物 (6 格以内优先踩格拾取)
     if (config.autoPickup && groundItems.length > 0) {
+      const isBagFull = inventory.length >= 40;
       const nearItems = groundItems
         .map(item => ({ item, dist: PathFinder.chebyshevDistance(player.gridPos, item.gridPos) }))
-        .filter(entry => entry.dist <= 6 && entry.dist > 0)
+        .filter(entry => {
+          if (entry.dist > 6 || entry.dist <= 0) return false;
+          // 若背包已满 40 格，过滤掉无法入包的物品（除已有的可堆叠药水外），避免在满包掉落物周围来回抽搐卡死
+          if (isBagFull) {
+            if (entry.item.item.type === 'potion') {
+              return inventory.some(i => i.defId === entry.item.item.defId);
+            }
+            return false;
+          }
+          return true;
+        })
         .sort((a, b) => a.dist - b.dist);
 
       for (const entry of nearItems) {
