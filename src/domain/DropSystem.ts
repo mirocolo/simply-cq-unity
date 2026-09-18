@@ -5,49 +5,37 @@ import { MonsterTemplate } from './definitions/monsters';
 export class DropSystem {
   private static instanceCounter = 0;
 
-  /**
-   * 生成唯一物品 ID
-   */
   private static generateId(): string {
     return `item_${Date.now()}_${++this.instanceCounter}`;
   }
 
-  /**
-   * 根据怪物类型投掷品质等级 (0白 ~ 4橙)
-   */
   static rollQuality(isBoss = false, isElite = false): ItemQuality {
     const roll = Math.random();
     if (isBoss) {
-      if (roll < 0.25) return 4; // 25% 传说橙
-      if (roll < 0.70) return 3; // 45% 史诗紫
-      return 2; // 30% 精良蓝
+      if (roll < 0.30) return 4; // 30% 传说橙
+      if (roll < 0.75) return 3; // 45% 史诗紫
+      return 2; // 25% 精良蓝
     }
     if (isElite) {
-      if (roll < 0.05) return 4; // 5% 传说橙
-      if (roll < 0.30) return 3; // 25% 史诗紫
-      if (roll < 0.75) return 2; // 45% 精良蓝
-      return 1; // 25% 优秀绿
+      if (roll < 0.08) return 4; // 8% 传说橙
+      if (roll < 0.35) return 3; // 27% 史诗紫
+      if (roll < 0.80) return 2; // 45% 精良蓝
+      return 1; // 20% 优秀绿
     }
-    // 普通小怪
-    if (roll < 0.02) return 3; // 2% 史诗紫
-    if (roll < 0.10) return 2; // 8% 精良蓝
-    if (roll < 0.35) return 1; // 25% 优秀绿
-    return 0; // 65% 普通白
+    if (roll < 0.03) return 3; // 3% 史诗紫
+    if (roll < 0.15) return 2; // 12% 精良蓝
+    if (roll < 0.45) return 1; // 30% 优秀绿
+    return 0; // 55% 普通白
   }
 
-  /**
-   * 根据品质强化装备属性与随机词条
-   */
   static createItemInstance(defId: string, forcedQuality?: ItemQuality, count = 1): ItemInstance | null {
     const def = ITEM_DEFINITIONS[defId];
     if (!def) return null;
 
     const quality = forcedQuality !== undefined ? forcedQuality : def.baseQuality;
-
-    // 品质属性词条加成系数
-    const qualityScale = [0, 1.2, 1.5, 2.0, 3.0][quality];
-    const critBonus = (def.critBonus || 0) + [0, 1, 3, 6, 12][quality];
-    const hasteBonus = (def.hasteBonus || 0) + [0, 2, 5, 9, 16][quality];
+    const qualityScale = [1.0, 1.3, 1.7, 2.3, 3.5][quality];
+    const critBonus = (def.critBonus || 0) + [0, 2, 4, 8, 15][quality];
+    const hasteBonus = (def.hasteBonus || 0) + [0, 3, 6, 12, 20][quality];
 
     const minDC = Math.floor(def.minDC * qualityScale);
     const maxDC = Math.floor(def.maxDC * qualityScale);
@@ -81,21 +69,18 @@ export class DropSystem {
     };
   }
 
-  /**
-   * 获取品质对应的冲天光柱颜色
-   */
   static getBeamColor(quality: ItemQuality): string | null {
     switch (quality) {
       case 1: return '#22c55e'; // 绿光
       case 2: return '#3b82f6'; // 蓝光柱
       case 3: return '#a855f7'; // 紫色冲天光柱
-      case 4: return '#f97316'; // 橙色神话烈焰柱
-      default: return null;     // 白装无光柱
+      case 4: return '#f97316'; // 橙色烈焰神光柱
+      default: return null;
     }
   }
 
   /**
-   * 怪物击杀爆装逻辑：九宫格向四周散落掉落物
+   * 击杀怪物大爆：带大爆喷泉与初速度散落
    */
   static rollMonsterDrops(
     monster: MonsterTemplate, 
@@ -104,11 +89,11 @@ export class DropSystem {
   ): GroundItem[] {
     const dropped: GroundItem[] = [];
 
-    // 九宫格散落偏移列表
     const offsets = [
       { x: 0, y: 0 },
       { x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 },
-      { x: 1, y: 1 }, { x: -1, y: 1 }, { x: 1, y: -1 }, { x: -1, y: -1 }
+      { x: 1, y: 1 }, { x: -1, y: 1 }, { x: 1, y: -1 }, { x: -1, y: -1 },
+      { x: 2, y: 0 }, { x: -2, y: 0 }, { x: 0, y: 2 }, { x: 0, y: -2 }
     ];
 
     let offsetIdx = 0;
@@ -130,7 +115,9 @@ export class DropSystem {
             item,
             gridPos: { x: deathPos.x + off.x, y: deathPos.y + off.y },
             dropTick: currentTick,
-            beamColor: this.getBeamColor(item.quality)
+            beamColor: this.getBeamColor(item.quality),
+            burstOrigin: { x: deathPos.x, y: deathPos.y },
+            burstProgress: 0 // 开始喷泉起跳
           });
         }
       }

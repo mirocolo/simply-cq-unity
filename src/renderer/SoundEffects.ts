@@ -1,11 +1,7 @@
 export class SoundEffects {
   private ctx: AudioContext | null = null;
   private enabled = true;
-  private volume = 0.4;
-
-  constructor() {
-    // 延迟初始化，待用户首次交互时激活
-  }
+  private volume = 0.5;
 
   private getContext(): AudioContext | null {
     if (!this.ctx && typeof window !== 'undefined') {
@@ -34,7 +30,7 @@ export class SoundEffects {
   }
 
   /**
-   * 挥刀破空声 (快速白噪声 + 带通滤波下潜)
+   * 极速挥刀破空声 (清脆迅疾)
    */
   playSwing(): void {
     if (!this.enabled) return;
@@ -45,40 +41,42 @@ export class SoundEffects {
     const gain = ctx.createGain();
     const filter = ctx.createBiquadFilter();
 
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime(320, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(80, ctx.currentTime + 0.12);
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(480, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 0.09);
 
-    filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(800, ctx.currentTime);
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(1200, ctx.currentTime);
+    filter.Q.setValueAtTime(3, ctx.currentTime);
 
-    gain.gain.setValueAtTime(this.volume * 0.5, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
+    gain.gain.setValueAtTime(this.volume * 0.45, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.09);
 
     osc.connect(filter);
     filter.connect(gain);
     gain.connect(ctx.destination);
 
     osc.start();
-    osc.stop(ctx.currentTime + 0.13);
+    osc.stop(ctx.currentTime + 0.1);
   }
 
   /**
-   * 烈火剑法大招声 (低沉轰鸣 + 烈焰爆裂)
+   * 烈火剑法大招 (烈焰爆轰 + 沉闷重低音)
    */
   playFire(): void {
     if (!this.enabled) return;
     const ctx = this.getContext();
     if (!ctx) return;
 
+    // 低频巨响
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
 
     osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(160, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(40, ctx.currentTime + 0.35);
+    osc.frequency.setValueAtTime(180, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(35, ctx.currentTime + 0.35);
 
-    gain.gain.setValueAtTime(this.volume * 0.8, ctx.currentTime);
+    gain.gain.setValueAtTime(this.volume * 0.95, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
 
     osc.connect(gain);
@@ -89,7 +87,7 @@ export class SoundEffects {
   }
 
   /**
-   * 金属打击命中肉身声
+   * 刀刀入肉重击声
    */
   playHit(): void {
     if (!this.enabled) return;
@@ -99,11 +97,11 @@ export class SoundEffects {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
 
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(400, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(120, ctx.currentTime + 0.08);
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(360, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(60, ctx.currentTime + 0.08);
 
-    gain.gain.setValueAtTime(this.volume * 0.6, ctx.currentTime);
+    gain.gain.setValueAtTime(this.volume * 0.7, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08);
 
     osc.connect(gain);
@@ -114,7 +112,7 @@ export class SoundEffects {
   }
 
   /**
-   * 暴击重击破甲震颤声
+   * 暴击破甲裂骨轰鸣 (高低双频震荡)
    */
   playCrit(): void {
     if (!this.enabled) return;
@@ -126,14 +124,14 @@ export class SoundEffects {
     const gain = ctx.createGain();
 
     osc1.type = 'square';
-    osc1.frequency.setValueAtTime(220, ctx.currentTime);
-    osc1.frequency.exponentialRampToValueAtTime(40, ctx.currentTime + 0.22);
+    osc1.frequency.setValueAtTime(260, ctx.currentTime);
+    osc1.frequency.exponentialRampToValueAtTime(30, ctx.currentTime + 0.22);
 
-    osc2.type = 'sine';
-    osc2.frequency.setValueAtTime(880, ctx.currentTime);
-    osc2.frequency.exponentialRampToValueAtTime(200, ctx.currentTime + 0.15);
+    osc2.type = 'sawtooth';
+    osc2.frequency.setValueAtTime(960, ctx.currentTime);
+    osc2.frequency.exponentialRampToValueAtTime(120, ctx.currentTime + 0.16);
 
-    gain.gain.setValueAtTime(this.volume * 0.9, ctx.currentTime);
+    gain.gain.setValueAtTime(this.volume * 1.0, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.22);
 
     osc1.connect(gain);
@@ -147,34 +145,31 @@ export class SoundEffects {
   }
 
   /**
-   * 金币掉落与拾取清脆叮当声 (双音和弦)
+   * 金币大爆叮当清脆响
    */
   playCoin(): void {
     if (!this.enabled) return;
     const ctx = this.getContext();
     if (!ctx) return;
 
-    [1760, 2637].forEach((freq, idx) => {
+    [1960, 2793].forEach((freq, idx) => {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
 
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(freq, ctx.currentTime + idx * 0.04);
+      osc.frequency.setValueAtTime(freq, ctx.currentTime + idx * 0.03);
 
-      gain.gain.setValueAtTime(this.volume * 0.4, ctx.currentTime + idx * 0.04);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + idx * 0.04 + 0.18);
+      gain.gain.setValueAtTime(this.volume * 0.45, ctx.currentTime + idx * 0.03);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + idx * 0.03 + 0.16);
 
       osc.connect(gain);
       gain.connect(ctx.destination);
 
-      osc.start(ctx.currentTime + idx * 0.04);
-      osc.stop(ctx.currentTime + idx * 0.04 + 0.2);
+      osc.start(ctx.currentTime + idx * 0.03);
+      osc.stop(ctx.currentTime + idx * 0.03 + 0.18);
     });
   }
 
-  /**
-   * 喝药水咕噜咕噜声
-   */
   playPotion(): void {
     if (!this.enabled) return;
     const ctx = this.getContext();
@@ -184,9 +179,9 @@ export class SoundEffects {
     const gain = ctx.createGain();
 
     osc.type = 'sine';
-    osc.frequency.setValueAtTime(260, ctx.currentTime);
-    osc.frequency.linearRampToValueAtTime(480, ctx.currentTime + 0.1);
-    osc.frequency.linearRampToValueAtTime(320, ctx.currentTime + 0.2);
+    osc.frequency.setValueAtTime(280, ctx.currentTime);
+    osc.frequency.linearRampToValueAtTime(520, ctx.currentTime + 0.1);
+    osc.frequency.linearRampToValueAtTime(340, ctx.currentTime + 0.2);
 
     gain.gain.setValueAtTime(this.volume * 0.4, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.22);
@@ -198,31 +193,27 @@ export class SoundEffects {
     osc.stop(ctx.currentTime + 0.23);
   }
 
-  /**
-   * 升级金芒大礼花和弦
-   */
   playLevelUp(): void {
     if (!this.enabled) return;
     const ctx = this.getContext();
     if (!ctx) return;
 
-    // 经典上行大三和弦 (C5 - E5 - G5 - C6)
     const notes = [523.25, 659.25, 783.99, 1046.5];
     notes.forEach((freq, idx) => {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
 
       osc.type = 'triangle';
-      osc.frequency.setValueAtTime(freq, ctx.currentTime + idx * 0.08);
+      osc.frequency.setValueAtTime(freq, ctx.currentTime + idx * 0.07);
 
-      gain.gain.setValueAtTime(this.volume * 0.5, ctx.currentTime + idx * 0.08);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + idx * 0.08 + 0.4);
+      gain.gain.setValueAtTime(this.volume * 0.55, ctx.currentTime + idx * 0.07);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + idx * 0.07 + 0.38);
 
       osc.connect(gain);
       gain.connect(ctx.destination);
 
-      osc.start(ctx.currentTime + idx * 0.08);
-      osc.stop(ctx.currentTime + idx * 0.08 + 0.45);
+      osc.start(ctx.currentTime + idx * 0.07);
+      osc.stop(ctx.currentTime + idx * 0.07 + 0.42);
     });
   }
 }

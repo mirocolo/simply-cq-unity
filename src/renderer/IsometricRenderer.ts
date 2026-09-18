@@ -10,16 +10,24 @@ interface SlashAnimation {
   maxTicks: number;
 }
 
+interface BloodParticle {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  life: number;
+  maxLife: number;
+  size: number;
+}
+
 export class IsometricRenderer {
   readonly TILE_WIDTH = 72;
   readonly TILE_HEIGHT = 36;
 
   private slashes: SlashAnimation[] = [];
+  private bloods: BloodParticle[] = [];
   private animFrame = 0;
 
-  /**
-   * 网格坐标转换到世界像素坐标
-   */
   gridToScreen(gx: number, gy: number): { x: number; y: number } {
     return {
       x: (gx - gy) * (this.TILE_WIDTH / 2),
@@ -27,28 +35,19 @@ export class IsometricRenderer {
     };
   }
 
-  /**
-   * 屏幕点击坐标换算到网格坐标
-   */
   screenToGrid(sx: number, sy: number, camX: number, camY: number): { x: number; y: number } {
     const worldX = sx + camX;
     const worldY = sy + camY;
-
     const gx = (worldX / (this.TILE_WIDTH / 2) + worldY / (this.TILE_HEIGHT / 2)) / 2;
     const gy = (worldY / (this.TILE_HEIGHT / 2) - worldX / (this.TILE_WIDTH / 2)) / 2;
-
     return {
       x: Math.round(gx),
       y: Math.round(gy)
     };
   }
 
-  /**
-   * 触发刀光动画
-   */
   addSlashVFX(gridPos: { x: number; y: number }, dir: Direction8, isFire: boolean, haste: number): void {
-    // 攻速越快，刀光生命期越短 (基准 6 帧，最快 2 帧)
-    const maxTicks = Math.max(2, Math.floor(6 * 100 / (100 + haste)));
+    const maxTicks = Math.max(3, Math.floor(7 * 100 / (100 + haste)));
     this.slashes.push({
       gridX: gridPos.x,
       gridY: gridPos.y,
@@ -57,11 +56,21 @@ export class IsometricRenderer {
       progress: 0,
       maxTicks
     });
+
+    const pos = this.gridToScreen(gridPos.x, gridPos.y);
+    for (let i = 0; i < 6; i++) {
+      this.bloods.push({
+        x: pos.x + (Math.random() - 0.5) * 16,
+        y: pos.y - 15 + (Math.random() - 0.5) * 16,
+        vx: (Math.random() - 0.5) * 5,
+        vy: (Math.random() - 0.5) * 5 - 2,
+        life: 0,
+        maxLife: 14 + Math.random() * 8,
+        size: 2 + Math.random() * 3
+      });
+    }
   }
 
-  /**
-   * 主渲染帧
-   */
   render(
     ctx: CanvasRenderingContext2D,
     world: GameWorld,
@@ -71,11 +80,9 @@ export class IsometricRenderer {
   ): void {
     this.animFrame++;
 
-    // 1. 清屏
-    ctx.fillStyle = '#0a0a0c';
+    ctx.fillStyle = '#0a090b';
     ctx.fillRect(0, 0, width, height);
 
-    // 2. 相机平滑锁定玩家当前插值坐标
     const p = world.player;
     let pInterpX = p.gridPos.x;
     let pInterpY = p.gridPos.y;
@@ -84,82 +91,121 @@ export class IsometricRenderer {
       pInterpY += (p.targetGridPos.y - p.gridPos.y) * p.moveProgress;
     }
     const playerScreen = this.gridToScreen(pInterpX, pInterpY);
-    const camX = playerScreen.x - width / 2;
-    const camY = playerScreen.y - height / 2;
+
+    // 核心打击感：震屏 (Screen Shake)
+    let shakeX = 0;
+    let shakeY = 0;
+    if (world.screenShake > 0) {
+      shakeX = (Math.random() - 0.5) * world.screenShake * 1.5;
+      shakeY = (Math.random() - 0.5) * world.screenShake * 1.5;
+    }
+
+    const camX = playerScreen.x - width / 2 + shakeX;
+    const camY = playerScreen.y - height / 2 + shakeY;
 
     ctx.save();
     ctx.translate(-camX, -camY);
 
-    // 3. 绘制 2.5D 等轴测瓦片地图
     this.renderTiles(ctx, world, camX, camY, width, height);
 
-    // 4. 准备深度排序对象池 (按深度 y 排序，实现遮挡关系)
     const renderList: Array<{
-      type: 'ground_item' | 'entity' | 'obstacle' | 'slash';
       depthY: number;
-      data: any;
+      draw: () => void;
     }> = [];
 
-    // 地面掉落物
+    // 地面战利品 (带喷泉抛物线动画)
     for (const item of world.groundItems) {
-      const pos = this.gridToScreen(item.gridPos.x, item.gridPos.y);
+      let finalPos = this.gridToScreen(item.gridPos.x, item.gridPos.y);
+      let renderPos = { ...finalPos };
+
+      if (item.burstProgress !== undefined && item.burstProgress < 1.0 && item.burstOrigin) {
+        const originPos = this.gridToScreen(item.burstOrigin.x, item.burstOrigin.y);
+        const t = item.burstProgress;
+        renderPos.x = originPos.x + (finalPos.x - originPos.x) * t;
+        renderPos.y = originPos.y + (finalPos.y - originPos.y) * t - Math.sin(t * Math.PI) * 45;
+      }
+
       renderList.push({
-        type: 'ground_item',
-        depthY: pos.y,
-        data: item
+        depthY: finalPos.y,
+        draw: () => this.renderGroundItem(ctx, item, renderPos)
       });
     }
 
-    // 怪物与玩家实体
+    // 怪物与玩家
     const allEntities = [...world.monsters, world.player];
     for (const ent of allEntities) {
-      if (ent.state === 'dead' && !ent.isPlayer) continue; // 死亡怪不渲染深度
+      if (ent.state === 'dead' && !ent.isPlayer) continue;
       let gx = ent.gridPos.x;
       let gy = ent.gridPos.y;
       if (ent.targetGridPos) {
         gx += (ent.targetGridPos.x - ent.gridPos.x) * ent.moveProgress;
         gy += (ent.targetGridPos.y - ent.gridPos.y) * ent.moveProgress;
       }
-      const pos = this.gridToScreen(gx, gy);
+      let pos = this.gridToScreen(gx, gy);
+
+      // 受击击退位移
+      if (ent.knockbackOffset && ent.hitStunTicks && ent.hitStunTicks > 0) {
+        pos.x += ent.knockbackOffset.x;
+        pos.y += ent.knockbackOffset.y;
+      }
+
       renderList.push({
-        type: 'entity',
         depthY: pos.y,
-        data: { entity: ent, screenX: pos.x, screenY: pos.y }
+        draw: () => this.renderEntity(ctx, ent, pos.x, pos.y, selectedTargetId === ent.id, world)
       });
     }
 
-    // 刀光动画
+    // 刀光
     for (let i = this.slashes.length - 1; i >= 0; i--) {
       const slash = this.slashes[i];
       slash.progress++;
       const pos = this.gridToScreen(slash.gridX, slash.gridY);
       renderList.push({
-        type: 'slash',
-        depthY: pos.y + 5,
-        data: slash
+        depthY: pos.y + 6,
+        draw: () => this.renderSlash(ctx, slash, pos)
       });
       if (slash.progress >= slash.maxTicks) {
         this.slashes.splice(i, 1);
       }
     }
 
-    // 按深度升序绘制
-    renderList.sort((a, b) => a.depthY - b.depthY);
-
-    for (const item of renderList) {
-      if (item.type === 'ground_item') {
-        this.renderGroundItem(ctx, item.data);
-      } else if (item.type === 'entity') {
-        this.renderEntity(ctx, item.data.entity, item.data.screenX, item.data.screenY, selectedTargetId === item.data.entity.id);
-      } else if (item.type === 'slash') {
-        this.renderSlash(ctx, item.data);
+    // 飞溅血迹
+    for (let i = this.bloods.length - 1; i >= 0; i--) {
+      const b = this.bloods[i];
+      b.life++;
+      b.x += b.vx;
+      b.y += b.vy;
+      b.vy += 0.22;
+      ctx.fillStyle = '#b91c1c';
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, b.size, 0, Math.PI * 2);
+      ctx.fill();
+      if (b.life >= b.maxLife) {
+        this.bloods.splice(i, 1);
       }
     }
 
-    // 5. 绘制飘字 (最上层)
+    renderList.sort((a, b) => a.depthY - b.depthY);
+    for (const obj of renderList) {
+      obj.draw();
+    }
+
     this.renderDamagePopups(ctx, world.damagePopups);
 
     ctx.restore();
+
+    // 屏幕中央连斩提示 (Combo Count)
+    if (world.comboCount > 1) {
+      ctx.save();
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 24px "SimSun", "Songti SC", sans-serif';
+      ctx.fillStyle = world.isBerserk ? '#f97316' : '#fde047';
+      ctx.shadowColor = world.isBerserk ? '#ea580c' : '#b45309';
+      ctx.shadowBlur = 12;
+      const comboText = world.isBerserk ? `🔥 狂暴连斩 x${world.comboCount}！🔥` : `⚔️ 连斩 x${world.comboCount}`;
+      ctx.fillText(comboText, width / 2, 72);
+      ctx.restore();
+    }
   }
 
   private renderTiles(
@@ -177,9 +223,8 @@ export class IsometricRenderer {
       for (let x = 0; x < world.MAP_WIDTH; x++) {
         const scr = this.gridToScreen(x, y);
 
-        // 简易视锥剔除
-        if (scr.x + hw < camX - 50 || scr.x - hw > camX + w + 50 ||
-            scr.y + hh < camY - 50 || scr.y - hh > camY + h + 50) {
+        if (scr.x + hw < camX - 60 || scr.x - hw > camX + w + 60 ||
+            scr.y + hh < camY - 60 || scr.y - hh > camY + h + 60) {
           continue;
         }
 
@@ -193,181 +238,398 @@ export class IsometricRenderer {
         ctx.closePath();
 
         if (isWall) {
-          ctx.fillStyle = '#221d26';
+          ctx.fillStyle = '#1c1815';
           ctx.fill();
-          ctx.strokeStyle = '#3d3444';
+          ctx.strokeStyle = '#2c251f';
           ctx.lineWidth = 1;
           ctx.stroke();
 
-          // 画石柱立体阴影
-          ctx.fillStyle = '#17131b';
-          ctx.fillRect(scr.x - 10, scr.y - 20, 20, 22);
-          ctx.fillStyle = '#4c3f56';
-          ctx.font = '12px serif';
-          ctx.fillText('🪨', scr.x - 8, scr.y - 2);
-        } else {
-          // 交替暗色地砖纹理
-          const alt = (x + y) % 2 === 0;
-          ctx.fillStyle = alt ? '#141217' : '#18151c';
+          ctx.fillStyle = '#29221b';
+          ctx.beginPath();
+          ctx.moveTo(scr.x - hw, scr.y);
+          ctx.lineTo(scr.x, scr.y - hh);
+          ctx.lineTo(scr.x, scr.y - hh - 24);
+          ctx.lineTo(scr.x - hw, scr.y - 24);
+          ctx.closePath();
           ctx.fill();
-          ctx.strokeStyle = '#28222e';
-          ctx.lineWidth = 0.5;
+
+          ctx.fillStyle = '#3a3026';
+          ctx.beginPath();
+          ctx.moveTo(scr.x, scr.y - hh);
+          ctx.lineTo(scr.x + hw, scr.y);
+          ctx.lineTo(scr.x + hw, scr.y - 24);
+          ctx.lineTo(scr.x, scr.y - hh - 24);
+          ctx.closePath();
+          ctx.fill();
+        } else {
+          const seed = (x * 13 + y * 17) % 10;
+          if (x >= 16 && x <= 20) {
+            ctx.fillStyle = seed > 5 ? '#24201c' : '#1f1c18';
+          } else {
+            ctx.fillStyle = seed > 6 ? '#1b1d16' : (seed > 3 ? '#191b15' : '#161713');
+          }
+          ctx.fill();
+
+          ctx.strokeStyle = '#23201b';
+          ctx.lineWidth = 0.6;
           ctx.stroke();
+
+          if (seed === 7) {
+            ctx.fillStyle = '#2b2a22';
+            ctx.fillRect(scr.x - 4, scr.y - 2, 3, 2);
+          } else if (seed === 2) {
+            ctx.fillStyle = '#28241d';
+            ctx.fillRect(scr.x + 3, scr.y + 1, 4, 3);
+          }
         }
       }
     }
   }
 
-  private renderGroundItem(ctx: CanvasRenderingContext2D, drop: GroundItem): void {
-    const pos = this.gridToScreen(drop.gridPos.x, drop.gridPos.y);
-
-    // 1. 如果是极品装备 (品质 >= 1)，绘制冲天彩色光柱！
+  private renderGroundItem(ctx: CanvasRenderingContext2D, drop: GroundItem, pos: { x: number; y: number }): void {
     if (drop.beamColor) {
       ctx.save();
-
-      // 光柱底部扩散光晕
-      const haloGrad = ctx.createRadialGradient(pos.x, pos.y, 2, pos.x, pos.y, 24);
+      const haloGrad = ctx.createRadialGradient(pos.x, pos.y, 2, pos.x, pos.y, 28);
       haloGrad.addColorStop(0, drop.beamColor);
       haloGrad.addColorStop(1, 'transparent');
       ctx.fillStyle = haloGrad;
       ctx.beginPath();
-      ctx.ellipse(pos.x, pos.y, 24, 12, 0, 0, Math.PI * 2);
+      ctx.ellipse(pos.x, pos.y, 26, 13, 0, 0, Math.PI * 2);
       ctx.fill();
 
-      // 冲天光柱柱身 (高达 180px)
-      const beamGrad = ctx.createLinearGradient(pos.x, pos.y, pos.x, pos.y - 180);
+      const beamGrad = ctx.createLinearGradient(pos.x, pos.y, pos.x, pos.y - 200);
       beamGrad.addColorStop(0, drop.beamColor);
       beamGrad.addColorStop(0.3, drop.beamColor);
       beamGrad.addColorStop(1, 'transparent');
-
       ctx.fillStyle = beamGrad;
-      ctx.globalAlpha = 0.65 + Math.sin(this.animFrame * 0.1) * 0.15;
-      ctx.fillRect(pos.x - 6, pos.y - 180, 12, 180);
+      ctx.globalAlpha = 0.7 + Math.sin(this.animFrame * 0.12) * 0.2;
+      ctx.fillRect(pos.x - 7, pos.y - 200, 14, 200);
 
-      // 光柱中芯高亮细线
       ctx.fillStyle = '#ffffff';
-      ctx.globalAlpha = 0.8;
-      ctx.fillRect(pos.x - 1.5, pos.y - 180, 3, 180);
-
+      ctx.globalAlpha = 0.9;
+      ctx.fillRect(pos.x - 1.5, pos.y - 200, 3, 200);
       ctx.restore();
     }
 
-    // 2. 地面战利品图标与名称
-    ctx.font = '16px serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(drop.item.icon || '📦', pos.x, pos.y + 4);
+    ctx.save();
+    if (drop.item.type === 'potion') {
+      ctx.fillStyle = (drop.item.recoverHp || 0) > 0 ? '#ef4444' : '#3b82f6';
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, 6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#f59e0b';
+      ctx.fillRect(pos.x - 2, pos.y - 9, 4, 3);
+    } else if (drop.item.name.includes('金币')) {
+      ctx.fillStyle = '#f59e0b';
+      ctx.beginPath();
+      ctx.ellipse(pos.x, pos.y, 8, 4, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#fde047';
+      ctx.beginPath();
+      ctx.ellipse(pos.x - 2, pos.y - 2, 5, 2.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      ctx.save();
+      ctx.translate(pos.x, pos.y);
+      ctx.rotate(-Math.PI / 4);
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillRect(-2, -12, 4, 14);
+      ctx.fillStyle = '#f59e0b';
+      ctx.fillRect(-5, -4, 10, 2);
+      ctx.restore();
+    }
+    ctx.restore();
 
-    // 悬浮名称
-    ctx.font = '10px sans-serif';
-    ctx.fillStyle = drop.beamColor || '#cbd5e1';
-    ctx.shadowColor = '#000000';
-    ctx.shadowBlur = 4;
-    ctx.fillText(drop.item.name, pos.x, pos.y + 16);
-    ctx.shadowBlur = 0;
+    ctx.save();
+    ctx.font = 'bold 11px sans-serif';
+    const textWidth = ctx.measureText(drop.item.name).width;
+    const pad = 4;
+    const tagX = pos.x - textWidth / 2 - pad;
+    const tagY = pos.y + 6;
+
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+    ctx.fillRect(tagX, tagY, textWidth + pad * 2, 16);
+    ctx.strokeStyle = drop.beamColor || '#475569';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(tagX, tagY, textWidth + pad * 2, 16);
+
+    ctx.fillStyle = drop.beamColor || '#e2e8f0';
+    ctx.textAlign = 'center';
+    ctx.fillText(drop.item.name, pos.x, tagY + 12);
+    ctx.restore();
   }
 
   private renderEntity(
-    ctx: CanvasRenderingContext2D, 
-    ent: Entity, 
-    sx: number, 
-    sy: number, 
-    isSelected: boolean
+    ctx: CanvasRenderingContext2D,
+    ent: Entity,
+    sx: number,
+    sy: number,
+    isSelected: boolean,
+    world: GameWorld
   ): void {
-    const isPlayer = ent.isPlayer;
-    const isBoss = ent.isBoss;
-    const scale = isBoss ? 1.6 : 1.0;
-
     ctx.save();
     ctx.translate(sx, sy);
 
-    // 1. 脚底影子
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+    const scale = ent.isBoss ? 1.7 : (ent.isElite ? 1.25 : 1.0);
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
     ctx.beginPath();
     ctx.ellipse(0, 0, 16 * scale, 8 * scale, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // 2. 选中脚底光圈
     if (isSelected) {
       ctx.strokeStyle = '#ef4444';
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.ellipse(0, 0, 20 * scale, 10 * scale, 0, 0, Math.PI * 2);
+      ctx.ellipse(0, 0, 22 * scale, 11 * scale, 0, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.strokeStyle = '#fbbf24';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 25 * scale, 12.5 * scale, 0, 0, Math.PI * 2);
       ctx.stroke();
     }
 
-    // 3. 实体身体绘制
-    const bodyY = -18 * scale;
-
-    if (isPlayer) {
-      // 玩家角色光环 (高战力金辉)
-      if (ent.stats.combatPower > 300) {
-        ctx.fillStyle = 'rgba(243, 194, 88, 0.15)';
-        ctx.beginPath();
-        ctx.arc(0, bodyY, 26, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      // 玩家披风与武者身躯
-      ctx.fillStyle = '#dc2626'; // 赤红披风
-      ctx.fillRect(-10, bodyY - 14, 20, 26);
-
-      ctx.fillStyle = '#eab308'; // 黄金盔甲
-      ctx.fillRect(-8, bodyY - 12, 16, 22);
-
-      // 头盔与朝向眼眸
-      ctx.fillStyle = '#fef08a';
+    // 受击红白闪烁 (Hit Flash)
+    if (ent.hitStunTicks && ent.hitStunTicks > 0) {
+      ctx.fillStyle = 'rgba(239, 68, 68, 0.35)';
       ctx.beginPath();
-      ctx.arc(0, bodyY - 18, 7, 0, Math.PI * 2);
+      ctx.arc(0, -20 * scale, 22 * scale, 0, Math.PI * 2);
       ctx.fill();
-
-      // 神兵屠龙刀 (持在身侧)
-      ctx.fillStyle = '#f59e0b';
-      ctx.fillRect(8, bodyY - 16, 4, 28);
-    } else {
-      // 怪物身体
-      ctx.fillStyle = ent.color || '#94a3b8';
-      ctx.beginPath();
-      ctx.arc(0, bodyY, 14 * scale, 0, Math.PI * 2);
-      ctx.fill();
-
-      // 怪物图标
-      ctx.font = `${Math.floor(20 * scale)}px serif`;
-      ctx.textAlign = 'center';
-      ctx.fillText(ent.icon || '👾', 0, bodyY + 7 * scale);
     }
 
-    // 4. 头顶血条与名字
-    const barW = 36 * scale;
-    const barH = 4;
-    const barY = bodyY - (isPlayer ? 30 : 22 * scale);
+    if (ent.isPlayer) {
+      this.drawPlayerWarrior(ctx, ent, world);
+    } else {
+      this.drawMonster(ctx, ent, scale);
+    }
 
-    // 血条底色
+    const barW = Math.floor(34 * scale);
+    const barH = 4;
+    const barY = -42 * scale;
+
     ctx.fillStyle = '#0f172a';
     ctx.fillRect(-barW / 2, barY, barW, barH);
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(-barW / 2, barY, barW, barH);
 
-    // 当前生命
     const hpRatio = Math.max(0, ent.stats.hp / ent.stats.maxHp);
-    ctx.fillStyle = isPlayer ? '#22c55e' : (isBoss ? '#dc2626' : '#f59e0b');
+    ctx.fillStyle = ent.isPlayer ? '#22c55e' : (ent.isBoss ? '#dc2626' : '#ea580c');
     ctx.fillRect(-barW / 2, barY, barW * hpRatio, barH);
 
-    // 头顶名字
-    ctx.font = isBoss ? 'bold 12px sans-serif' : '11px sans-serif';
-    ctx.fillStyle = isPlayer ? '#fde047' : (isBoss ? '#ef4444' : '#f1f5f9');
+    ctx.font = ent.isBoss ? 'bold 12px "SimSun", "Songti SC", serif' : '11px "SimSun", "Songti SC", serif';
     ctx.textAlign = 'center';
+    ctx.fillStyle = ent.isPlayer ? '#fef08a' : (ent.isBoss ? '#f87171' : (ent.isElite ? '#fde047' : '#e2e8f0'));
     ctx.shadowColor = '#000000';
-    ctx.shadowBlur = 4;
+    ctx.shadowBlur = 3;
     ctx.fillText(ent.name, 0, barY - 4);
     ctx.shadowBlur = 0;
 
     ctx.restore();
   }
 
-  private renderSlash(ctx: CanvasRenderingContext2D, slash: SlashAnimation): void {
-    const pos = this.gridToScreen(slash.gridX, slash.gridY);
-    ctx.save();
-    ctx.translate(pos.x, pos.y - 15);
+  private drawPlayerWarrior(ctx: CanvasRenderingContext2D, p: Entity, world: GameWorld): void {
+    const isAttacking = p.state === 'attacking';
+    const hasDragonBlade = (p.stats.maxDC >= 35);
 
-    // 8 方向旋转弧度 (0:北, 2:东, 4:南, 6:西)
+    // 狂暴模式下：全身烈焰光环
+    if (world.isBerserk) {
+      ctx.save();
+      ctx.fillStyle = 'rgba(249, 115, 22, 0.25)';
+      ctx.beginPath();
+      ctx.arc(0, -20, 28, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // 披风
+    ctx.fillStyle = '#b91c1c';
+    ctx.beginPath();
+    ctx.moveTo(-10, -28);
+    ctx.lineTo(10, -28);
+    ctx.lineTo(12 + (p.direction > 3 ? 3 : -3), -4);
+    ctx.lineTo(-12 + (p.direction > 3 ? 3 : -3), -4);
+    ctx.closePath();
+    ctx.fill();
+
+    // 战神重铠
+    ctx.fillStyle = '#b45309';
+    ctx.fillRect(-8, -26, 16, 18);
+    ctx.fillStyle = '#f59e0b';
+    ctx.fillRect(-6, -24, 12, 14);
+
+    // 腿部
+    ctx.fillStyle = '#1c1917';
+    ctx.fillRect(-7, -8, 5, 8);
+    ctx.fillRect(2, -8, 5, 8);
+
+    // 战盔
+    ctx.fillStyle = '#f59e0b';
+    ctx.beginPath();
+    ctx.arc(0, -32, 7, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#dc2626';
+    ctx.fillRect(-2, -41, 4, 6);
+
+    // 佩戴神兵
+    ctx.save();
+    ctx.translate(6, -20);
+    if (isAttacking) {
+      ctx.rotate(Math.PI / 3);
+    }
+
+    if (hasDragonBlade) {
+      ctx.fillStyle = '#78350f';
+      ctx.fillRect(-2, 0, 4, 12);
+      ctx.fillStyle = '#f97316';
+      ctx.beginPath();
+      ctx.moveTo(-4, 0);
+      ctx.lineTo(8, -2);
+      ctx.lineTo(6, -28);
+      ctx.lineTo(-4, -24);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = '#fde047';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    } else {
+      ctx.fillStyle = '#475569';
+      ctx.fillRect(-2, 0, 4, 8);
+      ctx.fillStyle = '#cbd5e1';
+      ctx.fillRect(-3, -22, 6, 22);
+    }
+    ctx.restore();
+  }
+
+  private drawMonster(ctx: CanvasRenderingContext2D, m: Entity, scale: number): void {
+    if (m.name.includes('稻草人')) {
+      ctx.fillStyle = '#78350f';
+      ctx.fillRect(-3, -28, 6, 28);
+      ctx.fillRect(-14, -20, 28, 4);
+
+      ctx.fillStyle = '#a16207';
+      ctx.beginPath();
+      ctx.moveTo(-10, -22);
+      ctx.lineTo(10, -22);
+      ctx.lineTo(14, -6);
+      ctx.lineTo(-14, -6);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = '#ca8a04';
+      ctx.beginPath();
+      ctx.moveTo(-14, -28);
+      ctx.lineTo(14, -28);
+      ctx.lineTo(0, -38);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = '#ef4444';
+      ctx.fillRect(-4, -26, 2, 2);
+      ctx.fillRect(2, -26, 2, 2);
+    } else if (m.name.includes('猫')) {
+      ctx.fillStyle = '#d97706';
+      ctx.beginPath();
+      ctx.ellipse(0, -14, 8, 12, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.arc(0, -24, 7, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#b45309';
+      ctx.beginPath();
+      ctx.moveTo(-7, -27); ctx.lineTo(-3, -34); ctx.lineTo(-1, -27);
+      ctx.moveTo(1, -27); ctx.lineTo(3, -34); ctx.lineTo(7, -27);
+      ctx.fill();
+
+      ctx.fillStyle = '#71717a';
+      ctx.fillRect(8, -30, 2, 28);
+      ctx.fillRect(4, -30, 10, 3);
+      ctx.fillRect(4, -34, 2, 4);
+      ctx.fillRect(8, -34, 2, 4);
+      ctx.fillRect(12, -34, 2, 4);
+    } else if (m.name.includes('骷髅')) {
+      ctx.fillStyle = '#e2e8f0';
+      ctx.fillRect(-4, -22, 8, 14);
+      ctx.fillRect(-5, -8, 3, 8);
+      ctx.fillRect(2, -8, 3, 8);
+
+      ctx.beginPath();
+      ctx.arc(0, -28, 6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(-3, -29, 2, 2);
+      ctx.fillRect(1, -29, 2, 2);
+
+      ctx.fillStyle = '#64748b';
+      ctx.beginPath();
+      ctx.arc(-8, -16, 6, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#cbd5e1';
+      ctx.fillRect(7, -26, 3, 16);
+    } else if (m.name.includes('野猪')) {
+      ctx.fillStyle = '#f1f5f9';
+      ctx.beginPath();
+      ctx.ellipse(0, -18 * scale, 14 * scale, 12 * scale, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.arc(0, -28 * scale, 9 * scale, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#f43f5e';
+      ctx.fillRect(-3 * scale, -27 * scale, 6 * scale, 4 * scale);
+
+      ctx.fillStyle = '#fef08a';
+      ctx.fillRect(-7 * scale, -28 * scale, 2 * scale, 5 * scale);
+      ctx.fillRect(5 * scale, -28 * scale, 2 * scale, 5 * scale);
+
+      ctx.fillStyle = '#334155';
+      ctx.beginPath();
+      ctx.arc(14 * scale, -20 * scale, 7 * scale, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      ctx.fillStyle = '#991b1b';
+      ctx.beginPath();
+      ctx.ellipse(0, -20 * scale, 15 * scale, 16 * scale, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#7f1d1d';
+      ctx.beginPath();
+      ctx.arc(0, -32 * scale, 9 * scale, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#450a0a';
+      ctx.beginPath();
+      ctx.moveTo(-8 * scale, -36 * scale);
+      ctx.lineTo(-18 * scale, -46 * scale);
+      ctx.lineTo(-4 * scale, -38 * scale);
+      ctx.moveTo(8 * scale, -36 * scale);
+      ctx.lineTo(18 * scale, -46 * scale);
+      ctx.lineTo(4 * scale, -38 * scale);
+      ctx.fill();
+
+      ctx.fillStyle = 'rgba(153, 27, 27, 0.7)';
+      ctx.beginPath();
+      ctx.moveTo(-12 * scale, -28 * scale);
+      ctx.lineTo(-28 * scale, -45 * scale);
+      ctx.lineTo(-14 * scale, -12 * scale);
+      ctx.moveTo(12 * scale, -28 * scale);
+      ctx.lineTo(28 * scale, -45 * scale);
+      ctx.lineTo(14 * scale, -12 * scale);
+      ctx.fill();
+
+      ctx.fillStyle = '#facc15';
+      ctx.fillRect(-4 * scale, -34 * scale, 3 * scale, 2 * scale);
+      ctx.fillRect(1 * scale, -34 * scale, 3 * scale, 2 * scale);
+    }
+  }
+
+  private renderSlash(ctx: CanvasRenderingContext2D, slash: SlashAnimation, pos: { x: number; y: number }): void {
+    ctx.save();
+    ctx.translate(pos.x, pos.y - 18);
+
     const angleMap: Record<Direction8, number> = {
       0: -Math.PI / 2,
       1: -Math.PI / 4,
@@ -379,19 +641,17 @@ export class IsometricRenderer {
       7: (-3 * Math.PI) / 4
     };
 
-    const baseAngle = angleMap[slash.dir];
-    ctx.rotate(baseAngle);
+    ctx.rotate(angleMap[slash.dir]);
 
-    // 弧度随进度扫过
     const sweepProgress = slash.progress / slash.maxTicks;
-    const sweepAngle = (sweepProgress - 0.5) * (Math.PI / 2);
+    const sweepAngle = (sweepProgress - 0.5) * (Math.PI * 0.75); // 顺劈更宽扇面
 
     ctx.beginPath();
-    ctx.arc(15, 0, 32, sweepAngle - 0.6, sweepAngle + 0.6);
+    ctx.arc(20, 0, 42, sweepAngle - 0.8, sweepAngle + 0.8);
     ctx.strokeStyle = slash.isFire ? '#f97316' : '#38bdf8';
-    ctx.lineWidth = slash.isFire ? 6 : 4;
+    ctx.lineWidth = slash.isFire ? 8 : 5;
     ctx.shadowColor = slash.isFire ? '#ea580c' : '#0284c7';
-    ctx.shadowBlur = 12;
+    ctx.shadowBlur = 16;
     ctx.stroke();
 
     ctx.restore();
@@ -407,24 +667,21 @@ export class IsometricRenderer {
       ctx.textAlign = 'center';
 
       if (p.isCrit) {
-        // 暴击大字：加粗、带红芒外发光与缩放感
-        ctx.font = 'bold 20px sans-serif';
+        ctx.font = 'bold 24px "SimSun", "Songti SC", sans-serif';
         ctx.fillStyle = '#ef4444';
-        ctx.shadowColor = '#b91c1c';
-        ctx.shadowBlur = 12;
-        ctx.fillText(p.text, pos.x, pos.y - 45);
+        ctx.shadowColor = '#fbbf24';
+        ctx.shadowBlur = 14;
+        ctx.fillText(p.text, pos.x, pos.y - 50);
       } else if (p.isHeal) {
-        // 治疗绿字
-        ctx.font = 'bold 15px sans-serif';
+        ctx.font = 'bold 16px "SimSun", sans-serif';
         ctx.fillStyle = '#22c55e';
-        ctx.fillText(p.text, pos.x, pos.y - 35);
+        ctx.fillText(p.text, pos.x, pos.y - 38);
       } else {
-        // 普通伤害
-        ctx.font = 'bold 14px sans-serif';
+        ctx.font = 'bold 15px "SimSun", sans-serif';
         ctx.fillStyle = p.color;
         ctx.shadowColor = '#000000';
         ctx.shadowBlur = 4;
-        ctx.fillText(p.text, pos.x, pos.y - 35);
+        ctx.fillText(p.text, pos.x, pos.y - 38);
       }
 
       ctx.restore();

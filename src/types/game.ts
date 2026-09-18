@@ -38,9 +38,9 @@ export interface ItemDef {
   maxAC: number;
   maxHp: number;
   maxMp: number;
-  critBonus?: number; // 百分点，如 3 代表 +3% 暴击率
-  hasteBonus?: number; // 急速点数，如 10 代表 +10 急速
-  recoverHp?: number; // 药水恢复量
+  critBonus?: number;
+  hasteBonus?: number;
+  recoverHp?: number;
   recoverMp?: number;
   levelReq: number;
   price: number;
@@ -82,12 +82,12 @@ export interface EntityStats {
   maxDC: number;
   minAC: number;
   maxAC: number;
-  critRate: number; // 0 ~ 0.75
-  critMult: number; // 1.5 ~ 2.5
-  haste: number; // 急速点数
-  baseAttackInterval: number; // 基础 tick 数 (默认 7 ticks = 700ms)
-  effectiveAttackInterval: number; // 计算急速后的实际 tick 间隔
-  combatPower: number; // 综合战力值
+  critRate: number;
+  critMult: number;
+  haste: number;
+  baseAttackInterval: number; // 默认 4~5 ticks
+  effectiveAttackInterval: number;
+  combatPower: number;
   gold: number;
   exp: number;
   maxExp: number;
@@ -99,7 +99,7 @@ export interface Entity {
   isPlayer: boolean;
   gridPos: GridCoord;
   targetGridPos: GridCoord | null;
-  moveProgress: number; // 0 ~ 1 平滑插值
+  moveProgress: number;
   direction: Direction8;
   stats: EntityStats;
   targetEntityId: string | null;
@@ -113,6 +113,9 @@ export interface Entity {
   spawnOrigin?: GridCoord;
   color?: string;
   icon?: string;
+  // 打击物理反馈
+  hitStunTicks?: number; // 受击硬直与泛红倒计时
+  knockbackOffset?: { x: number; y: number }; // 受击微后退位移
 }
 
 export type SkillId = 'basic_slash' | 'power_slash' | 'assassinate' | 'fire_slash';
@@ -135,7 +138,10 @@ export interface GroundItem {
   item: ItemInstance;
   gridPos: GridCoord;
   dropTick: number;
-  beamColor: string | null; // 冲天光柱颜色，白/绿为 null
+  beamColor: string | null;
+  // 大爆喷泉动画参数
+  burstOrigin?: { x: number; y: number };
+  burstProgress?: number; // 0 ~ 1 抛物线动画
 }
 
 export interface DamagePopup {
@@ -149,6 +155,7 @@ export interface DamagePopup {
   life: number;
   maxLife: number;
   vy: number;
+  scale?: number;
 }
 
 export interface BattleLog {
@@ -161,11 +168,11 @@ export interface BattleLog {
 
 export interface AutoPilotConfig {
   enabled: boolean;
-  autoPotionHpPercent: number; // 默认 50%
-  autoPotionMpPercent: number; // 默认 30%
+  autoPotionHpPercent: number;
+  autoPotionMpPercent: number;
   autoSkill: boolean;
   autoPickup: boolean;
-  searchRadius: number; // 默认 12 格
+  searchRadius: number;
 }
 
 export interface AutoPilotStats {

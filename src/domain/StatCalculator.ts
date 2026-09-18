@@ -1,17 +1,14 @@
 import { EntityStats, EquipSlot, ItemInstance } from '../types/game';
 
 export class StatCalculator {
-  /**
-   * 基础角色初始属性 (按等级成长)
-   */
   static getBaseStatsForLevel(level: number): EntityStats {
-    const baseHp = 100 + (level - 1) * 35;
-    const baseMp = 50 + (level - 1) * 15;
-    const minDC = 3 + Math.floor(level * 1.5);
-    const maxDC = 7 + Math.floor(level * 2.5);
-    const minAC = 1 + Math.floor(level * 0.8);
-    const maxAC = 2 + Math.floor(level * 1.2);
-    const maxExp = Math.floor(100 * Math.pow(1.35, level - 1));
+    const baseHp = 150 + (level - 1) * 45;
+    const baseMp = 80 + (level - 1) * 20;
+    const minDC = 6 + Math.floor(level * 2.2);
+    const maxDC = 12 + Math.floor(level * 3.5);
+    const minAC = 2 + Math.floor(level * 1.0);
+    const maxAC = 4 + Math.floor(level * 1.6);
+    const maxExp = Math.floor(80 * Math.pow(1.3, level - 1));
 
     return {
       level,
@@ -23,11 +20,11 @@ export class StatCalculator {
       maxDC,
       minAC,
       maxAC,
-      critRate: 0.05, // 基础 5% 暴击率
-      critMult: 1.5,  // 基础 150% 暴击伤害
+      critRate: 0.08, // 基础 8% 暴击率
+      critMult: 1.6,  // 基础 160% 暴击伤害
       haste: 0,
-      baseAttackInterval: 7, // 基础出手间隔 7 ticks (700ms)
-      effectiveAttackInterval: 7,
+      baseAttackInterval: 4, // 默认加快至 4 ticks (400ms 一刀，爽快节奏！)
+      effectiveAttackInterval: 4,
       combatPower: 0,
       gold: 0,
       exp: 0,
@@ -35,9 +32,6 @@ export class StatCalculator {
     };
   }
 
-  /**
-   * 聚合计算穿戴装备后的最终属性
-   */
   static applyEquipment(
     baseStats: EntityStats, 
     equipped: Partial<Record<EquipSlot, ItemInstance>>
@@ -70,28 +64,25 @@ export class StatCalculator {
     const minAC = baseStats.minAC + addMinAC;
     const maxAC = baseStats.maxAC + addMaxAC;
 
-    // 暴击率封顶 75%
-    const critRate = Math.min(0.75, baseStats.critRate + addCritBonus / 100);
+    const critRate = Math.min(0.80, baseStats.critRate + addCritBonus / 100);
     const haste = baseStats.haste + addHasteBonus;
 
-    // 有效出手间隔公式：base * 100 / (100 + haste)，最低 2 tick (200ms 一刀)
+    // 有效出手间隔：最低 2 ticks (200ms 一刀，极速如风)
     const effectiveAttackInterval = Math.max(
       2, 
       Math.floor((baseStats.baseAttackInterval * 100) / (100 + haste))
     );
 
-    // 综合战力值 CombatPower 计算 (经典传奇加权)
-    // 物理均伤*3 + 双防均值*2 + 生命*0.5 + 暴击率*1200 + 急速*8
     const midDC = (minDC + maxDC) / 2;
     const midAC = (minAC + maxAC) / 2;
     const combatPower = Math.floor(
-      midDC * 3.5 + 
-      midAC * 2.5 + 
-      maxHp * 0.4 + 
-      maxMp * 0.2 + 
-      critRate * 1200 + 
-      haste * 8 +
-      baseStats.level * 25
+      midDC * 3.8 + 
+      midAC * 2.8 + 
+      maxHp * 0.45 + 
+      maxMp * 0.25 + 
+      critRate * 1500 + 
+      haste * 10 +
+      baseStats.level * 30
     );
 
     return {
