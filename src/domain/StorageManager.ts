@@ -1,4 +1,4 @@
-import { AutoPilotConfig, EquipSlot, ItemInstance } from '../types/game';
+import { AutoPilotConfig, EquipSlot, ItemInstance, SkillDef } from '../types/game';
 import { DropSystem } from './DropSystem';
 
 export interface SaveData {
@@ -14,6 +14,7 @@ export interface SaveData {
   equipped: Partial<Record<EquipSlot, ItemInstance>>;
   inventory: ItemInstance[];
   autoConfig: AutoPilotConfig;
+  skills?: SkillDef[];
 }
 
 export interface OfflineReward {

@@ -126,6 +126,8 @@ export interface SkillDef {
   icon: string;
   desc: string;
   level: number;
+  proficiency: number;
+  maxProficiency: number;
   damageMult: number;
   cdTicks: number;
   manaCost: number;

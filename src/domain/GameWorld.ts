@@ -380,6 +380,16 @@ export class GameWorld {
       this.onSound?.(isFire ? 'fire' : 'swing');
       this.onSlashVFX?.(attacker.gridPos, attacker.direction, isFire, attacker.stats.haste);
 
+      // 释放技能获得熟练度 (主动技能 +15，基础普攻 +5)
+      if (skill) {
+        this.gainSkillProficiency(skill, 15);
+      } else {
+        const basicSkill = this.skills.find(s => s.id === 'basic_slash');
+        if (basicSkill) {
+          this.gainSkillProficiency(basicSkill, 5);
+        }
+      }
+
       // 积累连斩怒气
       this.comboCount++;
       this.comboTimer = 40; // 4秒刷新
@@ -390,8 +400,10 @@ export class GameWorld {
       }
     }
 
+    const effectiveSkill = skill || (attacker.isPlayer ? this.skills.find(s => s.id === 'basic_slash') : undefined);
+
     // 1. 主目标计算
-    this.applyHitToEntity(attacker, primaryTarget, skill, false);
+    this.applyHitToEntity(attacker, primaryTarget, effectiveSkill, false);
 
     // 2. 经典战士【半月弯刀】顺劈斩机制 (清怪极度爽快！顺劈身边最多2只额外小怪)
     if (attacker.isPlayer) {
@@ -403,7 +415,7 @@ export class GameWorld {
 
         // 目标邻近且在身前 1 格以内
         if (distToPlayer <= 1 && distToTarget <= 2) {
-          this.applyHitToEntity(attacker, other, skill, true);
+          this.applyHitToEntity(attacker, other, effectiveSkill, true);
           cleaveHits++;
           if (cleaveHits >= 2) break; // 一刀最多砍3个
         }
@@ -746,6 +758,38 @@ export class GameWorld {
     }
   }
 
+  /**
+   * 技能熟练度积累与升级成长 (无限升级)
+   */
+  gainSkillProficiency(skill: SkillDef, amount: number): void {
+    if (!skill) return;
+    skill.proficiency = (skill.proficiency || 0) + amount;
+
+    while (skill.proficiency >= skill.maxProficiency) {
+      skill.proficiency -= skill.maxProficiency;
+      skill.level++;
+      skill.maxProficiency = Math.floor(skill.maxProficiency * 1.45);
+
+      let bonusMult = 0.12;
+      if (skill.id === 'fire_slash') bonusMult = 0.25;
+      else if (skill.id === 'assassinate') bonusMult = 0.20;
+      else if (skill.id === 'power_slash') bonusMult = 0.16;
+      else if (skill.id === 'basic_slash') bonusMult = 0.10;
+
+      skill.damageMult = Number((skill.damageMult + bonusMult).toFixed(2));
+      if (skill.cdTicks > 10) {
+        skill.cdTicks = Math.max(10, skill.cdTicks - 1);
+      }
+
+      this.onSound?.('levelup');
+      this.addDamagePopup(this.player.gridPos, `${skill.name} Lv.${skill.level}!`, '#facc15', true);
+      this.addBattleLog(
+        `【技能突破】恭喜！[${skill.name}] 熟练度大圆满，晋升至 Lv.${skill.level}！伤害倍率提升至 ${skill.damageMult}x！`,
+        'system'
+      );
+    }
+  }
+
   save(): void {
     StorageManager.saveGame({
       player: {
@@ -757,7 +801,8 @@ export class GameWorld {
       },
       equipped: this.equipped,
       inventory: this.inventory,
-      autoConfig: this.autoConfig
+      autoConfig: this.autoConfig,
+      skills: this.skills
     });
   }
 
@@ -771,6 +816,19 @@ export class GameWorld {
     this.equipped = saved.equipped || {};
     this.inventory = saved.inventory || [];
     this.autoConfig = { ...this.autoConfig, ...saved.autoConfig };
+
+    if (saved.skills && Array.isArray(saved.skills)) {
+      for (const sk of saved.skills) {
+        const local = this.skills.find(s => s.id === sk.id);
+        if (local) {
+          local.level = sk.level || 1;
+          local.proficiency = sk.proficiency || 0;
+          local.maxProficiency = sk.maxProficiency || local.maxProficiency;
+          local.damageMult = sk.damageMult || local.damageMult;
+          local.cdTicks = sk.cdTicks || local.cdTicks;
+        }
+      }
+    }
 
     const base = StatCalculator.getBaseStatsForLevel(this.player.stats.level);
     this.player.stats = StatCalculator.applyEquipment(base, this.equipped);
