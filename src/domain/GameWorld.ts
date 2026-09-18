@@ -117,13 +117,13 @@ export class GameWorld {
   private initStartingInventory(): void {
     const sword = DropSystem.createItemInstance('w_wood_sword', 0);
     const armor = DropSystem.createItemInstance('a_buyi', 0);
-    const hpPot = DropSystem.createItemInstance('pot_hp_small', 0, 15);
-    const mpPot = DropSystem.createItemInstance('pot_mp_large', 1, 8);
+    const hpPot = DropSystem.createItemInstance('pot_hp_small', 0, 50);
+    const mpPot = DropSystem.createItemInstance('pot_mp_large', 1, 30);
 
     if (sword) this.equipItem(sword);
     if (armor) this.equipItem(armor);
-    if (hpPot) this.inventory.push(hpPot);
-    if (mpPot) this.inventory.push(mpPot);
+    if (hpPot) this.addItemToInventory(hpPot);
+    if (mpPot) this.addItemToInventory(mpPot);
 
     this.addBattleLog('【系统】欢迎来到热血单机传奇！按【T】开启自动挂机，【B】背包，【C】人物面板。', 'system');
   }
@@ -499,17 +499,38 @@ export class GameWorld {
     }
   }
 
+  /**
+   * 添加物品到背包 (同类药品无限堆叠合并，装备按槽位独立存放)
+   */
+  addItemToInventory(item: ItemInstance): boolean {
+    if (item.type === 'potion') {
+      const existing = this.inventory.find(i => i.defId === item.defId);
+      if (existing) {
+        existing.count = (existing.count || 1) + (item.count || 1);
+        return true;
+      }
+    }
+
+    if (this.inventory.length >= 40) {
+      return false;
+    }
+
+    this.inventory.push(item);
+    return true;
+  }
+
   private checkPlayerLootPickup(): void {
     // 自动吸附扩大至 2 格
     for (let i = this.groundItems.length - 1; i >= 0; i--) {
       const drop = this.groundItems[i];
       const dist = PathFinder.chebyshevDistance(this.player.gridPos, drop.gridPos);
       if (dist <= 1) {
-        if (this.inventory.length < 40) {
+        const success = this.addItemToInventory(drop.item);
+        if (success) {
           this.groundItems.splice(i, 1);
-          this.inventory.push(drop.item);
           this.onSound?.('coin');
-          this.addBattleLog(`拾取战利品 [${drop.item.name}]`, 'drop', drop.item.quality);
+          const countText = drop.item.count > 1 ? ` x${drop.item.count}` : '';
+          this.addBattleLog(`拾取战利品 [${drop.item.name}]${countText}`, 'drop', drop.item.quality);
         }
       }
     }
@@ -555,7 +576,7 @@ export class GameWorld {
     const oldEquip = this.equipped[targetSlot];
     const invIdx = this.inventory.indexOf(item);
     if (invIdx !== -1) this.inventory.splice(invIdx, 1);
-    if (oldEquip) this.inventory.push(oldEquip);
+    if (oldEquip) this.addItemToInventory(oldEquip);
 
     this.equipped[targetSlot] = item;
 
@@ -577,7 +598,7 @@ export class GameWorld {
       return false;
     }
     delete this.equipped[slot];
-    this.inventory.push(item);
+    this.addItemToInventory(item);
 
     const base = StatCalculator.getBaseStatsForLevel(this.player.stats.level);
     this.player.stats = StatCalculator.applyEquipment(base, this.equipped);

@@ -32,12 +32,12 @@
                 {{ inventory[index - 1].icon }}
               </span>
 
-              <!-- 堆叠数量 (针对药水) -->
+              <!-- 堆叠数量 (针对药水无限堆叠) -->
               <span 
                 v-if="inventory[index - 1] && (inventory[index - 1].count || 1) > 1"
-                class="absolute bottom-0.5 right-1 text-[9px] font-bold text-white bg-black/80 px-1 rounded-full"
+                class="absolute bottom-0.5 right-1 text-[10px] font-extrabold text-amber-300 bg-black/90 px-1 border border-amber-500/40 rounded shadow"
               >
-                {{ inventory[index - 1].count }}
+                x{{ inventory[index - 1].count }}
               </span>
 
               <!-- 品质小标 -->
@@ -71,9 +71,10 @@
 
             <!-- 属性列表与对比 -->
             <div class="flex flex-col gap-1 text-xs py-1">
-              <div v-if="selectedItem.type === 'potion'" class="text-emerald-400">
+              <div v-if="selectedItem.type === 'potion'" class="flex flex-col gap-1 text-emerald-400">
                 <span v-if="selectedItem.recoverHp">恢复生命: +{{ selectedItem.recoverHp }}</span>
                 <span v-if="selectedItem.recoverMp">恢复法力: +{{ selectedItem.recoverMp }}</span>
+                <span class="text-amber-400 font-bold">📦 当前存量: {{ selectedItem.count || 1 }} 瓶 (同类无限堆叠)</span>
               </div>
 
               <template v-else>

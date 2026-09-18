@@ -246,9 +246,7 @@ const handleClaimOfflineReward = () => {
     world.addExp(offlineReward.value.expGained);
     world.player.stats.gold += offlineReward.value.goldGained;
     for (const it of offlineReward.value.itemsGained) {
-      if (world.inventory.length < 40) {
-        world.inventory.push(it);
-      }
+      world.addItemToInventory(it);
     }
     sound.playLevelUp();
     world.addBattleLog(
