@@ -168,10 +168,13 @@ export interface BattleLog {
 
 export interface AutoPilotConfig {
   enabled: boolean;
+  autoHpPotion: boolean;
   autoPotionHpPercent: number;
+  autoMpPotion: boolean;
   autoPotionMpPercent: number;
   autoSkill: boolean;
   autoPickup: boolean;
+  autoRecycleWeaker: boolean;
   searchRadius: number;
 }
 

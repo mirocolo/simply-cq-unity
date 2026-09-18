@@ -42,12 +42,12 @@ export class AutoPilot {
       return { type: 'none' };
     }
 
-    // 2. 自动喝药判定 (每 1.5 秒 / 15 ticks 最多喝一次，防连续狂灌)
-    if (currentTick - this.lastPotionTick >= 15) {
+    // 2. 自动喝药判定 (每 1.2 秒 / 12 ticks 最多喝一次，防连续狂灌)
+    if (currentTick - this.lastPotionTick >= 12) {
       const hpRatio = player.stats.hp / player.stats.maxHp;
       const mpRatio = player.stats.mp / player.stats.maxMp;
 
-      if (hpRatio < config.autoPotionHpPercent / 100) {
+      if (config.autoHpPotion && hpRatio < config.autoPotionHpPercent / 100) {
         const hpPot = inventory.find(i => i.type === 'potion' && (i.recoverHp || 0) > 0);
         if (hpPot) {
           this.lastPotionTick = currentTick;
@@ -55,7 +55,7 @@ export class AutoPilot {
         }
       }
 
-      if (mpRatio < config.autoPotionMpPercent / 100) {
+      if (config.autoMpPotion && mpRatio < config.autoPotionMpPercent / 100) {
         const mpPot = inventory.find(i => i.type === 'potion' && (i.recoverMp || 0) > 0);
         if (mpPot) {
           this.lastPotionTick = currentTick;

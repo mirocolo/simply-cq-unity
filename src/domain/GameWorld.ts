@@ -36,10 +36,13 @@ export class GameWorld {
   autoPilot = new AutoPilot();
   autoConfig: AutoPilotConfig = {
     enabled: true,
+    autoHpPotion: true,
     autoPotionHpPercent: 50,
+    autoMpPotion: true,
     autoPotionMpPercent: 30,
     autoSkill: true,
     autoPickup: true,
+    autoRecycleWeaker: true,
     searchRadius: 16
   };
   autoStats: AutoPilotStats = {
@@ -542,6 +545,11 @@ export class GameWorld {
           this.onSound?.('coin');
           const countText = drop.item.count > 1 ? ` x${drop.item.count}` : '';
           this.addBattleLog(`拾取战利品 [${drop.item.name}]${countText}`, 'drop', drop.item.quality);
+
+          // 挂机智能回收：若开启了自动回收弱装，且背包容量已达 35 格以上
+          if (this.autoConfig.enabled && this.autoConfig.autoRecycleWeaker && this.inventory.length >= 35) {
+            this.recycleWeakerOrEqualItems();
+          }
         }
       }
     }

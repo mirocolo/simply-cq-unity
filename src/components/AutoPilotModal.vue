@@ -67,59 +67,112 @@
       </div>
 
       <!-- 挂机策略配置选项 -->
-      <div class="bg-zinc-950/90 p-3 rounded-lg border border-legend-border flex flex-col gap-2.5 text-xs">
-        <span class="text-xs font-bold text-amber-300/90">⚙️ 智能策略调节</span>
+      <!-- 挂机策略配置选项 -->
+      <div class="bg-zinc-950/90 p-3 rounded-lg border border-legend-border flex flex-col gap-3 text-xs">
+        <span class="text-xs font-bold text-amber-300/90 border-b border-zinc-800 pb-1 flex items-center gap-1">
+          <span>⚙️</span>
+          <span>挂机智能策略调节</span>
+        </span>
 
-        <!-- 自动喝血线 -->
-        <div class="flex items-center justify-between">
-          <span class="text-zinc-300">自动喝生命药血线:</span>
-          <div class="flex items-center gap-2">
-            <input 
-              type="range" 
-              min="20" 
-              max="80" 
-              step="5"
-              v-model.number="config.autoPotionHpPercent"
-              class="w-28 accent-red-600"
-            />
-            <span class="font-mono font-bold text-red-400 w-8 text-right">&lt;{{ config.autoPotionHpPercent }}%</span>
+        <!-- 自动喝生命药开关与血线 -->
+        <div class="flex flex-col gap-1.5 bg-zinc-900/60 p-2 rounded border border-zinc-800/80">
+          <div class="flex items-center justify-between">
+            <label class="flex items-center gap-2 cursor-pointer select-none">
+              <input 
+                type="checkbox" 
+                v-model="config.autoHpPotion"
+                class="w-4 h-4 accent-red-600 rounded"
+              />
+              <span class="text-zinc-200 font-semibold">自动饮用金创药 (生命恢复)</span>
+            </label>
+            <span class="font-mono font-bold text-red-400 text-xs">
+              {{ config.autoHpPotion ? `< ${config.autoPotionHpPercent}% 触发` : '已禁用' }}
+            </span>
+          </div>
+          <div v-if="config.autoHpPotion" class="flex items-center justify-between pl-6 text-zinc-400">
+            <span>生命低于阈值喝药:</span>
+            <div class="flex items-center gap-2">
+              <input 
+                type="range" 
+                min="20" 
+                max="85" 
+                step="5"
+                v-model.number="config.autoPotionHpPercent"
+                class="w-28 accent-red-600 cursor-pointer"
+              />
+              <span class="font-mono font-bold text-red-300 w-10 text-right">{{ config.autoPotionHpPercent }}%</span>
+            </div>
           </div>
         </div>
 
-        <!-- 自动喝蓝线 -->
-        <div class="flex items-center justify-between">
-          <span class="text-zinc-300">自动喝法力药蓝线:</span>
-          <div class="flex items-center gap-2">
-            <input 
-              type="range" 
-              min="10" 
-              max="60" 
-              step="5"
-              v-model.number="config.autoPotionMpPercent"
-              class="w-28 accent-blue-600"
-            />
-            <span class="font-mono font-bold text-blue-400 w-8 text-right">&lt;{{ config.autoPotionMpPercent }}%</span>
+        <!-- 自动喝法力药开关与蓝线 -->
+        <div class="flex flex-col gap-1.5 bg-zinc-900/60 p-2 rounded border border-zinc-800/80">
+          <div class="flex items-center justify-between">
+            <label class="flex items-center gap-2 cursor-pointer select-none">
+              <input 
+                type="checkbox" 
+                v-model="config.autoMpPotion"
+                class="w-4 h-4 accent-blue-600 rounded"
+              />
+              <span class="text-zinc-200 font-semibold">自动饮用魔法药 (法力恢复)</span>
+            </label>
+            <span class="font-mono font-bold text-blue-400 text-xs">
+              {{ config.autoMpPotion ? `< ${config.autoPotionMpPercent}% 触发` : '已禁用' }}
+            </span>
+          </div>
+          <div v-if="config.autoMpPotion" class="flex items-center justify-between pl-6 text-zinc-400">
+            <span>法力低于阈值喝药:</span>
+            <div class="flex items-center gap-2">
+              <input 
+                type="range" 
+                min="10" 
+                max="70" 
+                step="5"
+                v-model.number="config.autoPotionMpPercent"
+                class="w-28 accent-blue-600 cursor-pointer"
+              />
+              <span class="font-mono font-bold text-blue-300 w-10 text-right">{{ config.autoPotionMpPercent }}%</span>
+            </div>
           </div>
         </div>
 
         <!-- 自动技能开关 -->
-        <div class="flex items-center justify-between">
-          <span class="text-zinc-300">就绪时自动释放技能 (烈火/刺杀/攻杀):</span>
-          <input 
-            type="checkbox" 
-            v-model="config.autoSkill"
-            class="w-4 h-4 accent-amber-500 rounded"
-          />
+        <div class="flex items-center justify-between bg-zinc-900/40 p-2 rounded border border-zinc-800/60">
+          <label class="flex items-center gap-2 cursor-pointer select-none">
+            <input 
+              type="checkbox" 
+              v-model="config.autoSkill"
+              class="w-4 h-4 accent-amber-500 rounded"
+            />
+            <span class="text-zinc-300">就绪时自动释放技能 (烈火/刺杀/攻杀)</span>
+          </label>
+          <span class="text-[10px] text-zinc-500 font-mono">{{ config.autoSkill ? '已开启' : '关闭' }}</span>
         </div>
 
         <!-- 自动拾取开关 -->
-        <div class="flex items-center justify-between">
-          <span class="text-zinc-300">自动拾取附近掉落战利品:</span>
-          <input 
-            type="checkbox" 
-            v-model="config.autoPickup"
-            class="w-4 h-4 accent-amber-500 rounded"
-          />
+        <div class="flex items-center justify-between bg-zinc-900/40 p-2 rounded border border-zinc-800/60">
+          <label class="flex items-center gap-2 cursor-pointer select-none">
+            <input 
+              type="checkbox" 
+              v-model="config.autoPickup"
+              class="w-4 h-4 accent-amber-500 rounded"
+            />
+            <span class="text-zinc-300">自动走位拾取附近掉落战利品</span>
+          </label>
+          <span class="text-[10px] text-zinc-500 font-mono">{{ config.autoPickup ? '已开启' : '关闭' }}</span>
+        </div>
+
+        <!-- 自动回收战力更低装备 -->
+        <div class="flex items-center justify-between bg-zinc-900/40 p-2 rounded border border-zinc-800/60">
+          <label class="flex items-center gap-2 cursor-pointer select-none">
+            <input 
+              type="checkbox" 
+              v-model="config.autoRecycleWeaker"
+              class="w-4 h-4 accent-amber-500 rounded"
+            />
+            <span class="text-zinc-300">背包将满时自动熔炼 ≤身上战力的同部位装备</span>
+          </label>
+          <span class="text-[10px] text-zinc-500 font-mono">{{ config.autoRecycleWeaker ? '防爆仓' : '关闭' }}</span>
         </div>
       </div>
     </div>
