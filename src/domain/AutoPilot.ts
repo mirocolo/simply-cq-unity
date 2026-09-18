@@ -98,13 +98,13 @@ export class AutoPilot {
 
     // 4. 自动拾取附近掉落物 (6 格以内优先踩格拾取)
     if (config.autoPickup && groundItems.length > 0) {
-      const isBagFull = inventory.length >= 40;
+      // 仅在未开启自动回收且背包已满 40 格时才过滤装备掉落物；开启自动回收时走过去会自动腾挪入包
+      const cannotAutoRecycle = !config.autoRecycleWeaker && inventory.length >= 40;
       const nearItems = groundItems
         .map(item => ({ item, dist: PathFinder.chebyshevDistance(player.gridPos, item.gridPos) }))
         .filter(entry => {
           if (entry.dist > 6 || entry.dist <= 0) return false;
-          // 若背包已满 40 格，过滤掉无法入包的物品（除已有的可堆叠药水外），避免在满包掉落物周围来回抽搐卡死
-          if (isBagFull) {
+          if (cannotAutoRecycle) {
             if (entry.item.item.type === 'potion' || entry.item.item.type === 'material') {
               return inventory.some(i => i.defId === entry.item.item.defId);
             }

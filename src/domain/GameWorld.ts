@@ -85,6 +85,7 @@ export class GameWorld {
     autoSkill: true,
     autoPickup: true,
     autoRecycleWeaker: true,
+    autoRecycleMaxQuality: 2, // 默认自动熔炼蓝装及以下，确保挂机永不爆仓
     searchRadius: 16,
     progressionMode: false
   };
@@ -858,10 +859,15 @@ export class GameWorld {
     // 玩家自动吸附拾取附近 2 格内掉落物
     this.checkPlayerLootPickup();
 
-    // 挂机周期性背包水位维护 (每 5 秒自动巡检防爆仓)
-    if (this.autoConfig.enabled && this.autoConfig.autoRecycleWeaker && this.currentTick % 50 === 0) {
-      if (this.inventory.length >= 35) {
-        this.recycleWeakerOrEqualItems();
+    // 挂机周期性背包水位维护 (每 3 秒自动巡检防爆仓，将背包水位维持在健康安全范围)
+    if (this.autoConfig.enabled && this.autoConfig.autoRecycleWeaker && this.currentTick % 30 === 0) {
+      if (this.inventory.length >= 32) {
+        this.oneKeyEquipBest();
+        this.recycleWeakerOrEqualItems(false);
+        const maxQ = this.autoConfig.autoRecycleMaxQuality ?? 2;
+        if (this.inventory.length >= 34) {
+          this.recycleLowQualityItems(maxQ);
+        }
       }
     }
 
@@ -1798,26 +1804,22 @@ export class GameWorld {
       }
     }
 
-    // 若背包容量达到 40 格上限，启动紧急自动智能腾挪
-    if (this.inventory.length >= 40 && !this.isEmergencyCleaning) {
+    // 若背包容量达到或接近上限 (>= 38 格)，预先启动紧急智能腾挪
+    if (this.inventory.length >= 38 && !this.isEmergencyCleaning) {
       this.isEmergencyCleaning = true;
       try {
-        this.oneKeyEquipBest();
-        this.recycleWeakerOrEqualItems();
-        // 若仍然满 40 格，尝试熔炼白绿普通低品质装备 (特戒与未穿戴部位受保护)
-        if (this.inventory.length >= 40) {
-          this.recycleLowQualityItems();
-        }
+        this.emergencyPruneInventory(2);
       } finally {
         this.isEmergencyCleaning = false;
       }
+    }
 
-      // 若经过多级智能腾挪清理后依然满包，则无法放入
+    // 若依然达到或超过 40 格，进行最终强力腾挪兜底
+    if (this.inventory.length >= 40) {
+      this.emergencyPruneInventory(2);
       if (this.inventory.length >= 40) {
         return false;
       }
-    } else if (this.inventory.length >= 40) {
-      return false;
     }
 
     this.inventory.push(item);
@@ -1825,14 +1827,18 @@ export class GameWorld {
   }
 
   private checkPlayerLootPickup(): void {
-    // 拾取前预检：若开启了自动回收弱装，且背包容量已达 35 格以上，预先自动清理防爆仓
-    if (this.autoConfig.enabled && this.autoConfig.autoRecycleWeaker && this.inventory.length >= 35) {
+    // 拾取前预检：若背包容量已达 33 格以上，预先自动清理防爆仓
+    if (this.inventory.length >= 33) {
       this.recycleWeakerOrEqualItems();
+      const maxQ = this.autoConfig.autoRecycleMaxQuality ?? 2;
+      if (this.inventory.length >= 35) {
+        this.recycleLowQualityItems(maxQ);
+      }
     }
 
     let hasFullBagWarning = false;
 
-    // 自动吸附扩大至 2 格
+    // 自动吸附 (九宫格贴脸及附近 1 格范围内直接吸附入包)
     for (let i = this.groundItems.length - 1; i >= 0; i--) {
       const drop = this.groundItems[i];
       const dist = PathFinder.chebyshevDistance(this.player.gridPos, drop.gridPos);
@@ -1849,9 +1855,13 @@ export class GameWorld {
             this.tryAutoEquipIfBetter(drop.item);
           }
 
-          // 拾取后若背包容量再次达到 35 格以上，顺手清理
-          if (this.autoConfig.enabled && this.autoConfig.autoRecycleWeaker && this.inventory.length >= 35) {
+          // 拾取后若背包容量再次达到 35 格以上，顺手维护清理
+          if (this.inventory.length >= 35) {
             this.recycleWeakerOrEqualItems();
+            const maxQ = this.autoConfig.autoRecycleMaxQuality ?? 2;
+            if (this.inventory.length >= 36) {
+              this.recycleLowQualityItems(maxQ);
+            }
           }
         } else {
           hasFullBagWarning = true;
@@ -2218,31 +2228,55 @@ export class GameWorld {
     return true;
   }
 
-  recycleLowQualityItems(): { gold: number; exp: number; count: number } {
+  recycleLowQualityItems(maxQuality: number = 1): { gold: number; exp: number; count: number } {
+    // 熔炼前先穿戴背包中当前能穿的最强装备，避免误熔高战力提升件
+    this.oneKeyEquipBest();
+
     let gainedGold = 0;
     let gainedExp = 0;
     let count = 0;
 
     for (let i = this.inventory.length - 1; i >= 0; i--) {
       const item = this.inventory[i];
-      if (item.type === 'equipment' && item.quality <= 1) {
+      if (item.type === 'equipment' && item.quality <= maxQuality) {
         // 豁免保护：特戒绝对不可熔炼
         if (item.specialEffect || (item.slot && item.slot.startsWith('special_'))) continue;
 
-        // 豁免保护：若该部位目前身上无装备且背包内无同部位更优装备，保留此件作为过渡防裸奔
+        // 豁免保护：若该装备战力高于身上对应槽位(如未来升级后可穿的更强神装)，保留最高战力件
         if (item.slot) {
-          const current = this.equipped[item.slot];
-          const currentPower = current ? StatCalculator.getItemCombatPower(current) : -1;
-          const power = StatCalculator.getItemCombatPower(item);
-          if (power > currentPower) {
-            const hasBetterInBag = this.inventory.some(
-              other => other.instanceId !== item.instanceId && 
-                       other.type === 'equipment' && 
-                       other.slot === item.slot && 
-                       StatCalculator.getItemCombatPower(other) > power
-            );
-            if (!hasBetterInBag) {
-              continue; // 确实是唯一或最强过渡件，保留防裸奔
+          const isDual = item.slot === 'bracelet_l' || item.slot === 'bracelet_r' || item.slot === 'ring_l' || item.slot === 'ring_r';
+          const itemPower = StatCalculator.getItemCombatPower(item);
+          if (isDual) {
+            const isBracelet = item.slot.startsWith('bracelet');
+            const eq1 = this.equipped[isBracelet ? 'bracelet_l' : 'ring_l'];
+            const eq2 = this.equipped[isBracelet ? 'bracelet_r' : 'ring_r'];
+            const p1 = eq1 ? StatCalculator.getItemCombatPower(eq1) : -1;
+            const p2 = eq2 ? StatCalculator.getItemCombatPower(eq2) : -1;
+            const weakerPower = Math.min(p1, p2);
+            if (itemPower > weakerPower) {
+              const betterInBagCount = this.inventory.filter(
+                other => other.instanceId !== item.instanceId && 
+                         other.type === 'equipment' && 
+                         (isBracelet ? (other.slot === 'bracelet_l' || other.slot === 'bracelet_r') : (other.slot === 'ring_l' || other.slot === 'ring_r')) && 
+                         StatCalculator.getItemCombatPower(other) > itemPower
+              ).length;
+              if (betterInBagCount < 2) {
+                continue; // 保留强力备选
+              }
+            }
+          } else {
+            const current = this.equipped[item.slot];
+            const currentPower = current ? StatCalculator.getItemCombatPower(current) : -1;
+            if (itemPower > currentPower) {
+              const hasBetterInBag = this.inventory.some(
+                other => other.instanceId !== item.instanceId && 
+                         other.type === 'equipment' && 
+                         other.slot === item.slot && 
+                         StatCalculator.getItemCombatPower(other) > itemPower
+              );
+              if (!hasBetterInBag) {
+                continue; // 属于未穿戴但强于身上的最高战力备选，保留
+              }
             }
           }
         }
@@ -2258,7 +2292,8 @@ export class GameWorld {
       this.player.stats.gold += gainedGold;
       this.addExp(gainedExp);
       this.onSound?.('coin');
-      this.addBattleLog(`【一键回收】回收 ${count} 件低品质装备，金币 +${gainedGold}，经验 +${gainedExp}`, 'system');
+      const qualityName = maxQuality >= 3 ? '紫装及以下' : maxQuality >= 2 ? '蓝装及以下' : '白/绿';
+      this.addBattleLog(`【一键回收】回收 ${count} 件${qualityName}装备，金币 +${gainedGold}，经验 +${gainedExp}`, 'system');
     }
 
     return { gold: gainedGold, exp: gainedExp, count };
@@ -2266,34 +2301,40 @@ export class GameWorld {
 
   /**
    * 一键回收战力小于等于身上穿戴装备的同部位冗余装备
-   * (严格按同位置比对：保留至多1件更强神装，绝对豁免特戒与橙色传说装备)
+   * (严格按同位置比对：先自动穿戴最强装备，再回收比身上弱的冗余件；严密保护特戒与当前阶备用神装，杜绝背包卡死)
    */
-  recycleWeakerOrEqualItems(): { gold: number; exp: number; count: number } {
+  recycleWeakerOrEqualItems(autoEquipFirst: boolean = true): { gold: number; exp: number; count: number } {
+    if (autoEquipFirst) {
+      this.oneKeyEquipBest();
+    }
+
     let gainedGold = 0;
     let gainedExp = 0;
     let count = 0;
 
-    // 标记需要保留在背包的极品神装 (避免误熔比身上更好的提升件或特戒)
+    const playerTier = this.player.stats.ascensionTier || 0;
     const keepIndices = new Set<number>();
 
-    // 1. 全局豁免保护：非装备、所有特戒、橙色传说装备
+    // 1. 全局豁免与特戒保护：
+    // 非装备直接保留
     for (let i = 0; i < this.inventory.length; i++) {
       const it = this.inventory[i];
       if (it.type !== 'equipment' || !it.slot) {
         keepIndices.add(i);
         continue;
       }
+    }
 
-      // 绝对豁免所有特戒 (带 specialEffect 或 slot 以 special_ 开头)
-      if (it.specialEffect || it.slot.startsWith('special_')) {
-        keepIndices.add(i);
-        continue;
-      }
-
-      // 绝对豁免橙色传说神装 (quality >= 4)
-      if (it.quality >= 4) {
-        keepIndices.add(i);
-        continue;
+    // 特戒保护：同种特戒在背包中最多保留 1 件备用（无论身上是否已佩戴）
+    const keptSpecialEffects = new Set<string>();
+    for (let i = 0; i < this.inventory.length; i++) {
+      const it = this.inventory[i];
+      if (it.type === 'equipment' && (it.specialEffect || (it.slot && it.slot.startsWith('special_')))) {
+        const key = it.specialEffect || it.slot || '';
+        if (!keptSpecialEffects.has(key)) {
+          keptSpecialEffects.add(key);
+          keepIndices.add(i);
+        }
       }
     }
 
@@ -2301,19 +2342,10 @@ export class GameWorld {
     const singleSlots: EquipSlot[] = ['weapon', 'armor', 'helmet', 'necklace'];
     for (const slot of singleSlots) {
       const equippedItem = this.equipped[slot];
-      let benchmarkPower = equippedItem ? StatCalculator.getItemCombatPower(equippedItem) : -1;
+      const benchmarkPower = equippedItem ? StatCalculator.getItemCombatPower(equippedItem) : -1;
 
-      // 检查 keepIndices 中是否已豁免了该部位的极品装备(如橙装/特戒)，若有，计入基准战力
-      for (const idx of keepIndices) {
-        const keptItem = this.inventory[idx];
-        if (keptItem && keptItem.type === 'equipment' && keptItem.slot === slot && this.canEquipItem(keptItem).can) {
-          benchmarkPower = Math.max(benchmarkPower, StatCalculator.getItemCombatPower(keptItem));
-        }
-      }
-
-      // 区分当前可穿戴候选与未来潜质候选
       const equippableCandidates: { index: number; power: number }[] = [];
-      const futureCandidates: { index: number; power: number; tier: number }[] = [];
+      const futureCandidates: { index: number; power: number }[] = [];
 
       for (let i = 0; i < this.inventory.length; i++) {
         if (keepIndices.has(i)) continue;
@@ -2324,37 +2356,34 @@ export class GameWorld {
           if (check.can) {
             equippableCandidates.push({ index: i, power });
           } else {
-            futureCandidates.push({ index: i, power, tier: it.tier });
+            // 超出当前阶数 2 阶及以上（如玩家 0 阶，掉落 2 阶及以上装备），背包仅 40 格，不予保留避免爆仓
+            if (it.tier <= playerTier + 1) {
+              futureCandidates.push({ index: i, power });
+            }
           }
         }
       }
 
-      // 当前可穿戴装备：按战力降序排序，仅保留最优的前 1 件（若其战力高于基准战力）
+      // 当前可穿戴：按战力降序，仅保留高于身上装备的最高战力第 1 件
       equippableCandidates.sort((a, b) => b.power - a.power);
       if (equippableCandidates.length > 0 && equippableCandidates[0].power > benchmarkPower) {
         keepIndices.add(equippableCandidates[0].index);
       }
 
-      // 未来需求装备：按位面阶数分组，每阶仅保留最强的前 1 件，其余次级低品质未来装全部熔炼
-      const futureByTier = new Map<number, { index: number; power: number }>();
-      for (const fc of futureCandidates) {
-        const existing = futureByTier.get(fc.tier);
-        if (!existing || fc.power > existing.power) {
-          futureByTier.set(fc.tier, { index: fc.index, power: fc.power });
-        }
-      }
-      for (const bestFuture of futureByTier.values()) {
-        keepIndices.add(bestFuture.index);
+      // 未来需求装备：全局仅保留最高战力的第 1 件
+      futureCandidates.sort((a, b) => b.power - a.power);
+      if (futureCandidates.length > 0) {
+        keepIndices.add(futureCandidates[0].index);
       }
     }
 
-    // 3. 双槽位手镯比对优化: bracelets (bracelet_l, bracelet_r)
-    this.markKeepForDualSlots(['bracelet_l', 'bracelet_r'], keepIndices);
+    // 3. 双槽位手镯比对优化 (bracelet_l, bracelet_r)
+    this.markKeepForDualSlots(['bracelet_l', 'bracelet_r'], keepIndices, playerTier);
 
-    // 4. 双槽位戒指比对优化: rings (ring_l, ring_r)
-    this.markKeepForDualSlots(['ring_l', 'ring_r'], keepIndices);
+    // 4. 双槽位戒指比对优化 (ring_l, ring_r)
+    this.markKeepForDualSlots(['ring_l', 'ring_r'], keepIndices, playerTier);
 
-    // 5. 执行回收：所有装备类型中，未被保留的均 <= 身上同位置或已有更优选，全部熔炼！
+    // 5. 执行回收：所有未被保留的装备全部熔炼！
     for (let i = this.inventory.length - 1; i >= 0; i--) {
       const item = this.inventory[i];
       if (item.type !== 'equipment' || !item.slot) continue;
@@ -2382,7 +2411,7 @@ export class GameWorld {
     return { gold: gainedGold, exp: gainedExp, count };
   }
 
-  private markKeepForDualSlots(slots: [EquipSlot, EquipSlot], keepIndices: Set<number>): void {
+  private markKeepForDualSlots(slots: [EquipSlot, EquipSlot], keepIndices: Set<number>, playerTier: number): void {
     const [slot1, slot2] = slots;
     const isMatchingSlot = (s?: EquipSlot) => s === slot1 || s === slot2;
 
@@ -2392,23 +2421,11 @@ export class GameWorld {
     const p1 = eq1 ? StatCalculator.getItemCombatPower(eq1) : -1;
     const p2 = eq2 ? StatCalculator.getItemCombatPower(eq2) : -1;
 
-    // 身上佩戴两件的战力从大到小
-    let equippedPowers = [Math.max(p1, p2), Math.min(p1, p2)];
+    // 身上两件战力从大到小
+    const equippedPowers = [Math.max(p1, p2), Math.min(p1, p2)];
 
-    // 检查 keepIndices 中是否已豁免了该部位的极品装备(如橙装/特戒)
-    for (const idx of keepIndices) {
-      const keptItem = this.inventory[idx];
-      if (keptItem && keptItem.type === 'equipment' && isMatchingSlot(keptItem.slot) && this.canEquipItem(keptItem).can) {
-        const kp = StatCalculator.getItemCombatPower(keptItem);
-        if (kp > equippedPowers[1]) {
-          equippedPowers = [Math.max(equippedPowers[0], kp), Math.min(equippedPowers[0], kp)];
-        }
-      }
-    }
-
-    // 区分当前可穿戴与未来备选
     const equippableCandidates: { index: number; power: number }[] = [];
-    const futureCandidates: { index: number; power: number; tier: number }[] = [];
+    const futureCandidates: { index: number; power: number }[] = [];
 
     for (let i = 0; i < this.inventory.length; i++) {
       if (keepIndices.has(i)) continue;
@@ -2419,16 +2436,15 @@ export class GameWorld {
         if (check.can) {
           equippableCandidates.push({ index: i, power });
         } else {
-          futureCandidates.push({ index: i, power, tier: it.tier });
+          if (it.tier <= playerTier + 1) {
+            futureCandidates.push({ index: i, power });
+          }
         }
       }
     }
 
     // 按战力从高到低排序
     equippableCandidates.sort((a, b) => b.power - a.power);
-
-    // candidates[0] 需高于身上较弱的一件才能替代较弱者
-    // candidates[1] 需高于身上较强的一件才能将身上两件全部替代
     if (equippableCandidates.length > 0 && equippableCandidates[0].power > equippedPowers[1]) {
       keepIndices.add(equippableCandidates[0].index);
       if (equippableCandidates.length > 1 && equippableCandidates[1].power > equippedPowers[0]) {
@@ -2436,18 +2452,75 @@ export class GameWorld {
       }
     }
 
-    // 未来装备：按阶数分组，每阶最多保留 2 件最强备选
-    const futureByTier = new Map<number, { index: number; power: number }[]>();
-    for (const fc of futureCandidates) {
-      const list = futureByTier.get(fc.tier) || [];
-      list.push({ index: fc.index, power: fc.power });
-      futureByTier.set(fc.tier, list);
+    // 未来装备：双槽位全局最多保留 2 件最强备选
+    futureCandidates.sort((a, b) => b.power - a.power);
+    if (futureCandidates[0]) keepIndices.add(futureCandidates[0].index);
+    if (futureCandidates[1]) keepIndices.add(futureCandidates[1].index);
+  }
+
+  /**
+   * 终极防爆仓腾挪：背包满时层层递进清理，确保绝对不卡死无法拾取
+   */
+  emergencyPruneInventory(neededSlots: number = 2): number {
+    let pruned = 0;
+    // 1. 先尝试一键穿戴与智能回收弱装
+    this.oneKeyEquipBest();
+    const res1 = this.recycleWeakerOrEqualItems(false);
+    pruned += res1.count;
+    if (this.inventory.length <= 40 - neededSlots) return pruned;
+
+    // 2. 尝试回收蓝装及以下 (带防裸奔保护)
+    const res2 = this.recycleLowQualityItems(2);
+    pruned += res2.count;
+    if (this.inventory.length <= 40 - neededSlots) return pruned;
+
+    // 3. 尝试回收紫装及以下 (带防裸奔保护)
+    const res3 = this.recycleLowQualityItems(3);
+    pruned += res3.count;
+    if (this.inventory.length <= 40 - neededSlots) return pruned;
+
+    // 4. 终极兜底：若依然满格，查找非特戒的未穿戴闲置装备，按战力从低到高强制熔炼
+    const candidates: { index: number; item: ItemInstance; power: number }[] = [];
+    for (let i = 0; i < this.inventory.length; i++) {
+      const it = this.inventory[i];
+      if (it.type === 'equipment' && !it.specialEffect && (!it.slot || !it.slot.startsWith('special_'))) {
+        candidates.push({
+          index: i,
+          item: it,
+          power: StatCalculator.getItemCombatPower(it)
+        });
+      }
     }
-    for (const list of futureByTier.values()) {
-      list.sort((a, b) => b.power - a.power);
-      if (list[0]) keepIndices.add(list[0].index);
-      if (list[1]) keepIndices.add(list[1].index);
+
+    candidates.sort((a, b) => a.power - b.power);
+
+    const neededToRemove = Math.min(candidates.length, this.inventory.length - (40 - neededSlots));
+    if (neededToRemove > 0) {
+      const toRemoveIds = new Set(candidates.slice(0, neededToRemove).map(c => c.item.instanceId));
+      let gainedGold = 0;
+      let gainedExp = 0;
+      let count = 0;
+
+      for (let i = this.inventory.length - 1; i >= 0; i--) {
+        const it = this.inventory[i];
+        if (toRemoveIds.has(it.instanceId)) {
+          gainedGold += it.price;
+          gainedExp += Math.floor(it.price * 0.6);
+          count++;
+          this.inventory.splice(i, 1);
+        }
+      }
+
+      this.player.stats.gold += gainedGold;
+      this.addExp(gainedExp);
+      pruned += count;
+      this.addBattleLog(
+        `【包裹紧急腾挪】随身包裹严重爆满，自动熔炼 ${count} 件闲置低战力装备腾出空间，金币 +${gainedGold}，经验 +${gainedExp}！`,
+        'system'
+      );
     }
+
+    return pruned;
   }
 
   addDamagePopup(gridPos: GridCoord, text: string, color: string, isCrit = false, isHeal = false): void {

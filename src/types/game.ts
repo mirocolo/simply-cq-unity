@@ -231,6 +231,7 @@ export interface AutoPilotConfig {
   autoSkill: boolean;
   autoPickup: boolean;
   autoRecycleWeaker: boolean;
+  autoRecycleMaxQuality?: number; // 自动熔炼最高品质: 1=白绿, 2=蓝装及以下(默认推荐), 3=紫装及以下
   searchRadius: number;
   progressionMode?: boolean; // 是否开启自动破境推图 (遇传送门自动下层)
 }

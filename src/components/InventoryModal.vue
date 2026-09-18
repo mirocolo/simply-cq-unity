@@ -225,6 +225,15 @@
             <span>🧹</span>
             <span>回收白/绿装</span>
           </button>
+
+          <button 
+            @click="$emit('oneKeyRecycleBlue')"
+            class="px-3 py-2 bg-gradient-to-r from-cyan-800 to-blue-700 hover:from-cyan-700 hover:to-blue-600 text-white font-bold rounded-lg text-xs shadow active:scale-95 transition-all flex items-center gap-1"
+            title="一键熔炼背包内所有蓝色及以下品质装备(自动保护特戒与当前最优件)"
+          >
+            <span>💎</span>
+            <span>回收≤蓝装</span>
+          </button>
         </div>
 
         <span class="text-xs text-zinc-400 shrink-0">
@@ -253,6 +262,7 @@ const emit = defineEmits<{
   (e: 'oneKeyEquip'): void;
   (e: 'oneKeyRecycle'): void;
   (e: 'oneKeyRecycleWeaker'): void;
+  (e: 'oneKeyRecycleBlue'): void;
 }>();
 
 const getItemPower = (item?: ItemInstance | null) => {

@@ -170,9 +170,22 @@
               v-model="config.autoRecycleWeaker"
               class="w-4 h-4 accent-amber-500 rounded"
             />
-            <span class="text-zinc-300">背包将满时自动熔炼 ≤身上战力的同部位装备</span>
+            <span class="text-zinc-300">背包拥挤时自动穿戴最强装并熔炼弱装</span>
           </label>
           <span class="text-[10px] text-zinc-500 font-mono">{{ config.autoRecycleWeaker ? '防爆仓' : '关闭' }}</span>
+        </div>
+
+        <!-- 自动熔炼多余装备品质范围 -->
+        <div v-if="config.autoRecycleWeaker" class="flex items-center justify-between bg-zinc-900/40 p-2 rounded border border-zinc-800/60 pl-6 text-xs">
+          <span class="text-zinc-400">防爆仓自动熔炼冗余品阶：</span>
+          <select 
+            v-model.number="config.autoRecycleMaxQuality"
+            class="bg-zinc-950 text-amber-300 border border-zinc-700 rounded px-2 py-1 text-xs font-bold focus:outline-none cursor-pointer"
+          >
+            <option :value="1">白/绿普通装</option>
+            <option :value="2">蓝装及以下 (推荐·防爆仓)</option>
+            <option :value="3">紫装及以下 (极速高阶图)</option>
+          </select>
         </div>
       </div>
     </div>
