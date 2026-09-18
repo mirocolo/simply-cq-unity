@@ -58,6 +58,7 @@ namespace UnityEngine
         public void Render() { }
         public static Camera main { get { return null; } }
         public Vector3 ScreenToWorldPoint(Vector3 p) { return default(Vector3); }
+        public Vector3 WorldToViewportPoint(Vector3 p) { return default(Vector3); }
         public Vector3 WorldToScreenPoint(Vector3 p) { return default(Vector3); }
     }
 
@@ -177,6 +178,37 @@ namespace UnityEngine
         public static Color Lerp(Color a, Color b, float t) { return a; }
     }
 
+    // ---- 音频：AudioDirector 用到的就这么几个成员 ----
+    public class AudioClip : Object { public float length { get { return 0f; } } }
+
+    public class AudioSource : Behaviour
+    {
+        public AudioClip clip { get; set; }
+        public bool playOnAwake { get; set; }
+        public bool loop { get; set; }
+        public float spatialBlend { get; set; }
+        public bool bypassEffects { get; set; }
+        public bool bypassListenerEffects { get; set; }
+        public float panStereo { get; set; }
+        public float volume { get; set; }
+        public float pitch { get; set; }
+        public bool isPlaying { get { return false; } }
+        public void Play() { }
+        public void Stop() { }
+    }
+
+    public static class Resources
+    {
+        public static T Load<T>(string path) where T : Object { return null; }
+    }
+
+    public static class Random
+    {
+        public static float Range(float minInclusive, float maxInclusive) { return minInclusive; }
+        public static int Range(int minInclusive, int maxExclusive) { return minInclusive; }
+        public static float value { get { return 0f; } }
+    }
+
     public static class Mathf
     {
         public const float Infinity = float.PositiveInfinity;
@@ -232,7 +264,7 @@ namespace UnityEngine
         public static float timeSinceLevelLoad { get { return 0f; } }
     }
 
-    public enum KeyCode { A, B, C, D, E, I, J, S, W, F5, F9, Space, Escape, Alpha1, Alpha2, Alpha3, Alpha4, Alpha5, Alpha6, UpArrow, DownArrow, LeftArrow, RightArrow }
+    public enum KeyCode { A, B, C, D, E, I, J, M, S, W, F5, F9, Space, Escape, Minus, Equals, Alpha1, Alpha2, Alpha3, Alpha4, Alpha5, Alpha6, UpArrow, DownArrow, LeftArrow, RightArrow }
 
     public static class Input
     {

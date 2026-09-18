@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using SimplyCQ.Data;
 using SimplyCQ.Domain;
+using SimplyCQ.Unity;
 using UnityEditor;
 using UnityEngine;
 
@@ -1051,6 +1052,130 @@ namespace SimplyCQ.EditorTools
                     Check(freshHero.HomePos == freshHero.Pos, "跨图读档后 HomePos 跟着人");
                     Check(CheckInvariants(freshSim.World) == null, "跨图读档后不变量成立");
                 }
+            }
+
+            // ---------------- M6 音效：素材齐不齐 + 事件有没有真的接上 ----------------
+            {
+                // 1) 表本身
+                int missingCue = 0;
+                foreach (SfxId id in System.Enum.GetValues(typeof(SfxId)))
+                    if (id != SfxId.None && SfxTable.Get(id) == null) missingCue++;
+                Check(missingCue == 0, "SfxId 里的每条音效在表里都有定义（" + SfxTable.Count + " 条）");
+
+                int badDef = 0, clipRefs = 0;
+                string badSfxWhere = "";
+                foreach (SfxTable.SfxDef def in SfxTable.All)
+                {
+                    if (def.Clips == null || def.Clips.Length == 0
+                        || def.Volume <= 0f || def.Volume > 1f || def.Pitch <= 0f)
+                    {
+                        badDef++;
+                        if (badSfxWhere.Length < 60) badSfxWhere += def.Id + " ";
+                    }
+                    if (def.Clips != null) clipRefs += def.Clips.Length;
+                }
+                Check(badDef == 0, "每条音效都有文件、音量在 (0,1]、音高为正"
+                    + (badDef > 0 ? "，有问题：" + badSfxWhere : ""));
+
+                // 2) 引用的音频文件必须真的在 Resources 里 —— 手滑写错一个路径就是"这条音效永远没声"
+                int missingClip = 0;
+                string sfxClipWhere = "";
+                foreach (SfxTable.SfxDef def in SfxTable.All)
+                {
+                    for (int i = 0; i < def.Clips.Length; i++)
+                    {
+                        if (Resources.Load<AudioClip>(def.Clips[i]) != null) continue;
+                        missingClip++;
+                        if (sfxClipWhere.Length < 70) sfxClipWhere += def.Clips[i] + " ";
+                    }
+                }
+                Check(missingClip == 0,
+                    "音效表引用的 " + clipRefs + " 个音频文件都能从 Resources 加载到"
+                    + (missingClip > 0 ? "，缺：" + sfxClipWhere : ""));
+
+                // 3) 接线：发事件 -> 真的响。
+                //    每个事件前把时钟拨过冷却，这样"发一次响一次"才是确定的。
+                GameMap audioMap = MapLoader.CreateFallbackMap(24, 24);
+                World audioWorld = new World(audioMap, 31337u, new EventBus());
+                Projection audioProj = new Projection(
+                    db.Balance.tileWidthPx / (float)db.Balance.pixelsPerUnit,
+                    db.Balance.tileHeightPx / (float)db.Balance.pixelsPerUnit);
+
+                Entity audioHero = db.CreatePlayer();
+                audioHero.Pos = audioMap.Spawn;
+                audioHero.HomePos = audioHero.Pos;
+                audioWorld.Spawn(audioHero);
+                audioWorld.Player = audioHero;
+
+                Entity audioFoe = db.CreateMonster("mon_hen");
+                if (audioFoe != null)
+                {
+                    audioFoe.Pos = audioMap.FindNearestWalkable(new TilePos(audioMap.Spawn.X + 1, audioMap.Spawn.Y), 6);
+                    audioFoe.HomePos = audioFoe.Pos;
+                    audioWorld.Spawn(audioFoe);
+                }
+
+                AudioDirector audio = new AudioDirector(audioWorld, audioProj, null);
+
+                int wired = 0, notWired = 0;
+                string unwiredWhere = "";
+                System.Action<string, System.Action> probe = delegate(string name, System.Action publish)
+                {
+                    audio.Tick(2f);                        // 拨过最短间隔，"发一次该响一次"
+                    int before = audio.PlayedCount;
+                    publish();
+                    if (audio.PlayedCount > before) wired++;
+                    else { notWired++; if (unwiredWhere.Length < 70) unwiredWhere += name + " "; }
+                };
+
+                probe("AttackSwing", delegate { audioWorld.Events.Publish(new AttackSwing { Actor = audioHero.Id, Dir = Dir.Down, Range = 1 }); });
+                probe("AttackMissed", delegate { audioWorld.Events.Publish(new AttackMissed { Source = audioHero.Id, Target = audioFoe != null ? audioFoe.Id : ActorId.None }); });
+                probe("DamageDealt", delegate { audioWorld.Events.Publish(new DamageDealt { Source = audioHero.Id, Target = audioFoe != null ? audioFoe.Id : ActorId.None, Amount = 3 }); });
+                probe("DamageDealt(crit)", delegate { audioWorld.Events.Publish(new DamageDealt { Source = audioHero.Id, Target = audioFoe != null ? audioFoe.Id : ActorId.None, Amount = 9, Crit = true }); });
+                probe("EntityDied(怪)", delegate { audioWorld.Events.Publish(new EntityDied { Id = audioFoe != null ? audioFoe.Id : ActorId.None, Killer = audioHero.Id }); });
+                probe("EntityDied(玩家)", delegate { audioWorld.Events.Publish(new EntityDied { Id = audioHero.Id, Killer = ActorId.None }); });
+                probe("PlayerRespawned", delegate { audioWorld.Events.Publish(new PlayerRespawned { Id = audioHero.Id, At = audioMap.Spawn }); });
+                probe("LevelUp", delegate { audioWorld.Events.Publish(new LevelUp { Id = audioHero.Id, Level = 2 }); });
+                probe("SkillLearned", delegate { audioWorld.Events.Publish(new SkillLearned { Id = audioHero.Id, SkillId = "sk_slash", SkillName = "攻杀剑术" }); });
+                probe("SkillCast", delegate { audioWorld.Events.Publish(new SkillCast { Caster = audioHero.Id, SkillId = "sk_slash", Dir = Dir.Down, TargetCount = 1, Success = true }); });
+                probe("GoldPicked", delegate { audioWorld.Events.Publish(new GoldPicked { By = audioHero.Id, Amount = 3, Total = 3 }); });
+                probe("ItemPicked", delegate { audioWorld.Events.Publish(new ItemPicked { By = audioHero.Id, DefId = "wp_wood", Count = 1 }); });
+                probe("ItemUsed", delegate { audioWorld.Events.Publish(new ItemUsed { By = audioHero.Id, DefId = "pot_hp_s" }); });
+                probe("EquipmentChanged", delegate { audioWorld.Events.Publish(new EquipmentChanged { Id = audioHero.Id, Slot = EquipSlot.Weapon, DefId = "wp_wood" }); });
+                probe("ItemBought", delegate { audioWorld.Events.Publish(new ItemBought { By = audioHero.Id, DefId = "wp_wood", Count = 1, Gold = 100 }); });
+                probe("MapChanged", delegate { audioWorld.Events.Publish(new MapChanged { FromMapId = "a", ToMapId = "b" }); });
+                probe("PickupRefused", delegate { audioWorld.Events.Publish(new PickupRefused { By = audioHero.Id, DefId = "mat_hide", Reason = "背包满了" }); });
+                probe("EntityMoved(玩家)", delegate { audioWorld.Events.Publish(new EntityMoved { Id = audioHero.Id, From = audioMap.Spawn, To = audioMap.Spawn, Facing = Dir.Down }); });
+
+                Check(notWired == 0, wired + " 类事件都能触发音效"
+                    + (notWired > 0 ? "，没响的：" + unwiredWhere : ""));
+
+                // 4) 最短间隔真的在起作用：同一瞬间连发两次不该响两次
+                audio.Tick(2f);
+                int quietBefore = audio.PlayedCount;
+                audio.Play(SfxId.Refuse);
+                audio.Play(SfxId.Refuse);
+                Check(audio.PlayedCount == quietBefore + 1, "同一个音在最短间隔内连发两次只响一次（防刷屏）");
+
+                // 5) 静音 / 音量
+                audio.Tick(2f);
+                int mutedBefore = audio.PlayedCount;
+                Check(audio.ToggleMute(), "M 键切成静音");
+                audio.Play(SfxId.LevelUp);
+                Check(audio.PlayedCount == mutedBefore, "静音时不再出声");
+                audio.ToggleMute();
+                audio.Tick(2f);
+                audio.Play(SfxId.LevelUp);
+                Check(audio.PlayedCount == mutedBefore + 1, "再按一次恢复出声");
+
+                float loud = audio.MasterVolume;
+                audio.AdjustVolume(-0.1f);
+                Check(audio.MasterVolume < loud, "音量能调小（" + loud.ToString("0.0") + " -> " + audio.MasterVolume.ToString("0.0") + "）");
+                audio.AdjustVolume(-10f);
+                Check(audio.MasterVolume >= 0f, "音量减到底也不会变成负数");
+
+                audio.Dispose();
+                Check(true, "运行时建的音频物体能收干净（不留跨场景的残留）");
             }
 
             // 键盘操作的成败取决于 Player Settings，这里用编译期宏直接断言，

@@ -44,6 +44,7 @@ namespace DomainCheck
             TestLootLoop();
             TestMapSwitch();
             TestNpcTeleport();
+            TestGroundTypes();
             Console.WriteLine();
             Console.WriteLine(_failures == 0 ? "全部通过 ✓" : _failures + " 项失败 ✗");
             return _failures == 0 ? 0 : 1;
@@ -323,6 +324,43 @@ namespace DomainCheck
             // 第二下时玩家已经在洞窟、身边没有传送员了，所以只会成功一次
             Check(twice.Player.Gold == 70, "同一 tick 点两下不会重复扣费（实际 " + twice.Player.Gold + "）");
             Check(twice.MapChanges == 1, "同一 tick 点两下只换一次图（实际 " + twice.MapChanges + "）");
+        }
+
+        // ---------------------------------------------------------------- M6 地表类型
+
+        private static void TestGroundTypes()
+        {
+            Console.WriteLine("[地表类型（脚步音效靠它分草地/石头）]");
+
+            // Map() 会把非 '#' 的字符都当成草地，所以这里手工铺一张有各种地表的图
+            int w = 4, h = 2;
+            byte[] tiles = new byte[w * h];
+            tiles[0] = GameMap.Pack(GameMap.GroundGrass, false);      // (0,0) 草地
+            tiles[1] = GameMap.Pack(GameMap.GroundGrassLight, false); // (1,0) 亮草地
+            tiles[2] = GameMap.Pack(GameMap.GroundRoad, false);       // (2,0) 土路
+            tiles[3] = GameMap.Pack(GameMap.GroundStone, false);      // (3,0) 石板
+            tiles[4] = GameMap.Pack(GameMap.GroundTree, true);        // (0,1) 树林
+            tiles[5] = GameMap.Pack(GameMap.GroundWater, true);       // (1,1) 水
+            tiles[6] = GameMap.Pack(GameMap.GroundHill, true);        // (2,1) 山
+            tiles[7] = GameMap.Pack(GameMap.GroundGrass, false);      // (3,1) 草地
+
+            GameMap map = new GameMap("ground", "ground", w, h, tiles);
+
+            Check(map.GroundId(new TilePos(0, 0)) == GameMap.GroundGrass, "草地编号对得上");
+            Check(map.GroundId(new TilePos(2, 0)) == GameMap.GroundRoad, "土路编号对得上");
+            Check(map.GroundId(new TilePos(3, 0)) == GameMap.GroundStone, "石板编号对得上");
+
+            Check(!map.IsHardGround(new TilePos(0, 0)), "草地不是硬地（踩上去是草声）");
+            Check(!map.IsHardGround(new TilePos(1, 0)), "亮草地也不是硬地");
+            Check(map.IsHardGround(new TilePos(2, 0)), "土路是硬地（踩上去是石头声）");
+            Check(map.IsHardGround(new TilePos(3, 0)), "石板是硬地");
+            Check(!map.IsHardGround(new TilePos(0, 1)), "树林不算硬地（反正也走不进去）");
+            Check(!map.IsHardGround(new TilePos(1, 1)), "水不算硬地");
+            Check(!map.IsHardGround(new TilePos(9, 9)), "越界的格子不会炸，按草地处理");
+
+            // 真实地图上也验一遍：镇子是石板广场 + 土路，草原是草地
+            GameMap grass = Map("..........", "..........", "..........");
+            Check(!grass.IsHardGround(new TilePos(1, 1)), "自检用的草地地图全图都不是硬地");
         }
 
         private static void TestTilePos()

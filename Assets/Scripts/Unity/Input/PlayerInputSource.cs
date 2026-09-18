@@ -137,6 +137,18 @@ namespace SimplyCQ.Unity
 #endif
         }
 
+        /// <summary>0 = 没按，1 = M 静音开关，2 = - 音量减，3 = = 音量加。</summary>
+        public int ReadAudioToggle()
+        {
+            if (!Enabled) return 0;
+#if ENABLE_LEGACY_INPUT_MANAGER
+            if (Input.GetKeyDown(KeyCode.M)) return 1;
+            if (Input.GetKeyDown(KeyCode.Minus)) return 2;
+            if (Input.GetKeyDown(KeyCode.Equals)) return 3;
+#endif
+            return 0;
+        }
+
         /// <summary>0 = 没按，1 = F5 存档，2 = F9 读档。</summary>
         public int ReadSaveLoad()
         {

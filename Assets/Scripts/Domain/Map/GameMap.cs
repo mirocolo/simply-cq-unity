@@ -9,6 +9,15 @@ namespace SimplyCQ.Domain
         /// <summary>tile 字节的第 0 位 = 阻挡；高 7 位 = 地表贴图编号。</summary>
         public const byte BlockedBit = 1;
 
+        // ---- 地表编号。MapLoader 按字符写进来的就是这几个值；表现层（表、音效）也读它 ----
+        public const int GroundGrass = 0;
+        public const int GroundGrassLight = 1;
+        public const int GroundWater = 2;
+        public const int GroundTree = 3;
+        public const int GroundRoad = 4;
+        public const int GroundHill = 5;
+        public const int GroundStone = 6;
+
         public readonly string Id;
         public readonly string Name;
         public readonly int Width;
@@ -36,6 +45,16 @@ namespace SimplyCQ.Domain
         public bool InBounds(TilePos p) { return p.X >= 0 && p.Y >= 0 && p.X < Width && p.Y < Height; }
         public bool IsWalkable(TilePos p) { return InBounds(p) && (_tiles[Index(p)] & BlockedBit) == 0; }
         public int GroundId(TilePos p) { return InBounds(p) ? (_tiles[Index(p)] >> 1) : 0; }
+
+        /// <summary>
+        /// 脚下是不是"硬地"（土路 / 石板）。现在只有脚步音效在用：
+        /// 草原上踩草、镇子和洞窟里踩石头，听感不一样。
+        /// </summary>
+        public bool IsHardGround(TilePos p)
+        {
+            int g = GroundId(p);
+            return g == GroundRoad || g == GroundStone;
+        }
 
         public void SetTile(TilePos p, int groundId, bool blocked)
         {
