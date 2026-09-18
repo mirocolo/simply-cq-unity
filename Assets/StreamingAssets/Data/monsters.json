@@ -31,6 +31,102 @@
           "chance": 0.08,
           "min": 1,
           "max": 1
+        },
+        {
+          "itemId": "ar_cloth",
+          "chance": 0.015,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "be_cloth",
+          "chance": 0.015,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "br_copper",
+          "chance": 0.015,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "bt_straw",
+          "chance": 0.015,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "he_cap",
+          "chance": 0.015,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "nk_bead",
+          "chance": 0.015,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "rg_copper",
+          "chance": 0.015,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "wp_wood",
+          "chance": 0.015,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "ar_padded",
+          "chance": 0.008,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "be_leather",
+          "chance": 0.008,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "br_iron",
+          "chance": 0.008,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "bt_cloth",
+          "chance": 0.008,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "he_leather",
+          "chance": 0.008,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "nk_copper",
+          "chance": 0.008,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "rg_iron",
+          "chance": 0.008,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "wp_oak",
+          "chance": 0.008,
+          "min": 1,
+          "max": 1
         }
       ]
     },
@@ -67,14 +163,122 @@
           "max": 2
         },
         {
-          "itemId": "wp_wood",
-          "chance": 0.06,
+          "itemId": "ar_leather",
+          "chance": 0.019,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "ar_cloth",
-          "chance": 0.05,
+          "itemId": "be_iron",
+          "chance": 0.019,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "br_silver",
+          "chance": 0.019,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "bt_leather",
+          "chance": 0.019,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "he_iron",
+          "chance": 0.019,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "nk_fang",
+          "chance": 0.019,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "rg_silver",
+          "chance": 0.019,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "wp_short",
+          "chance": 0.019,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "ar_iron",
+          "chance": 0.011,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "be_silver",
+          "chance": 0.011,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "br_jade",
+          "chance": 0.011,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "bt_iron",
+          "chance": 0.011,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "he_silver",
+          "chance": 0.011,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "nk_silver",
+          "chance": 0.011,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "rg_jade",
+          "chance": 0.011,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "wp_iron",
+          "chance": 0.011,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "ar_chain",
+          "chance": 0.006,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "nk_jade",
+          "chance": 0.006,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "rg_gem",
+          "chance": 0.006,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "wp_silver",
+          "chance": 0.006,
           "min": 1,
           "max": 1
         }
@@ -119,20 +323,146 @@
           "max": 1
         },
         {
-          "itemId": "wp_short",
-          "chance": 0.08,
+          "itemId": "ar_bronze",
+          "chance": 0.027,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "ar_leather",
-          "chance": 0.07,
+          "itemId": "be_bronze",
+          "chance": 0.027,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "nk_bead",
-          "chance": 0.04,
+          "itemId": "br_gold",
+          "chance": 0.027,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "bt_bronze",
+          "chance": 0.027,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "he_bronze",
+          "chance": 0.027,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "nk_gold",
+          "chance": 0.027,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "rg_gold",
+          "chance": 0.027,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "wp_long",
+          "chance": 0.027,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "ar_steel",
+          "chance": 0.015,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "be_steel",
+          "chance": 0.015,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "br_steel",
+          "chance": 0.015,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "bt_steel",
+          "chance": 0.015,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "he_steel",
+          "chance": 0.015,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "nk_steel",
+          "chance": 0.015,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "rg_steel",
+          "chance": 0.015,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "wp_bronze",
+          "chance": 0.015,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "ar_black",
+          "chance": 0.008,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "be_black",
+          "chance": 0.008,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "br_black",
+          "chance": 0.008,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "bt_black",
+          "chance": 0.008,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "he_black",
+          "chance": 0.008,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "nk_black",
+          "chance": 0.008,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "rg_black",
+          "chance": 0.008,
+          "min": 1,
+          "max": 1
+        },
+        {
+          "itemId": "wp_black",
+          "chance": 0.008,
           "min": 1,
           "max": 1
         }

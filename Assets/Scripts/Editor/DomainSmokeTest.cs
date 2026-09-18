@@ -262,6 +262,104 @@ namespace SimplyCQ.EditorTools
             Check(badPrice == 0, "所有物品都填了价格");
             Check(badEquip == 0, "没有「什么属性都不加」的空装备");
 
+            // ---------------- M5c 60 件装备：阶梯不能断、不能倒挂 ----------------
+            Check(equipCount >= 60, "装备铺到 " + equipCount + " 件（目标 >= 60）");
+
+            // 1) 部位断档：每个部位在每个等级段都得有货，否则玩家会发现"XX 部位没得换"
+            int missingCells = 0;
+            string missingWhere = "";
+            for (int s = 1; s < ItemDef.SlotCount; s++)
+            {
+                EquipSlot slot = (EquipSlot)s;
+                List<int> levels = new List<int>();
+                foreach (ItemDef def in db.Items.All)
+                    if (def.IsEquip && def.Slot == slot && !levels.Contains(def.LevelReq)) levels.Add(def.LevelReq);
+                levels.Sort();
+                if (levels.Count < 3)
+                {
+                    missingCells++;
+                    if (missingWhere.Length < 60) missingWhere += slot + "(" + levels.Count + "段) ";
+                }
+            }
+            Check(missingCells == 0,
+                "8 个部位都至少有 3 个等级段可选" + (missingCells > 0 ? "，缺的是：" + missingWhere : ""));
+
+            // 2) 品质阶梯不倒挂：同部位同需求等级里，品质下限更高的那件，白装属性必须也更高。
+            //    这条是"精良货就该比白板强"的数据保证 —— 不靠掉落时摇得好。
+            int inverted = 0;
+            string invertedWhere = "";
+            for (int s = 1; s < ItemDef.SlotCount; s++)
+            {
+                EquipSlot slot = (EquipSlot)s;
+                List<ItemDef> sameSlot = new List<ItemDef>();
+                foreach (ItemDef def in db.Items.All)
+                    if (def.IsEquip && def.Slot == slot) sameSlot.Add(def);
+
+                for (int i = 0; i < sameSlot.Count; i++)
+                {
+                    for (int k = 0; k < sameSlot.Count; k++)
+                    {
+                        ItemDef lo = sameSlot[i], hi = sameSlot[k];
+                        if (lo.LevelReq != hi.LevelReq) continue;
+                        if ((int)lo.MinQuality >= (int)hi.MinQuality) continue;
+                        if (EquipPower(hi) <= EquipPower(lo))
+                        {
+                            inverted++;
+                            if (invertedWhere.Length < 70)
+                                invertedWhere += hi.Id + " 不比 " + lo.Id + " 强 ";
+                        }
+                    }
+                }
+            }
+            Check(inverted == 0,
+                "品质阶梯不倒挂：品质下限高的装备白装属性也更高" + (inverted > 0 ? "，反例：" + invertedWhere : ""));
+
+            // 3) 每件装备都得有出处 —— 打得到 或者 买得到。否则就是玩家永远见不到的死数据。
+            HashSet<string> obtainable = new HashSet<string>();
+            foreach (GameMap m in db.AllMaps)
+                for (int i = 0; i < m.Npcs.Count; i++)
+                {
+                    NpcDef npc = db.GetNpc(m.Npcs[i].NpcId);
+                    if (npc == null) continue;
+                    for (int k = 0; k < npc.Stock.Count; k++) obtainable.Add(npc.Stock[k]);
+                }
+            foreach (MonsterDto md in db.AllMonsters)
+                if (md.drops != null)
+                    for (int k = 0; k < md.drops.Length; k++)
+                        if (md.drops[k] != null) obtainable.Add(md.drops[k].itemId);
+
+            int orphans = 0;
+            string orphanIds = "";
+            foreach (ItemDef def in db.Items.All)
+            {
+                if (!def.IsEquip) continue;
+                if (obtainable.Contains(def.Id)) continue;
+                orphans++;
+                if (orphanIds.Length < 60) orphanIds += def.Id + " ";
+            }
+            Check(orphans == 0,
+                "每件装备都有出处（怪掉 或 商店卖）" + (orphans > 0 ? "，够不着的：" + orphanIds : ""));
+
+            // 4) 怪的掉落别跨等级段：鸡不该掉 Lv7 的剑
+            int crossBand = 0;
+            string crossWhere = "";
+            foreach (MonsterDto md in db.AllMonsters)
+            {
+                if (md.drops == null) continue;
+                for (int k = 0; k < md.drops.Length; k++)
+                {
+                    ItemDef dropped = db.Items.Get(md.drops[k].itemId);
+                    if (dropped == null || !dropped.IsEquip) continue;
+                    if (dropped.LevelReq > md.level + 3)
+                    {
+                        crossBand++;
+                        if (crossWhere.Length < 60) crossWhere += md.id + "->" + dropped.Id + " ";
+                    }
+                }
+            }
+            Check(crossBand == 0,
+                "怪的等级都配得上它掉的装备（没有鸡掉 Lv7 剑这种事）" + (crossBand > 0 ? "，越界：" + crossWhere : ""));
+
             // 商店只卖白装、精良货 —— 稀有 / 史诗只能打怪爆。
             // 这条规则写在这里，是为了以后往 npcs.json 里塞蓝装时会被立刻拦下来。
             int premiumInShop = 0;
@@ -469,10 +567,21 @@ namespace SimplyCQ.EditorTools
 
                 if (merchant != null)
                 {
+                    // 优先挑一件"精良下限"的货来测 —— 那条路径才验得到"商店按 minQuality 卖"
                     int stockIndex = -1;
                     for (int i = 0; i < merchant.Shop.Stock.Count; i++)
                     {
-                        if (trader.Bag.IndexOf(merchant.Shop.Stock[i]) < 0) { stockIndex = i; break; }
+                        ItemDef s = db.Items.Get(merchant.Shop.Stock[i]);
+                        if (s == null) continue;
+                        if (s.MinQuality == ItemQuality.White) continue;
+                        if (trader.Bag.IndexOf(s.Id) < 0) { stockIndex = i; break; }
+                    }
+                    if (stockIndex < 0)
+                    {
+                        for (int i = 0; i < merchant.Shop.Stock.Count; i++)
+                        {
+                            if (trader.Bag.IndexOf(merchant.Shop.Stock[i]) < 0) { stockIndex = i; break; }
+                        }
                     }
                     Check(stockIndex >= 0, "商人有玩家背包里没有的货可以测买卖");
 
@@ -482,16 +591,24 @@ namespace SimplyCQ.EditorTools
 
                     if (buyDef != null)
                     {
+                        // 价格按物品表的品质下限算 —— 商店卖精良货，收的就是精良价
+                        int buyPrice = db.Shop.BuyPriceOf(buyDef, buyDef.MinQuality);
                         int goldBefore = trader.Gold;
                         List<Intent> buyActs = new List<Intent>();
                         buyActs.Add(Intent.BagAction(trader.Id, IntentKind.BuyItem, stockIndex));
                         shopSim.World.Step(buyActs);
 
-                        Check(trader.Gold == goldBefore - buyDef.Price,
-                            "买 1 件扣 " + buyDef.Price + " 金（" + goldBefore + " -> " + trader.Gold + "）");
+                        Check(trader.Gold == goldBefore - buyPrice,
+                            "买 1 件扣 " + buyPrice + " 金（" + goldBefore + " -> " + trader.Gold + "）");
                         Check(trader.Bag.IndexOf(buyId) >= 0, "买到的东西进了背包");
 
-                        int sellPrice = db.Shop.SellPriceOf(buyDef, ItemQuality.White);
+                        int boughtSlot = trader.Bag.IndexOf(buyId);
+                        Check(boughtSlot >= 0 && trader.Bag.At(boughtSlot).Quality == buyDef.MinQuality,
+                            "商人的货按 minQuality 卖：" + buyId + " 写的是 "
+                            + ItemQualityRules.DisplayName(buyDef.MinQuality) + "，拿到的就是 "
+                            + (boughtSlot >= 0 ? ItemQualityRules.DisplayName(trader.Bag.At(boughtSlot).Quality) : "-"));
+
+                        int sellPrice = db.Shop.SellPriceOf(buyDef, buyDef.MinQuality);
                         int bagIndex = trader.Bag.IndexOf(buyId);
                         int goldBeforeSell = trader.Gold;
                         List<Intent> sellActs = new List<Intent>();
@@ -724,6 +841,19 @@ namespace SimplyCQ.EditorTools
         }
 
         private static bool AlwaysFalse(TilePos p) { return false; }
+
+        /// <summary>
+        /// 把一件装备的【白装】属性折算成一个"强度点"，用来比较同部位同等级的装备谁更强。
+        /// 权重和 Tools/gen_items.py 的预算点严格对应（那边是正向分配，这里是反推）：
+        /// 1 防御 = 1 点、1 攻击 = 0.5 点、1 生命 = 0.25 点、1 魔法 = 0.2 点。
+        /// </summary>
+        private static float EquipPower(ItemDef def)
+        {
+            return def.Ac
+                 + (def.MinDc + def.MaxDc) * 0.5f
+                 + def.BonusHp * 0.25f
+                 + def.BonusMp * 0.2f;
+        }
 
         private static TilePos FindFarWalkable(GameMap map, TilePos from)
         {

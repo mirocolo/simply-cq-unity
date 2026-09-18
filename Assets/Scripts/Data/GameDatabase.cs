@@ -27,6 +27,9 @@ namespace SimplyCQ.Data
         public int MapCount { get { return _maps.Count; } }
         public IEnumerable<GameMap> AllMaps { get { return _maps.Values; } }
 
+        /// <summary>所有怪的定义。自检要遍历它检查"怪的等级配不配得上它掉的装备"。</summary>
+        public IEnumerable<MonsterDto> AllMonsters { get { return _monsters.Values; } }
+
         public static GameDatabase LoadFromStreamingAssets(string mapFile, string monsterFile, string balanceFile,
                                                           string itemFile = "Data/items.json",
                                                           string npcFile = "Data/npcs.json",

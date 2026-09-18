@@ -76,9 +76,12 @@ namespace SimplyCQ.Domain
                 return false;
             }
 
-            // 商人的货一律是白板 —— 好东西不卖，靠打（这也让品质倍率只在掉落侧生效）
+            // 商人的货按物品表写的品质下限卖：写了 minQuality: green 的精良货，
+            // 买到手就是精良（价格也按精良算），不会出现"表里说最低是精良、商店却卖白板"。
+            // 蓝以上的下限不允许进货 —— 好东西靠打，冒烟自检守着这条。
+            ItemQuality quality = def.MinQuality;
             ShopTuning bt = tuning != null ? tuning : new ShopTuning();
-            int price = bt.BuyPriceOf(def, ItemQuality.White);
+            int price = bt.BuyPriceOf(def, quality);
             if (buyer.Gold < price)
             {
                 Refuse(world, buyer, "金币不够（要 " + price + "，你有 " + buyer.Gold + "）");
@@ -91,7 +94,7 @@ namespace SimplyCQ.Domain
             }
 
             buyer.Gold -= price;
-            buyer.Bag.Add(def, 1, ItemQuality.White);
+            buyer.Bag.Add(def, 1, quality);
 
             world.Events.Publish(new ItemBought { By = buyer.Id, DefId = def.Id, Count = 1, Gold = price });
             world.Events.Publish(new InventoryChanged { Id = buyer.Id });

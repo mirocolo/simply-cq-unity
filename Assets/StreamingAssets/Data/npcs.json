@@ -4,16 +4,22 @@
       "id": "npc_merchant",
       "name": "杂货商",
       "sprite": "npc_merchant",
-      "dialog": "买点什么？也可以把不要的东西卖给我。",
+      "dialog": "买点什么？也可以把不要的东西卖给我。好东西我可没有，得自己去打。",
       "stock": [
         "pot_hp_s",
         "pot_hp_m",
         "pot_mp_s",
         "wp_wood",
-        "wp_short",
         "ar_cloth",
         "he_cap",
-        "bt_straw"
+        "be_cloth",
+        "bt_straw",
+        "nk_bead",
+        "rg_copper",
+        "br_copper",
+        "wp_oak",
+        "ar_padded",
+        "he_leather"
       ]
     }
   ]
