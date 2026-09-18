@@ -843,49 +843,52 @@ export class GameWorld {
 
   /**
    * 一键回收战力小于等于身上穿戴装备的同部位冗余装备
+   * (严格按同位置比对：保留可能换上的更强神装，精准熔炼弱于同位置穿戴的一切冗余装备)
    */
   recycleWeakerOrEqualItems(): { gold: number; exp: number; count: number } {
     let gainedGold = 0;
     let gainedExp = 0;
     let count = 0;
 
+    // 标记需要保留在背包的极品神装 (避免误熔比身上更好的提升件)
+    const keepIndices = new Set<number>();
+
+    // 1. 单槽位优化比对: weapon, armor, helmet, necklace
+    const singleSlots: EquipSlot[] = ['weapon', 'armor', 'helmet', 'necklace'];
+    for (const slot of singleSlots) {
+      const equippedItem = this.equipped[slot];
+      const equippedPower = equippedItem ? StatCalculator.getItemCombatPower(equippedItem) : -1;
+
+      // 找出背包内属于该部位的所有装备并按战力降序排序
+      const candidates: { index: number; power: number }[] = [];
+      for (let i = 0; i < this.inventory.length; i++) {
+        const it = this.inventory[i];
+        if (it.type === 'equipment' && it.slot === slot) {
+          candidates.push({ index: i, power: StatCalculator.getItemCombatPower(it) });
+        }
+      }
+      candidates.sort((a, b) => b.power - a.power);
+
+      // 若背包内存在比身上该部位更强 (或该部位未穿戴时最强) 的装备，仅保留最强 1 件，其余皆为冗余
+      if (candidates.length > 0) {
+        if (candidates[0].power > equippedPower) {
+          keepIndices.add(candidates[0].index);
+        }
+      }
+    }
+
+    // 2. 双槽位手镯比对优化: bracelets (bracelet_l, bracelet_r)
+    this.markKeepForDualSlots(['bracelet_l', 'bracelet_r'], keepIndices);
+
+    // 3. 双槽位戒指比对优化: rings (ring_l, ring_r)
+    this.markKeepForDualSlots(['ring_l', 'ring_r'], keepIndices);
+
+    // 4. 执行回收：所有装备类型中，未被保留的均 <= 身上同位置或同部位已有更优选，全部熔炼！
     for (let i = this.inventory.length - 1; i >= 0; i--) {
       const item = this.inventory[i];
       if (item.type !== 'equipment' || !item.slot) continue;
 
-      const slot = item.slot;
-      const itemPower = StatCalculator.getItemCombatPower(item);
-      let shouldRecycle = false;
-
-      if (slot === 'ring_l' || slot === 'ring_r') {
-        const ring1 = this.equipped.ring_l;
-        const ring2 = this.equipped.ring_r;
-        if (ring1 && ring2) {
-          const minRingPower = Math.min(
-            StatCalculator.getItemCombatPower(ring1),
-            StatCalculator.getItemCombatPower(ring2)
-          );
-          if (itemPower <= minRingPower) shouldRecycle = true;
-        }
-      } else if (slot === 'bracelet_l' || slot === 'bracelet_r') {
-        const br1 = this.equipped.bracelet_l;
-        const br2 = this.equipped.bracelet_r;
-        if (br1 && br2) {
-          const minBrPower = Math.min(
-            StatCalculator.getItemCombatPower(br1),
-            StatCalculator.getItemCombatPower(br2)
-          );
-          if (itemPower <= minBrPower) shouldRecycle = true;
-        }
-      } else {
-        const currentEquip = this.equipped[slot];
-        if (currentEquip) {
-          const curPower = StatCalculator.getItemCombatPower(currentEquip);
-          if (itemPower <= curPower) shouldRecycle = true;
-        }
-      }
-
-      if (shouldRecycle) {
+      if (!keepIndices.has(i)) {
         gainedGold += item.price;
         gainedExp += Math.floor(item.price * 0.6);
         count++;
@@ -898,14 +901,47 @@ export class GameWorld {
       this.addExp(gainedExp);
       this.onSound?.('coin');
       this.addBattleLog(
-        `【智能回收】成功熔炼 ${count} 件弱于身上的同部位冗余装备，获得金币 +${gainedGold}，经验 +${gainedExp}！`,
+        `【智能回收】成功按同部位熔炼 ${count} 件弱于身上的冗余装备，获得金币 +${gainedGold}，经验 +${gainedExp}！`,
         'system'
       );
     } else {
-      this.addBattleLog('【智能回收】包裹中无弱于身上的冗余装备，已妥善保留极品神装！', 'system');
+      this.addBattleLog('【智能回收】背包中无弱于身上的同部位冗余装备，极品神装已妥善保留！', 'system');
     }
 
     return { gold: gainedGold, exp: gainedExp, count };
+  }
+
+  private markKeepForDualSlots(slots: [EquipSlot, EquipSlot], keepIndices: Set<number>): void {
+    const [slot1, slot2] = slots;
+    const isMatchingSlot = (s?: EquipSlot) => s === slot1 || s === slot2;
+
+    const eq1 = this.equipped[slot1];
+    const eq2 = this.equipped[slot2];
+
+    const p1 = eq1 ? StatCalculator.getItemCombatPower(eq1) : -1;
+    const p2 = eq2 ? StatCalculator.getItemCombatPower(eq2) : -1;
+
+    // 身上佩戴两件的战力从大到小
+    const equippedPowers = [Math.max(p1, p2), Math.min(p1, p2)];
+
+    // 背包内所有该类型装备从大到小排序
+    const candidates: { index: number; power: number }[] = [];
+    for (let i = 0; i < this.inventory.length; i++) {
+      const it = this.inventory[i];
+      if (it.type === 'equipment' && isMatchingSlot(it.slot)) {
+        candidates.push({ index: i, power: StatCalculator.getItemCombatPower(it) });
+      }
+    }
+    candidates.sort((a, b) => b.power - a.power);
+
+    // candidates[0] 需高于身上较弱的一件才能替代
+    // candidates[1] 需高于身上较强的一件才能将身上两件全部替代
+    if (candidates.length > 0 && candidates[0].power > equippedPowers[1]) {
+      keepIndices.add(candidates[0].index);
+      if (candidates.length > 1 && candidates[1].power > equippedPowers[0]) {
+        keepIndices.add(candidates[1].index);
+      }
+    }
   }
 
   addDamagePopup(gridPos: GridCoord, text: string, color: string, isCrit = false, isHeal = false): void {
