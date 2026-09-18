@@ -38,7 +38,6 @@ namespace SimplyCQ.Unity
             _names = names;
 
             world.Events.Subscribe<DamageDealt>(OnDamage);
-            world.Events.Subscribe<AttackMissed>(OnMiss);
             world.Events.Subscribe<GoldPicked>(OnGold);
             world.Events.Subscribe<LevelUp>(OnLevelUp);
             world.Events.Subscribe<EntityDied>(OnDied);

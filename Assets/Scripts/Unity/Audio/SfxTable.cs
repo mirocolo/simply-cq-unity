@@ -6,8 +6,7 @@ namespace SimplyCQ.Unity
     public enum SfxId
     {
         None = 0,
-        Swing,          // 挥砍
-        Miss,           // 挥空（同一个挥砍音压低音高，听感上"没砍到"）
+        Swing,          // 挥砍（挥空也用它 —— 挥空就是一次没砍到人的挥砍，不必单独响一声）
         Hit,            // 命中
         Crit,           // 暴击
         MonsterDie,     // 怪死
@@ -69,8 +68,6 @@ namespace SimplyCQ.Unity
 
             Add(t, SfxId.Swing, new[] { "Audio/swing/swing_1", "Audio/swing/swing_2" },
                 volume: 0.45f, pitchSpread: 0.08f, minInterval: 0.12f);
-            Add(t, SfxId.Miss, new[] { "Audio/swing/swing_1", "Audio/swing/swing_2" },
-                volume: 0.28f, pitch: 0.82f, pitchSpread: 0.06f, minInterval: 0.12f);
 
             Add(t, SfxId.Hit, new[] { "Audio/hit/hit_1", "Audio/hit/hit_2", "Audio/hit/hit_3" },
                 volume: 0.55f, pitchSpread: 0.12f, minInterval: 0.06f);

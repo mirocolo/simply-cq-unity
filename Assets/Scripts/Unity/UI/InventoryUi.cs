@@ -45,7 +45,7 @@ namespace SimplyCQ.Unity
         private readonly GUIStyle[] _qualityLabels = new GUIStyle[ItemQualityRules.Count];
 
         private bool _bagOpen = true;
-        private bool _charOpen;
+        private bool _charOpen = true;   // 默认就开着：属性/装备一眼能看到，C 收起
         private int _hoverBag = -1;
         private int _hoverGear = -1;
         private string _hint = "";

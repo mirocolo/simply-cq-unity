@@ -77,7 +77,6 @@ namespace SimplyCQ.Unity
             IEventBus bus = _world.Events;
 
             bus.Subscribe<AttackSwing>(delegate(AttackSwing e) { PlayAt(SfxId.Swing, PosOf(e.Actor)); });
-            bus.Subscribe<AttackMissed>(delegate(AttackMissed e) { PlayAt(SfxId.Miss, PosOf(e.Source)); });
             bus.Subscribe<DamageDealt>(OnDamage);
             bus.Subscribe<EntityDied>(OnDied);
             bus.Subscribe<PlayerRespawned>(delegate(PlayerRespawned e) { Play(SfxId.Respawn); });

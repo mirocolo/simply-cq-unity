@@ -770,6 +770,12 @@ namespace SimplyCQ.Unity
                 UiSkin.HpFill, "HP " + p.Hp + " / " + p.MaxHp);
 
             y += h + 4f;
+            // 蓝量：放技能靠它，不开在 HUD 上就得每次按 C 才知道还够不够放
+            UiSkin.Bar(UiScale.R(x, y, w, h),
+                p.MaxMp > 0 ? p.Mp / (float)p.MaxMp : 0f,
+                UiSkin.MpFill, "MP " + p.Mp + " / " + p.MaxMp);
+
+            y += h + 4f;
             UiSkin.Bar(UiScale.R(x, y, w, h),
                 p.ExpToNextLevel > 0 ? p.Exp / (float)p.ExpToNextLevel : 0f,
                 UiSkin.ExpFill, "EXP " + p.Exp + " / " + p.ExpToNextLevel);

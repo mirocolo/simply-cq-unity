@@ -1129,7 +1129,6 @@ namespace SimplyCQ.EditorTools
                 };
 
                 probe("AttackSwing", delegate { audioWorld.Events.Publish(new AttackSwing { Actor = audioHero.Id, Dir = Dir.Down, Range = 1 }); });
-                probe("AttackMissed", delegate { audioWorld.Events.Publish(new AttackMissed { Source = audioHero.Id, Target = audioFoe != null ? audioFoe.Id : ActorId.None }); });
                 probe("DamageDealt", delegate { audioWorld.Events.Publish(new DamageDealt { Source = audioHero.Id, Target = audioFoe != null ? audioFoe.Id : ActorId.None, Amount = 3 }); });
                 probe("DamageDealt(crit)", delegate { audioWorld.Events.Publish(new DamageDealt { Source = audioHero.Id, Target = audioFoe != null ? audioFoe.Id : ActorId.None, Amount = 9, Crit = true }); });
                 probe("EntityDied(怪)", delegate { audioWorld.Events.Publish(new EntityDied { Id = audioFoe != null ? audioFoe.Id : ActorId.None, Killer = audioHero.Id }); });
@@ -1149,6 +1148,11 @@ namespace SimplyCQ.EditorTools
 
                 Check(notWired == 0, wired + " 类事件都能触发音效"
                     + (notWired > 0 ? "，没响的：" + unwiredWhere : ""));
+
+                // MISS 是按需求去掉的：挥空不飘字、不单独响一声（挥砍声本身就有）
+                Check(!System.Enum.IsDefined(typeof(SfxId), "Miss"),
+                    "挥空不单独配音效（按需求去掉了 MISS 飘字与 miss 音）");
+                Check(audioWorld != null, "音效接线用例的 world 可用");
 
                 // 4) 最短间隔真的在起作用：同一瞬间连发两次不该响两次
                 audio.Tick(2f);
