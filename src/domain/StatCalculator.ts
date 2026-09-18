@@ -27,20 +27,20 @@ export class StatCalculator {
   }
 
   static getBaseStatsForLevel(level: number, ascensionTier = 0): EntityStats {
-    let baseHp = 150 + (level - 1) * 45;
-    let baseMp = 80 + (level - 1) * 20;
-    let minDC = 6 + Math.floor(level * 2.2);
-    let maxDC = 12 + Math.floor(level * 3.5);
-    let minAC = 2 + Math.floor(level * 1.0);
-    let maxAC = 4 + Math.floor(level * 1.6);
-    const maxExp = Math.floor(80 * Math.pow(1.3, level - 1));
+    let baseHp = 380 + (level - 1) * 55;
+    let baseMp = 120 + (level - 1) * 25;
+    let minDC = 10 + Math.floor(level * 2.5);
+    let maxDC = 18 + Math.floor(level * 4.0);
+    let minAC = 4 + Math.floor(level * 1.2);
+    let maxAC = 8 + Math.floor(level * 1.8);
+    const maxExp = Math.floor(60 * Math.pow(1.22, level - 1));
 
     const milestone = this.getLevelMilestone(level);
     let critRate = 0.08 + milestone.critRate;
     let critMult = 1.6 + milestone.critMult;
     let haste = milestone.haste;
     let dodgeRate = milestone.dodgeRate;
-    let lifestealRate = 0.02; // 出厂 2%
+    let lifestealRate = 0.05; // 出厂 5% (前期稳健续航)
     let luck = 0;
     let damageMultRatio = 0;
     let defenseIgnoreRate = 0;

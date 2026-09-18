@@ -48,9 +48,10 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     color: '#a16207',
     icon: '🌾',
     lootTable: [
-      { defId: 'pot_hp_large', chance: 0.5, minCount: 1, maxCount: 2 },
-      { defId: 'w_wood_sword', chance: 0.2 },
-      { defId: 'a_buyi', chance: 0.15 }
+      { defId: 'pot_hp_large', chance: 0.8, minCount: 1, maxCount: 2 },
+      { defId: 'w_wood_sword', chance: 0.45 },
+      { defId: 'a_buyi', chance: 0.40 },
+      { defId: 'h_qingtong', chance: 0.30 }
     ]
   },
   'm_cat': {
@@ -72,10 +73,11 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     color: '#ca8a04',
     icon: '🐱',
     lootTable: [
-      { defId: 'pot_hp_large', chance: 0.6, minCount: 1, maxCount: 2 },
-      { defId: 'w_bronze_sword', chance: 0.18 },
-      { defId: 'h_qingtong', chance: 0.12 },
-      { defId: 'b_tieshou', chance: 0.15 }
+      { defId: 'pot_hp_large', chance: 0.8, minCount: 1, maxCount: 2 },
+      { defId: 'w_bronze_sword', chance: 0.40 },
+      { defId: 'h_qingtong', chance: 0.35 },
+      { defId: 'b_tieshou', chance: 0.40 },
+      { defId: 'r_gutong', chance: 0.40 }
     ]
   },
   'm_spider': {
@@ -97,10 +99,11 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     color: '#16a34a',
     icon: '🕷️',
     lootTable: [
-      { defId: 'pot_hp_large', chance: 0.4, minCount: 1, maxCount: 2 },
-      { defId: 'n_chuantong', chance: 0.15 },
-      { defId: 'r_gutong', chance: 0.2 },
-      { defId: 'w_bahuang', chance: 0.08 }
+      { defId: 'pot_hp_large', chance: 0.7, minCount: 1, maxCount: 2 },
+      { defId: 'n_chuantong', chance: 0.35 },
+      { defId: 'r_gutong', chance: 0.40 },
+      { defId: 'w_bahuang', chance: 0.30 },
+      { defId: 'a_qingkai', chance: 0.30 }
     ]
   },
   'm_skeleton': {
@@ -122,12 +125,13 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     color: '#94a3b8',
     icon: '💀',
     lootTable: [
-      { defId: 'pot_hp_large', chance: 0.5, minCount: 2, maxCount: 4 },
-      { defId: 'pot_mp_large', chance: 0.4, minCount: 1, maxCount: 3 },
-      { defId: 'w_lingfeng', chance: 0.1 },
-      { defId: 'a_qingkai', chance: 0.12 },
-      { defId: 'b_jinshou', chance: 0.12 },
-      { defId: 'h_daoshi', chance: 0.08 }
+      { defId: 'pot_hp_large', chance: 0.8, minCount: 2, maxCount: 4 },
+      { defId: 'pot_mp_large', chance: 0.6, minCount: 1, maxCount: 3 },
+      { defId: 'w_lingfeng', chance: 0.30 },
+      { defId: 'a_qingkai', chance: 0.35 },
+      { defId: 'b_jinshou', chance: 0.30 },
+      { defId: 'h_daoshi', chance: 0.25 },
+      { defId: 'n_kuangfeng', chance: 0.20 }
     ]
   },
   'm_zombie': {
@@ -149,30 +153,30 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     color: '#7c3aed',
     icon: '🧟',
     lootTable: [
-      { defId: 'pot_hp_large', chance: 0.7, minCount: 3, maxCount: 5 },
-      { defId: 'w_zhanma', chance: 0.15 },
-      { defId: 'n_kuangfeng', chance: 0.10 },
-      { defId: 'r_shanhu', chance: 0.15 },
-      { defId: 'a_zhongkai', chance: 0.12 }
+      { defId: 'pot_hp_large', chance: 0.9, minCount: 3, maxCount: 5 },
+      { defId: 'w_zhanma', chance: 0.35 },
+      { defId: 'n_kuangfeng', chance: 0.25 },
+      { defId: 'r_shanhu', chance: 0.30 },
+      { defId: 'a_zhongkai', chance: 0.30 }
     ]
   },
   'm_white_pig': {
     templateId: 'm_white_pig',
     name: '★ 白野猪(精英)',
     level: 30,
-    hp: 9500, // 精英怪大幅提升血量 (原 4200 -> 9500)
+    hp: 2800, // 前期友好适度血量 (原 9500 -> 2800，动态随玩家等级成长)
     mp: 0,
-    minDC: 35,
-    maxDC: 65,
-    minAC: 12,
-    maxAC: 22,
-    critRate: 0.18,
-    haste: 12,
-    baseAttackInterval: 7,
+    minDC: 18,
+    maxDC: 32,
+    minAC: 8,
+    maxAC: 14,
+    critRate: 0.12,
+    haste: 6,
+    baseAttackInterval: 8,
     goldDrop: [1200, 3000],
     expReward: 1600,
     isElite: true,
-    respawnTicks: 70, // 7秒极速复活 (原 12秒)
+    respawnTicks: 90,
     color: '#e11d48',
     icon: '🐗',
     lootTable: [
@@ -190,24 +194,24 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     templateId: 'm_wooma_boss',
     name: '★★ 沃玛教主(首领)',
     level: 38,
-    hp: 45000, // 首领大Boss巨额生命 (原 13500 -> 45000)
+    hp: 8800, // 前期友好血量 (原 45000 -> 8800，动态随成长提升)
     mp: 1000,
-    minDC: 65,
-    maxDC: 120,
-    minAC: 20,
-    maxAC: 35,
-    critRate: 0.25,
-    haste: 20,
-    baseAttackInterval: 6,
+    minDC: 28,
+    maxDC: 52,
+    minAC: 15,
+    maxAC: 25,
+    critRate: 0.16,
+    haste: 12,
+    baseAttackInterval: 7,
     goldDrop: [5000, 15000],
     expReward: 6500,
     isBoss: true,
-    respawnTicks: 140, // 14秒复活 (原 25秒)
+    respawnTicks: 160,
     color: '#dc2626',
     icon: '👹',
     lootTable: [
       { defId: 'pot_sun', chance: 1.0, minCount: 6, maxCount: 10 },
-      { defId: 'pot_liaoshang', chance: 0.4, minCount: 1, maxCount: 3 },
+      { defId: 'pot_liaoshang', chance: 0.5, minCount: 1, maxCount: 3 },
       { defId: 'w_jingzhongyue', chance: 0.50 }, // 祖玛套装
       { defId: 'w_caijue', chance: 0.55 }, // 55% 爆裁决之杖！
       { defId: 'a_linghun', chance: 0.45 },
@@ -216,27 +220,27 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
       { defId: 'n_lvse', chance: 0.40 },
       { defId: 'b_qishi', chance: 0.45 },
       { defId: 'r_liliang', chance: 0.50 },
-      { defId: 'r_mabi', chance: 0.18 }, // 18% 爆麻痹戒指
-      { defId: 'r_kuangfeng_ring', chance: 0.15 } // 15% 狂风特戒
+      { defId: 'r_mabi', chance: 0.20 }, // 20% 爆麻痹戒指
+      { defId: 'r_kuangfeng_ring', chance: 0.20 } // 20% 狂风特戒
     ]
   },
   'm_red_moon': {
     templateId: 'm_red_moon',
     name: '★★★ 赤月恶魔(神话)',
     level: 45,
-    hp: 120000, // 神话级终极Boss超级生命 (原 32000 -> 120000)
+    hp: 24000, // 前期友好神话Boss血量 (原 120000 -> 24000)
     mp: 3000,
-    minDC: 95,
-    maxDC: 180,
-    minAC: 32,
-    maxAC: 52,
-    critRate: 0.35,
-    haste: 25,
-    baseAttackInterval: 5,
+    minDC: 42,
+    maxDC: 75,
+    minAC: 24,
+    maxAC: 38,
+    critRate: 0.22,
+    haste: 16,
+    baseAttackInterval: 6,
     goldDrop: [20000, 50000],
     expReward: 20000,
     isBoss: true,
-    respawnTicks: 200, // 20秒复活 (原 40秒)
+    respawnTicks: 220,
     color: '#b91c1c',
     icon: '👿',
     lootTable: [
@@ -250,9 +254,9 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
       { defId: 'b_shengzhan', chance: 0.65 },
       { defId: 'r_shengzhan', chance: 0.65 },
       { defId: 'r_mabi', chance: 0.35 }, // 35% 爆特戒麻痹
-      { defId: 'r_fuhuo', chance: 0.25 }, // 25% 爆复活戒指！
-      { defId: 'r_hushen', chance: 0.25 }, // 25% 爆护身戒指！
-      { defId: 'r_xingyun', chance: 0.20 }  // 20% 幸运特戒！
+      { defId: 'r_fuhuo', chance: 0.30 }, // 30% 爆复活戒指！
+      { defId: 'r_hushen', chance: 0.30 }, // 30% 爆护身戒指！
+      { defId: 'r_xingyun', chance: 0.25 }  // 25% 幸运特戒！
     ]
   }
 };

@@ -34,7 +34,7 @@ export const ITEM_DEFINITIONS: Record<string, ItemDef> = {
     maxAC: 0,
     maxHp: 20,
     maxMp: 0,
-    levelReq: 5,
+    levelReq: 1,
     price: 150,
     icon: '🗡️',
     desc: '青铜打造的短剑，比木剑更为锋利耐用。'
@@ -597,7 +597,7 @@ export const ITEM_DEFINITIONS: Record<string, ItemDef> = {
     maxAC: 2,
     maxHp: 20,
     maxMp: 0,
-    levelReq: 5,
+    levelReq: 1,
     price: 100,
     icon: '🪖',
     desc: '简单的青铜护额头盔。'
@@ -762,7 +762,7 @@ export const ITEM_DEFINITIONS: Record<string, ItemDef> = {
     maxAC: 0,
     maxHp: 15,
     maxMp: 10,
-    levelReq: 2,
+    levelReq: 1,
     price: 80,
     icon: '📿',
     desc: '银链穿着绿石的简易饰物。'
@@ -954,7 +954,7 @@ export const ITEM_DEFINITIONS: Record<string, ItemDef> = {
     maxAC: 1,
     maxHp: 10,
     maxMp: 0,
-    levelReq: 3,
+    levelReq: 1,
     price: 60,
     icon: '⭕',
     desc: '铁片弯折制成的手镯。'
@@ -1122,7 +1122,7 @@ export const ITEM_DEFINITIONS: Record<string, ItemDef> = {
     maxAC: 0,
     maxHp: 10,
     maxMp: 0,
-    levelReq: 3,
+    levelReq: 1,
     price: 70,
     icon: '💍',
     desc: '简单的青铜小戒指。'

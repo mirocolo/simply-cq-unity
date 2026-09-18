@@ -422,10 +422,11 @@ export class IsometricRenderer {
 
     ctx.font = ent.isBoss ? 'bold 12px "SimSun", "Songti SC", serif' : '11px "SimSun", "Songti SC", serif';
     ctx.textAlign = 'center';
-    ctx.fillStyle = ent.isPlayer ? '#fef08a' : (ent.isBoss ? '#f87171' : (ent.isElite ? '#fde047' : '#e2e8f0'));
+    ctx.fillStyle = ent.invincibleTicks && ent.invincibleTicks > 0 ? '#38bdf8' : (ent.isPlayer ? '#fef08a' : (ent.isBoss ? '#f87171' : (ent.isElite ? '#fde047' : '#e2e8f0')));
     ctx.shadowColor = '#000000';
     ctx.shadowBlur = 3;
-    ctx.fillText(ent.name, 0, barY - 4);
+    const displayName = ent.invincibleTicks && ent.invincibleTicks > 0 ? `🛡️[无敌] ${ent.name}` : ent.name;
+    ctx.fillText(displayName, 0, barY - 4);
     ctx.shadowBlur = 0;
 
     ctx.restore();
@@ -434,6 +435,22 @@ export class IsometricRenderer {
   private drawPlayerWarrior(ctx: CanvasRenderingContext2D, p: Entity, world: GameWorld): void {
     const isAttacking = p.state === 'attacking';
     const hasDragonBlade = (p.stats.maxDC >= 35);
+
+    // 无敌金身庇护光罩 (Invincibility Shield)
+    if (p.invincibleTicks && p.invincibleTicks > 0) {
+      ctx.save();
+      const pulse = Math.sin(Date.now() / 120) * 3;
+      ctx.fillStyle = 'rgba(56, 189, 248, 0.25)';
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 2;
+      ctx.shadowColor = '#38bdf8';
+      ctx.shadowBlur = 12;
+      ctx.beginPath();
+      ctx.arc(0, -20, 28 + pulse, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+    }
 
     // 狂暴模式下：全身烈焰光环
     if (world.isBerserk) {

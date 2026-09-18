@@ -42,8 +42,8 @@ export class AutoPilot {
       return { type: 'none' };
     }
 
-    // 2. 自动喝药判定 (每 1.2 秒 / 12 ticks 最多喝一次，防连续狂灌)
-    if (currentTick - this.lastPotionTick >= 12) {
+    // 2. 自动喝药判定 (每 0.6 秒 / 6 ticks 最多喝一次，提高急救响应)
+    if (currentTick - this.lastPotionTick >= 6) {
       const hpRatio = player.stats.hp / player.stats.maxHp;
       const mpRatio = player.stats.mp / player.stats.maxMp;
 
@@ -84,18 +84,37 @@ export class AutoPilot {
       }
     }
 
-    // 5. 索敌与战斗：获取所有活着的怪物并按距离由近及远排序
-    const aliveMonsters = monsters
-      .filter(m => m.state !== 'dead')
-      .map(m => ({
-        monster: m,
-        dist: PathFinder.chebyshevDistance(player.gridPos, m.gridPos)
-      }))
-      .sort((a, b) => a.dist - b.dist);
+    // 5. 智能索敌与战斗：避开远超自身等级的怪与未成长时的Boss
+    const playerLevel = player.stats.level;
+    const safeCandidates = monsters.filter(m => {
+      if (m.state === 'dead') return false;
+      // 若玩家等级较低（低于Boss 8级以上），且未手操主动攻击过Boss，挂机绝不主动招惹Boss
+      if (m.isBoss && playerLevel < m.stats.level - 8 && !m.hasBeenAttackedByPlayer) {
+        return false;
+      }
+      // 避免跨 10 级以上刷怪送死
+      if (m.stats.level > playerLevel + 10 && !m.hasBeenAttackedByPlayer) {
+        return false;
+      }
+      return true;
+    });
 
-    if (aliveMonsters.length === 0) {
+    const availableMonsters = safeCandidates.length > 0 
+      ? safeCandidates 
+      : monsters.filter(m => m.state !== 'dead');
+
+    if (availableMonsters.length === 0) {
       return { type: 'none' };
     }
+
+    const aliveMonsters = availableMonsters
+      .map(m => {
+        const dist = PathFinder.chebyshevDistance(player.gridPos, m.gridPos);
+        const levelDiff = Math.abs(m.stats.level - playerLevel);
+        const score = dist * 2 + levelDiff * 1.2;
+        return { monster: m, dist, score };
+      })
+      .sort((a, b) => a.score - b.score);
 
     // 贴身贴脸 (距离 <= 1)，直接出手
     const closest = aliveMonsters[0];

@@ -26,8 +26,8 @@ export const SKILL_DEFINITIONS: Record<string, SkillDef> = {
     maxProficiency: 150,
     damageMult: 1.6,
     cdTicks: 25, // 2.5秒冷却
-    manaCost: 15,
-    unlockLevel: 7,
+    manaCost: 8,
+    unlockLevel: 3,
     currentCdTicks: 0
   },
   'assassinate': {
@@ -39,9 +39,9 @@ export const SKILL_DEFINITIONS: Record<string, SkillDef> = {
     proficiency: 0,
     maxProficiency: 220,
     damageMult: 2.0,
-    cdTicks: 40, // 4.0秒冷却
-    manaCost: 30,
-    unlockLevel: 19,
+    cdTicks: 35, // 3.5秒冷却
+    manaCost: 15,
+    unlockLevel: 8,
     currentCdTicks: 0
   },
   'shield_aegis': {
@@ -53,9 +53,9 @@ export const SKILL_DEFINITIONS: Record<string, SkillDef> = {
     proficiency: 0,
     maxProficiency: 200,
     damageMult: 1.0,
-    cdTicks: 120, // 12.0秒冷却
-    manaCost: 50,
-    unlockLevel: 22,
+    cdTicks: 100, // 10.0秒冷却
+    manaCost: 25,
+    unlockLevel: 15,
     currentCdTicks: 0
   },
   'fire_slash': {
@@ -67,9 +67,9 @@ export const SKILL_DEFINITIONS: Record<string, SkillDef> = {
     proficiency: 0,
     maxProficiency: 300,
     damageMult: 2.8,
-    cdTicks: 70, // 7.0秒大招
-    manaCost: 65,
-    unlockLevel: 35,
+    cdTicks: 60, // 6.0秒大招
+    manaCost: 45,
+    unlockLevel: 28,
     currentCdTicks: 0
   },
   'heaven_splitter': {
@@ -81,9 +81,9 @@ export const SKILL_DEFINITIONS: Record<string, SkillDef> = {
     proficiency: 0,
     maxProficiency: 320,
     damageMult: 2.6,
-    cdTicks: 50, // 5.0秒冷却
-    manaCost: 45,
-    unlockLevel: 28,
+    cdTicks: 45, // 4.5秒冷却
+    manaCost: 35,
+    unlockLevel: 22,
     currentCdTicks: 0
   },
   'sun_slash': {
@@ -95,9 +95,9 @@ export const SKILL_DEFINITIONS: Record<string, SkillDef> = {
     proficiency: 0,
     maxProficiency: 450,
     damageMult: 3.8,
-    cdTicks: 85, // 8.5秒终极神技
-    manaCost: 80,
-    unlockLevel: 40,
+    cdTicks: 80, // 8.0秒终极神技
+    manaCost: 60,
+    unlockLevel: 35,
     currentCdTicks: 0
   }
 };

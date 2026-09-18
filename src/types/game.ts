@@ -143,6 +143,8 @@ export interface Entity {
   isBossEnraged?: boolean; // Boss生命低狂暴
   bossSkillTimer?: number; // Boss技能施放计时
   reviveCooldownTicks?: number; // 复活特戒冷却 (900 ticks = 90秒)
+  invincibleTicks?: number; // 无敌金身保护倒计时
+  hasBeenAttackedByPlayer?: boolean; // 是否已被玩家主动攻击过 (低级保护判定)
 }
 
 export type SkillId = 

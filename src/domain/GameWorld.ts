@@ -50,9 +50,9 @@ export class GameWorld {
   autoConfig: AutoPilotConfig = {
     enabled: true,
     autoHpPotion: true,
-    autoPotionHpPercent: 50,
+    autoPotionHpPercent: 75, // 默认75%血线智能喝药，保障新手生存
     autoMpPotion: true,
-    autoPotionMpPercent: 30,
+    autoPotionMpPercent: 35,
     autoSkill: true,
     autoPickup: true,
     autoRecycleWeaker: true,
@@ -196,22 +196,41 @@ export class GameWorld {
       targetEntityId: null,
       lastAttackTick: -100,
       state: 'idle',
-      stateTicks: 0
+      stateTicks: 0,
+      invincibleTicks: 100 // 开局10秒无敌金身庇护，平稳适应
     };
   }
 
   private initStartingInventory(): void {
-    const sword = DropSystem.createItemInstance('w_wood_sword', 0);
+    // 新手至尊满装礼包：全槽位佩戴齐备，大幅提高防御与攻击！
+    const sword = DropSystem.createItemInstance('w_bronze_sword', 0);
     const armor = DropSystem.createItemInstance('a_buyi', 0);
-    const hpPot = DropSystem.createItemInstance('pot_hp_large', 1, 50);
-    const mpPot = DropSystem.createItemInstance('pot_mp_large', 1, 30);
+    const helmet = DropSystem.createItemInstance('h_qingtong', 0);
+    const necklace = DropSystem.createItemInstance('n_chuantong', 0);
+    const braceletL = DropSystem.createItemInstance('b_tieshou', 0);
+    const braceletR = DropSystem.createItemInstance('b_tieshou', 0);
+    const ringL = DropSystem.createItemInstance('r_gutong', 0);
+    const ringR = DropSystem.createItemInstance('r_gutong', 0);
+
+    const hpPot = DropSystem.createItemInstance('pot_hp_large', 1, 100);
+    const mpPot = DropSystem.createItemInstance('pot_mp_large', 1, 50);
+    const sunPot = DropSystem.createItemInstance('pot_sun', 2, 20);
 
     if (sword) this.equipItem(sword);
     if (armor) this.equipItem(armor);
+    if (helmet) this.equipItem(helmet);
+    if (necklace) this.equipItem(necklace);
+    if (braceletL) { braceletL.slot = 'bracelet_l'; this.equipItem(braceletL); }
+    if (braceletR) { braceletR.slot = 'bracelet_r'; this.equipItem(braceletR); }
+    if (ringL) { ringL.slot = 'ring_l'; this.equipItem(ringL); }
+    if (ringR) { ringR.slot = 'ring_r'; this.equipItem(ringR); }
+
     if (hpPot) this.addItemToInventory(hpPot);
     if (mpPot) this.addItemToInventory(mpPot);
+    if (sunPot) this.addItemToInventory(sunPot);
 
-    this.addBattleLog('【系统】欢迎来到热血单机传奇！按【T】开启自动挂机，【B】背包，【C】人物面板。', 'system');
+    this.addBattleLog('【至尊礼包】欢迎来到热血单机传奇！已为您佩戴齐整套新手神装并赠送充足补给！', 'system');
+    this.addBattleLog('【挂机提示】自动挂机默认开启，按【T】暂停/恢复挂机，【B】包裹，【C】人物属性。', 'system');
   }
 
   private spawnInitialMonsters(): void {
@@ -227,6 +246,9 @@ export class GameWorld {
     ];
 
     const tier = this.player?.stats?.ascensionTier || 0;
+    const playerLevel = this.player?.stats?.level || 1;
+    // Boss 随玩家等级动态成长 (未成长阶段处于低难度)
+    const bossGrowthFactor = Math.max(1, (playerLevel / 20) ** 1.05);
     const hpMult = 1 + tier * 1.5;
     const dcMult = 1 + tier * 0.4;
 
@@ -243,15 +265,17 @@ export class GameWorld {
         gy = Math.max(2, Math.min(this.MAP_HEIGHT - 3, gy));
 
         const baseStats = StatCalculator.getBaseStatsForLevel(template.level);
-        const scaledHp = Math.floor(template.hp * hpMult);
+        const finalHpMult = template.isBoss ? bossGrowthFactor * hpMult : hpMult;
+        const finalDcMult = template.isBoss ? (1 + (bossGrowthFactor - 1) * 0.35) * dcMult : dcMult;
+        const scaledHp = Math.floor(template.hp * finalHpMult);
         const stats = {
           ...baseStats,
           hp: scaledHp,
           maxHp: scaledHp,
           mp: template.mp,
           maxMp: template.mp,
-          minDC: Math.floor(template.minDC * dcMult),
-          maxDC: Math.floor(template.maxDC * dcMult),
+          minDC: Math.floor(template.minDC * finalDcMult),
+          maxDC: Math.floor(template.maxDC * finalDcMult),
           minAC: template.minAC,
           maxAC: template.maxAC,
           critRate: template.critRate,
@@ -337,6 +361,9 @@ export class GameWorld {
     if (this.player.reviveCooldownTicks && this.player.reviveCooldownTicks > 0) {
       this.player.reviveCooldownTicks--;
     }
+    if (this.player.invincibleTicks && this.player.invincibleTicks > 0) {
+      this.player.invincibleTicks--;
+    }
 
     // 掉落喷泉抛物线动画
     for (const drop of this.groundItems) {
@@ -398,15 +425,20 @@ export class GameWorld {
           if (m.respawnTicks <= 0) {
             m.state = 'idle';
             const tier = this.player.stats.ascensionTier || 0;
+            const playerLevel = this.player.stats.level || 1;
+            const bossGrowthFactor = Math.max(1, (playerLevel / 20) ** 1.05);
             const hpMult = 1 + tier * 1.5;
             const dcMult = 1 + tier * 0.4;
             const tmpl = Object.values(MONSTER_TEMPLATES).find(t => t.name === m.name);
             if (tmpl) {
-              m.stats.maxHp = Math.floor(tmpl.hp * hpMult);
-              m.stats.minDC = Math.floor(tmpl.minDC * dcMult);
-              m.stats.maxDC = Math.floor(tmpl.maxDC * dcMult);
+              const finalHpMult = tmpl.isBoss ? bossGrowthFactor * hpMult : hpMult;
+              const finalDcMult = tmpl.isBoss ? (1 + (bossGrowthFactor - 1) * 0.35) * dcMult : dcMult;
+              m.stats.maxHp = Math.floor(tmpl.hp * finalHpMult);
+              m.stats.minDC = Math.floor(tmpl.minDC * finalDcMult);
+              m.stats.maxDC = Math.floor(tmpl.maxDC * finalDcMult);
             }
             m.stats.hp = m.stats.maxHp;
+            m.hasBeenAttackedByPlayer = false;
             if (m.spawnOrigin) {
               m.gridPos = { ...m.spawnOrigin };
             }
@@ -437,7 +469,11 @@ export class GameWorld {
           const dist = PathFinder.chebyshevDistance(m.gridPos, this.player.gridPos);
           if (dist <= 8 && this.player.state !== 'dead') {
             m.bossSkillTimer = 0;
-            let lightningDmg = Math.floor(m.stats.maxDC * 1.5);
+            let lightningDmg = Math.floor(m.stats.maxDC * 1.2);
+            // 前期伤害保护：至多扣除玩家当前最大生命的 35% (绝不一击秒杀新手)
+            if (this.player.stats.level < 35) {
+              lightningDmg = Math.min(lightningDmg, Math.floor(this.player.stats.maxHp * 0.35));
+            }
             if (this.player.shieldAegisTicks && this.player.shieldAegisTicks > 0) {
               lightningDmg = Math.max(1, Math.floor(lightningDmg * 0.60));
             }
@@ -457,7 +493,11 @@ export class GameWorld {
           const dist = PathFinder.chebyshevDistance(m.gridPos, this.player.gridPos);
           if (dist <= 10 && this.player.state !== 'dead') {
             m.bossSkillTimer = 0;
-            let spikeDmg = Math.floor(m.stats.maxDC * 1.8);
+            let spikeDmg = Math.floor(m.stats.maxDC * 1.3);
+            // 前期伤害保护：至多扣除玩家当前最大生命的 40% (绝不秒杀)
+            if (this.player.stats.level < 45) {
+              spikeDmg = Math.min(spikeDmg, Math.floor(this.player.stats.maxHp * 0.40));
+            }
             if (this.player.shieldAegisTicks && this.player.shieldAegisTicks > 0) {
               spikeDmg = Math.max(1, Math.floor(spikeDmg * 0.60));
             }
@@ -475,6 +515,18 @@ export class GameWorld {
       }
 
       if ((m.state === 'idle' || m.state === 'walking') && (!m.hitStunTicks || m.hitStunTicks <= 0)) {
+        // 低等级保护机制：若玩家等级显著低于Boss等级（差8级以上），且玩家未主动攻击过Boss，Boss不主动索敌追杀新手！
+        if (m.isBoss && this.player.stats.level < m.stats.level - 8 && !m.hasBeenAttackedByPlayer) {
+          if (Math.random() < 0.05 && !m.targetGridPos && m.spawnOrigin) {
+            const wx = m.gridPos.x + Math.floor(Math.random() * 3) - 1;
+            const wy = m.gridPos.y + Math.floor(Math.random() * 3) - 1;
+            if (this.isWalkable(wx, wy) && PathFinder.chebyshevDistance({ x: wx, y: wy }, m.spawnOrigin) <= 4) {
+              this.startEntityMove(m, { x: wx, y: wy });
+            }
+          }
+          continue;
+        }
+
         const distToPlayer = PathFinder.chebyshevDistance(m.gridPos, this.player.gridPos);
         const aggroRadius = m.isBoss ? 9 : 5;
 
@@ -708,6 +760,14 @@ export class GameWorld {
    * 结算单段残影连斩伤害与视听反馈
    */
   private applyPhantomHit(attacker: Entity, target: Entity, _hitIndex: number): void {
+    if (target.invincibleTicks && target.invincibleTicks > 0) {
+      this.addDamagePopup(target.gridPos, '🛡️无敌免疫', '#38bdf8');
+      return;
+    }
+    if (attacker.isPlayer && !target.isPlayer) {
+      target.hasBeenAttackedByPlayer = true;
+    }
+
     // 残影斩击造成约 70% 伤害，支持独立暴击与闪避判定
     const result = CombatSystem.calculateAttack(attacker, target, undefined, false);
     if (result.isDodge) {
@@ -751,6 +811,14 @@ export class GameWorld {
   }
 
   private applyHitToEntity(attacker: Entity, target: Entity, skill: SkillDef | undefined, isCleave: boolean): void {
+    if (target.invincibleTicks && target.invincibleTicks > 0) {
+      this.addDamagePopup(target.gridPos, '🛡️无敌免疫', '#38bdf8');
+      return;
+    }
+    if (attacker.isPlayer && !target.isPlayer) {
+      target.hasBeenAttackedByPlayer = true;
+    }
+
     const isFire = skill?.id === 'fire_slash';
     const isHeaven = skill?.id === 'heaven_splitter';
     const isSun = skill?.id === 'sun_slash';
@@ -906,12 +974,18 @@ export class GameWorld {
         return;
       }
 
-      this.addBattleLog('【阵亡】大侠在战斗中力竭倒下，将在 3 秒后回血复苏！', 'system');
+      this.addBattleLog('【阵亡】大侠在战斗中力竭倒下，安全区回城元神聚顶中...', 'system');
       setTimeout(() => {
         this.player.state = 'idle';
-        this.player.stats.hp = Math.floor(this.player.stats.maxHp * 0.5);
-        this.player.stats.mp = Math.floor(this.player.stats.maxMp * 0.5);
-      }, 3000);
+        this.player.gridPos = { x: 18, y: 18 };
+        this.player.targetGridPos = null;
+        this.player.moveProgress = 0;
+        this.player.stats.hp = this.player.stats.maxHp;
+        this.player.stats.mp = this.player.stats.maxMp;
+        this.player.invincibleTicks = 60; // 6秒无敌庇护
+        this.addDamagePopup(this.player.gridPos, '✨安全区复活·无敌金身!', '#38bdf8', true);
+        this.addBattleLog('【安全区复活】大侠已在安全区满血重聚元神，获得6秒无敌庇护金光！', 'system');
+      }, 2500);
     }
   }
 
