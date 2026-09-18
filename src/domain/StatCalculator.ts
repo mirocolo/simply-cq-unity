@@ -2,6 +2,7 @@ import { EntityStats, EquipSlot, ItemInstance } from '../types/game';
 import { ASCENSION_DEFINITIONS } from './definitions/ascension';
 import { SET_DEFINITIONS, SetBonus, SetDef } from './definitions/sets';
 import { getSlotEnhanceStats, getActiveResonance } from './definitions/enhancement';
+import { TALENT_DEFINITIONS } from './definitions/talents';
 
 export interface LevelMilestone {
   title: string;
@@ -88,6 +89,7 @@ export class StatCalculator {
       luck,
       damageMultRatio,
       defenseIgnoreRate,
+      thornsRate: 0,
       hp: baseHp,
       maxHp: baseHp,
       mp: baseMp,
@@ -136,7 +138,8 @@ export class StatCalculator {
     baseStats: EntityStats, 
     equipped: Partial<Record<EquipSlot, ItemInstance>>,
     slotEnhancements?: Partial<Record<EquipSlot, number>>,
-    codexStats?: { minDC?: number; maxDC?: number; minAC?: number; maxAC?: number; maxHp?: number; critRate?: number }
+    codexStats?: { minDC?: number; maxDC?: number; minAC?: number; maxAC?: number; maxHp?: number; critRate?: number },
+    talentAllocations?: Record<string, number>
   ): EntityStats {
     let addMinDC = codexStats?.minDC || 0;
     let addMaxDC = codexStats?.maxDC || 0;
@@ -223,21 +226,67 @@ export class StatCalculator {
       }
     }
 
-    let maxHp = Math.floor((baseStats.maxHp + addHp) * (1 + setHpMult));
-    let maxMp = baseStats.maxMp + addMp;
-    let minDC = Math.floor((baseStats.minDC + addMinDC) * (1 + setDcMult));
-    let maxDC = Math.floor((baseStats.maxDC + addMaxDC) * (1 + setDcMult));
-    let minAC = Math.floor((baseStats.minAC + addMinAC) * (1 + setAcMult));
-    let maxAC = Math.floor((baseStats.maxAC + addMaxAC) * (1 + setAcMult));
+    // 天赋树加成结算 (三大变异流派)
+    let talentDcMult = 0;
+    let talentAcMult = 0;
+    let talentHpMult = 0;
+    let talentFlatHp = 0;
+    let talentMinDC = 0;
+    let talentMaxDC = 0;
+    let talentMinAC = 0;
+    let talentMaxAC = 0;
+    let talentHaste = 0;
+    let talentCritRate = 0;
+    let talentCritMult = 0;
+    let talentLifesteal = 0;
+    let talentDefenseIgnore = 0;
+    let talentDamageMult = 0;
+    let talentThorns = 0;
 
-    const critRate = Math.min(0.95, baseStats.critRate + addCritBonus / 100 + setCritRate);
-    const haste = baseStats.haste + addHasteBonus + setHaste;
+    if (talentAllocations) {
+      for (const [tId, rank] of Object.entries(talentAllocations)) {
+        if (!rank || rank <= 0) continue;
+        const def = TALENT_DEFINITIONS[tId];
+        if (!def || !def.statsPerRank) continue;
+        const s = def.statsPerRank;
+        if (s.dcPercent) talentDcMult += s.dcPercent * rank;
+        if (s.acPercent) talentAcMult += s.acPercent * rank;
+        if (s.maxHpPercent) talentHpMult += s.maxHpPercent * rank;
+        if (s.flatHp) talentFlatHp += s.flatHp * rank;
+        if (s.minDC) talentMinDC += s.minDC * rank;
+        if (s.maxDC) talentMaxDC += s.maxDC * rank;
+        if (s.minAC) talentMinAC += s.minAC * rank;
+        if (s.maxAC) talentMaxAC += s.maxAC * rank;
+        if (s.haste) talentHaste += s.haste * rank;
+        if (s.critRate) talentCritRate += s.critRate * rank;
+        if (s.critMult) talentCritMult += s.critMult * rank;
+        if (s.lifestealRate) talentLifesteal += s.lifestealRate * rank;
+        if (s.defenseIgnoreRate) talentDefenseIgnore += s.defenseIgnoreRate * rank;
+        if (s.damageMultRatio) talentDamageMult += s.damageMultRatio * rank;
+        if (s.thornsRate) talentThorns += s.thornsRate * rank;
+      }
+    }
+
+    const totalHpMult = setHpMult + talentHpMult;
+    const totalDcMult = setDcMult + talentDcMult;
+    const totalAcMult = setAcMult + talentAcMult;
+
+    let maxHp = Math.floor((baseStats.maxHp + addHp + talentFlatHp) * (1 + totalHpMult));
+    let maxMp = baseStats.maxMp + addMp;
+    let minDC = Math.floor((baseStats.minDC + addMinDC + talentMinDC) * (1 + totalDcMult));
+    let maxDC = Math.floor((baseStats.maxDC + addMaxDC + talentMaxDC) * (1 + totalDcMult));
+    let minAC = Math.floor((baseStats.minAC + addMinAC + talentMinAC) * (1 + totalAcMult));
+    let maxAC = Math.floor((baseStats.maxAC + addMaxAC + talentMaxAC) * (1 + totalAcMult));
+
+    const critRate = Math.min(0.95, baseStats.critRate + addCritBonus / 100 + setCritRate + talentCritRate);
+    const haste = baseStats.haste + addHasteBonus + setHaste + talentHaste;
     const dodgeRate = Math.min(0.50, baseStats.dodgeRate + setDodgeRate);
-    const critMult = baseStats.critMult;
-    const lifestealRate = Number((baseStats.lifestealRate + addLifestealBonus / 100 + setLifestealRate).toFixed(3));
+    const critMult = Number((baseStats.critMult + talentCritMult).toFixed(2));
+    const lifestealRate = Number((baseStats.lifestealRate + addLifestealBonus / 100 + setLifestealRate + talentLifesteal).toFixed(3));
     const luck = baseStats.luck + addLuck;
-    const damageMultRatio = Number((baseStats.damageMultRatio + setDamageMultRatio + addDamageMult).toFixed(2));
-    const defenseIgnoreRate = Number((baseStats.defenseIgnoreRate + addDefenseIgnore).toFixed(2));
+    const damageMultRatio = Number((baseStats.damageMultRatio + setDamageMultRatio + addDamageMult + talentDamageMult).toFixed(2));
+    const defenseIgnoreRate = Number((baseStats.defenseIgnoreRate + addDefenseIgnore + talentDefenseIgnore).toFixed(2));
+    const thornsRate = Number(talentThorns.toFixed(2));
 
     // 有效出手间隔：最低 2 ticks (200ms 一刀，极速如风)
     const effectiveAttackInterval = Math.max(
@@ -267,6 +316,7 @@ export class StatCalculator {
       (critMult - 1) * 200 +
       dodgeRate * 1400 +
       lifestealRate * 2500 +
+      thornsRate * 1800 +
       haste * 12 +
       phantomStrikeRate * 2000 +
       luck * 1500 +
@@ -280,6 +330,7 @@ export class StatCalculator {
       luck,
       damageMultRatio,
       defenseIgnoreRate,
+      thornsRate,
       hp: Math.min(baseStats.hp, maxHp),
       maxHp,
       mp: Math.min(baseStats.mp, maxMp),

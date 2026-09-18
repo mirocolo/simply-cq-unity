@@ -98,6 +98,7 @@ export interface EntityStats {
   luck: number; // 幸运值 (达到 9 刀刀发挥最大攻击上限)
   damageMultRatio: number; // 稀有倍攻乘数 (0.15 = +15% 倍攻)
   defenseIgnoreRate: number; // 破甲无视防御率 (0 ~ 1.0)
+  thornsRate?: number; // 荆棘反震率 (0 ~ 1.0)
   hp: number;
   maxHp: number;
   mp: number;

@@ -229,6 +229,14 @@
             <span>📖</span>
             <span>封魔(K)</span>
           </button>
+          <button 
+            @click="$emit('openModal', 'talent')"
+            class="w-14 py-1.5 bg-gradient-to-b from-[#1e3a5f] to-[#0f1e35] hover:from-[#275485] hover:to-[#152a4a] text-[#7dd3fc] border-2 border-[#38bdf8]/60 rounded text-xs font-black transition-all shadow-[0_0_8px_rgba(125,211,252,0.25)] active:scale-95 flex items-center justify-center gap-0.5"
+            title="战士三大变异流派天赋星盘 (按 N)"
+          >
+            <span>⭐</span>
+            <span>天赋(N)</span>
+          </button>
         </div>
 
         <div class="flex gap-2">

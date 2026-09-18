@@ -23,6 +23,7 @@ export interface SaveData {
   monsterKills?: Record<string, number>;
   codexClaimedTiers?: Record<string, number[]>;
   activeBounties?: import('../types/codex').BountyTask[];
+  talentAllocations?: Record<string, number>;
 }
 
 export interface OfflineReward {

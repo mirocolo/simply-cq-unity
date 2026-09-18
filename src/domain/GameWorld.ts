@@ -37,6 +37,7 @@ import { MUTABLE_AFFIX_TYPES, AFFIX_DEFINITIONS } from './definitions/affixes';
 import { TelegraphedAOE, MonsterAffixType } from '../types/affix';
 import { BountyTask, MonsterCodexDef } from '../types/codex';
 import { MONSTER_CODEX_DEFINITIONS, generateBounties } from './definitions/codex';
+import { TALENT_DEFINITIONS } from './definitions/talents';
 
 const DIR_OFFSETS: Record<Direction8, { x: number; y: number }> = {
   0: { x: 0, y: -1 },
@@ -109,6 +110,8 @@ export class GameWorld {
   monsterKills: Record<string, number> = {};
   codexClaimedTiers: Record<string, number[]> = {};
   activeBounties: BountyTask[] = [];
+  // 战士三大变异流派天赋配置
+  talentAllocations: Record<string, number> = {};
 
   damagePopups: DamagePopup[] = [];
   battleLogs: BattleLog[] = [];
@@ -272,12 +275,86 @@ export class GameWorld {
     const prevMp = this.player.stats.mp;
     const base = StatCalculator.getBaseStatsForLevel(this.player.stats.level, this.player.stats.ascensionTier || 0);
     const codexBonus = this.getCodexStatsBonus();
-    this.player.stats = StatCalculator.applyEquipment(base, this.equipped, this.slotEnhancements, codexBonus);
+    this.player.stats = StatCalculator.applyEquipment(
+      base, 
+      this.equipped, 
+      this.slotEnhancements, 
+      codexBonus, 
+      this.talentAllocations
+    );
     this.player.stats.hp = Math.min(this.player.stats.maxHp, prevHp);
     this.player.stats.mp = Math.min(this.player.stats.maxMp, prevMp);
     this.player.stats.gold = prevGold;
     this.player.stats.exp = prevExp;
   }
+
+  /**
+   * 获取当前总天赋点与可用天赋点数
+   */
+  getAvailableTalentPoints(): number {
+    const totalEarned = Math.max(0, (this.player?.stats?.level || 1) - 1);
+    const allocated = Object.values(this.talentAllocations).reduce((sum, n) => sum + (n || 0), 0);
+    return Math.max(0, totalEarned - allocated);
+  }
+
+  /**
+   * 判断是否激活指定天赋特殊机制
+   */
+  hasTalentSpecial(effect: string): boolean {
+    for (const [id, rank] of Object.entries(this.talentAllocations)) {
+      if (rank > 0) {
+        const def = TALENT_DEFINITIONS[id];
+        if (def?.specialEffect === effect) return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * 分配天赋点
+   */
+  allocateTalent(talentId: string): boolean {
+    if (this.getAvailableTalentPoints() <= 0) return false;
+    const def = TALENT_DEFINITIONS[talentId];
+    if (!def) return false;
+
+    const currentRank = this.talentAllocations[talentId] || 0;
+    if (currentRank >= def.maxRank) return false;
+
+    // 检查同分支前置点数要求
+    let branchInvested = 0;
+    for (const [tId, r] of Object.entries(this.talentAllocations)) {
+      const d = TALENT_DEFINITIONS[tId];
+      if (d && d.branch === def.branch) {
+        branchInvested += r;
+      }
+    }
+    if (branchInvested < def.reqBranchPoints) return false;
+
+    this.talentAllocations[talentId] = currentRank + 1;
+    this.recalculatePlayerStats();
+    this.onSound?.('levelup');
+    this.addDamagePopup(this.player.gridPos, `✨领悟·${def.name}!`, '#38bdf8', true);
+    this.addBattleLog(`【天赋领悟】成功点亮 [${def.name}] (等级 ${currentRank + 1}/${def.maxRank})！`, 'system');
+    this.save();
+    return true;
+  }
+
+  /**
+   * 免费无损重置所有天赋点数
+   */
+  resetTalents(): void {
+    const totalPoints = Object.values(this.talentAllocations).reduce((sum, n) => sum + (n || 0), 0);
+    if (totalPoints <= 0) return;
+
+    this.talentAllocations = {};
+    this.recalculatePlayerStats();
+    this.onSound?.('coin');
+    this.addDamagePopup(this.player.gridPos, '🔄洗点归宗·点数返还!', '#10b981', true);
+    this.addBattleLog(`【天赋重置】已免费重置全部天赋！返还 ${totalPoints} 点天赋点！`, 'system');
+    this.save();
+  }
+
 
   canAscend(): boolean {
     const currentTier = this.player?.stats?.ascensionTier || 0;
@@ -1124,14 +1201,15 @@ export class GameWorld {
       return false;
     }
 
-    // 护体神盾 (自身玄金护盾，持续50 ticks = 5秒)
+    // 护体神盾 (自身玄金护盾，持续50 ticks = 5秒；太虚混元圣盾天赋延长至75 ticks = 7.5秒)
     if (skill?.id === 'shield_aegis') {
       attacker.stats.mp = Math.max(0, attacker.stats.mp - skill.manaCost);
       skill.currentCdTicks = skill.cdTicks;
-      attacker.shieldAegisTicks = 50;
+      const isAegisMastery = attacker.isPlayer && this.hasTalentSpecial('aegis_mastery');
+      attacker.shieldAegisTicks = isAegisMastery ? 75 : 50;
       this.onSound?.('crit');
       const isAwakenedShield = (attacker.stats.ascensionTier || 0) >= 4;
-      const shieldText = isAwakenedShield ? '🛡️太虚混元罡气!' : '🛡️护体神盾!';
+      const shieldText = isAegisMastery ? '🛡️太虚混元圣盾!' : (isAwakenedShield ? '🛡️太虚混元罡气!' : '🛡️护体神盾!');
       this.addDamagePopup(attacker.gridPos, shieldText, '#38bdf8', true);
       this.addBattleLog(`【${shieldText}】玄金罡气护体！受到伤害大幅降低并反震受击伤害！`, 'system');
       this.gainSkillProficiency(skill, 20);
@@ -1144,7 +1222,11 @@ export class GameWorld {
 
     if (skill && skill.manaCost > 0) {
       attacker.stats.mp = Math.max(0, attacker.stats.mp - skill.manaCost);
-      skill.currentCdTicks = skill.cdTicks;
+      let cd = skill.cdTicks;
+      if (attacker.isPlayer && this.hasTalentSpecial('nuclear_slash') && (skill.id === 'fire_slash' || skill.id === 'sun_slash')) {
+        cd = Math.floor(cd * 0.70); // 天地同寿·核爆 CD -30%
+      }
+      skill.currentCdTicks = cd;
     }
 
     const isFire = skill?.id === 'fire_slash';
@@ -1265,7 +1347,12 @@ export class GameWorld {
     let hitCount = guaranteedHits + (Math.random() < extraChance ? 1 : 0);
     if (hitCount <= 0) return;
 
-    hitCount = Math.min(3, hitCount); // 单刀最高追击 3 段
+    // 万剑残影·极境：追击段数额外 +1
+    if (attacker.isPlayer && this.hasTalentSpecial('phantom_mastery')) {
+      hitCount += 1;
+    }
+
+    hitCount = Math.min(4, hitCount); // 单刀最高追击 4 段
 
     for (let i = 0; i < hitCount; i++) {
       // 优先原目标；若原目标已阵亡，自动顺延追击身旁存活小怪 (残影追魂)
@@ -1294,14 +1381,15 @@ export class GameWorld {
       target.hasBeenAttackedByPlayer = true;
     }
 
-    // 残影斩击造成约 70% 伤害，支持独立暴击与闪避判定
+    // 残影斩击默认造成 70% 伤害，万剑残影·极境提升至 100% 满额伤害
     const result = CombatSystem.calculateAttack(attacker, target, undefined, false);
     if (result.isDodge) {
       this.addDamagePopup(target.gridPos, 'MISS', '#94a3b8', false);
       return;
     }
 
-    let phantomDamage = Math.max(1, Math.floor(result.damage * 0.70));
+    const dmgRatio = (attacker.isPlayer && this.hasTalentSpecial('phantom_mastery')) ? 1.0 : 0.70;
+    let phantomDamage = Math.max(1, Math.floor(result.damage * dmgRatio));
     if (target.isWeakened) {
       phantomDamage = Math.floor(phantomDamage * 1.50);
     }
@@ -1396,6 +1484,20 @@ export class GameWorld {
       finalDamage = Math.floor(finalDamage * 1.50);
     }
 
+    // 烈火核爆流：九阳真火神技 (烈火剑法与逐日剑法额外 +40% 独立威力)
+    if (attacker.isPlayer && (isFire || isSun) && this.hasTalentSpecial('fire_mastery')) {
+      finalDamage = Math.floor(finalDamage * 1.40);
+    }
+
+    // 狂暴血战流：不屈血怒神技 (每降低 10% 生命提升 4% 独立倍攻，至多 +36%)
+    if (attacker.isPlayer && this.hasTalentSpecial('undying_rage')) {
+      const lostHpPct = Math.max(0, 1 - (attacker.stats.hp / attacker.stats.maxHp));
+      const stacks = Math.min(9, Math.floor(lostHpPct / 0.10));
+      if (stacks > 0) {
+        finalDamage = Math.floor(finalDamage * (1 + stacks * 0.04));
+      }
+    }
+
     // 护身戒指神威：受到伤害的 80% 优先由 MP 抵扣
     if (target.isPlayer && this.hasSpecialEffect('protect') && target.stats.mp > 0) {
       const mpAbsorb = Math.min(target.stats.mp, Math.floor(finalDamage * 0.80));
@@ -1415,13 +1517,16 @@ export class GameWorld {
       }
     }
 
-    // 护体神盾：受到伤害降低 40%~55%，并将 40%~60% 伤害反震攻击者
+    // 护体神盾：受到伤害降低 40%~65%，并将 40%~80% 伤害反震攻击者
+    let aegisReflected = 0;
     if (target.isPlayer && target.shieldAegisTicks && target.shieldAegisTicks > 0) {
       const isAwakenedShield = (this.player.stats.ascensionTier || 0) >= 4;
-      const reduceRatio = isAwakenedShield ? 0.45 : 0.60;
-      const reflectRatio = isAwakenedShield ? 0.60 : 0.40;
+      const isAegisMastery = this.hasTalentSpecial('aegis_mastery');
+      const reduceRatio = isAegisMastery ? 0.35 : (isAwakenedShield ? 0.45 : 0.60);
+      const reflectRatio = isAegisMastery ? 0.80 : (isAwakenedShield ? 0.60 : 0.40);
       const reduced = Math.max(1, Math.floor(finalDamage * reduceRatio));
       const reflect = Math.max(1, Math.floor(finalDamage * reflectRatio));
+      aegisReflected = reflect;
       finalDamage = reduced;
 
       if (!attacker.isPlayer && attacker.state !== 'dead') {
@@ -1429,6 +1534,35 @@ export class GameWorld {
         this.addDamagePopup(attacker.gridPos, `🛡️反弹 -${reflect}`, '#38bdf8', false);
         if (attacker.stats.hp <= 0) {
           this.handleEntityDeath(attacker, target);
+        }
+      }
+    }
+
+    // 金刚反伤流：荆棘龙鳞 + 不动明王印
+    if (target.isPlayer && !attacker.isPlayer && finalDamage > 0) {
+      let totalReflect = aegisReflected;
+      if (target.stats.thornsRate && target.stats.thornsRate > 0) {
+        const thorn = Math.max(1, Math.floor(finalDamage * target.stats.thornsRate));
+        totalReflect += thorn;
+        attacker.stats.hp = Math.max(0, attacker.stats.hp - thorn);
+        this.addDamagePopup(attacker.gridPos, `🌵龙鳞反震 -${thorn}`, '#eab308', false);
+        if (attacker.stats.hp <= 0) {
+          this.handleEntityDeath(attacker, target);
+        }
+      }
+
+      // 不动明王印 (vajra_domain)：反震冲击波波及身周所有敌人，必定造成硬直
+      if (this.hasTalentSpecial('vajra_domain') && totalReflect > 0) {
+        const holyDmg = Math.max(25, Math.floor(totalReflect * 0.60));
+        for (const enemy of this.monsters) {
+          if (enemy !== attacker && enemy.state !== 'dead' && PathFinder.chebyshevDistance(target.gridPos, enemy.gridPos) <= 2) {
+            enemy.stats.hp = Math.max(0, enemy.stats.hp - holyDmg);
+            enemy.hitStunTicks = 15;
+            this.addDamagePopup(enemy.gridPos, `☸️不动明王 -${holyDmg}`, '#fde047', true);
+            if (enemy.stats.hp <= 0) {
+              this.handleEntityDeath(enemy, target);
+            }
+          }
         }
       }
     }
@@ -1630,8 +1764,7 @@ export class GameWorld {
       this.player.stats.exp -= this.player.stats.maxExp;
       this.player.stats.level++;
       
-      const base = StatCalculator.getBaseStatsForLevel(this.player.stats.level, this.player.stats.ascensionTier || 0);
-      this.player.stats = StatCalculator.applyEquipment(base, this.equipped, this.slotEnhancements);
+      this.recalculatePlayerStats();
       this.player.stats.hp = this.player.stats.maxHp;
       this.player.stats.mp = this.player.stats.maxMp;
 
@@ -1649,6 +1782,7 @@ export class GameWorld {
         this.addDamagePopup(this.player.gridPos, `升级! Lv.${this.player.stats.level}`, '#facc15', true);
         this.addBattleLog(`【升级】金芒贯顶！升至 Lv.${this.player.stats.level}，战力飙升至 ${this.player.stats.combatPower}！`, 'system');
       }
+      this.addBattleLog(`【天赋觉醒】大侠升至 Lv.${this.player.stats.level}，获得 1 点可用天赋点！可按 N 打开星盘自由分配！`, 'system');
     }
   }
 
@@ -1870,8 +2004,7 @@ export class GameWorld {
     this.equipped[targetSlot] = item;
 
     const oldCp = this.player.stats.combatPower;
-    const base = StatCalculator.getBaseStatsForLevel(this.player.stats.level, this.player.stats.ascensionTier || 0);
-    this.player.stats = StatCalculator.applyEquipment(base, this.equipped, this.slotEnhancements);
+    this.recalculatePlayerStats();
     const cpDiff = this.player.stats.combatPower - oldCp;
 
     if (cpDiff > 0) {
@@ -1929,8 +2062,7 @@ export class GameWorld {
 
     // 重新计算全身属性与战力
     const oldCp = this.player.stats.combatPower;
-    const base = StatCalculator.getBaseStatsForLevel(this.player.stats.level, this.player.stats.ascensionTier || 0);
-    this.player.stats = StatCalculator.applyEquipment(base, this.equipped, this.slotEnhancements);
+    this.recalculatePlayerStats();
     const cpDiff = this.player.stats.combatPower - oldCp;
 
     if (replacedCount > 0) {
@@ -2082,7 +2214,7 @@ export class GameWorld {
     this.addItemToInventory(item);
 
     const base = StatCalculator.getBaseStatsForLevel(this.player.stats.level, this.player.stats.ascensionTier || 0);
-    this.player.stats = StatCalculator.applyEquipment(base, this.equipped, this.slotEnhancements);
+    this.player.stats = StatCalculator.applyEquipment(base, this.equipped, this.slotEnhancements, undefined, this.talentAllocations);
     return true;
   }
 
@@ -2403,7 +2535,8 @@ export class GameWorld {
       unlockedMaps: Array.from(this.mapManager.unlockedMaps),
       monsterKills: this.monsterKills,
       codexClaimedTiers: this.codexClaimedTiers,
-      activeBounties: this.activeBounties
+      activeBounties: this.activeBounties,
+      talentAllocations: this.talentAllocations
     });
   }
 
@@ -2465,9 +2598,12 @@ export class GameWorld {
     // 重新更新怪物阶数血量与属性
     this.updateMonstersForAscension();
 
+    // 恢复天赋配点
+    this.talentAllocations = saved.talentAllocations || {};
+
     const base = StatCalculator.getBaseStatsForLevel(this.player.stats.level, this.player.stats.ascensionTier || 0);
     const codexBonus = this.getCodexStatsBonus();
-    this.player.stats = StatCalculator.applyEquipment(base, this.equipped, this.slotEnhancements, codexBonus);
+    this.player.stats = StatCalculator.applyEquipment(base, this.equipped, this.slotEnhancements, codexBonus, this.talentAllocations);
     this.player.stats.hp = saved.player.hp || this.player.stats.maxHp;
     this.player.stats.mp = saved.player.mp || this.player.stats.maxMp;
 

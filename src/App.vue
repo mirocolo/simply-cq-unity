@@ -110,6 +110,16 @@
       @close="activeModal = null"
     />
 
+    <!-- 模态弹窗：战士天赋星盘 (N) -->
+    <TalentModal 
+      v-if="activeModal === 'talent'"
+      :talentAllocations="world.talentAllocations"
+      :playerLevel="world.player.stats.level"
+      @close="activeModal = null"
+      @allocate="handleAllocateTalent"
+      @reset="handleResetTalents"
+    />
+
     <!-- 模态弹窗：离线挂机收益结算 -->
     <OfflineRewardModal 
       v-if="offlineReward"
@@ -139,13 +149,14 @@ import SpecialRingModal from './components/SpecialRingModal.vue';
 import WorldMapModal from './components/WorldMapModal.vue';
 import EnhanceModal from './components/EnhanceModal.vue';
 import MonsterCodexModal from './components/MonsterCodexModal.vue';
+import TalentModal from './components/TalentModal.vue';
 
 const world = reactive(new GameWorld()) as GameWorld;
 const renderer = new IsometricRenderer();
 const sound = new SoundEffects();
 
 const selectedTargetId = ref<string | null>(null);
-const activeModal = ref<'character' | 'inventory' | 'autopilot' | 'settings' | 'special_ring' | 'world_map' | 'enhance' | 'codex' | null>(null);
+const activeModal = ref<'character' | 'inventory' | 'autopilot' | 'settings' | 'special_ring' | 'world_map' | 'enhance' | 'codex' | 'talent' | null>(null);
 const offlineReward = ref<OfflineReward | null>(null);
 
 const isSoundOn = ref(true);
@@ -323,6 +334,14 @@ const handleFastTravel = (mapId: string) => {
   }
 };
 
+const handleAllocateTalent = (talentId: string) => {
+  world.allocateTalent(talentId);
+};
+
+const handleResetTalents = () => {
+  world.resetTalents();
+};
+
 const handleKeyDown = (e: KeyboardEvent) => {
   if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
 
@@ -341,6 +360,8 @@ const handleKeyDown = (e: KeyboardEvent) => {
     openModal('enhance');
   } else if (key === 'K') {
     openModal('codex');
+  } else if (key === 'N') {
+    openModal('talent');
   } else if (key === 'L') {
     openModal('autopilot');
   } else if (key === 'O' || e.key === 'Escape') {
