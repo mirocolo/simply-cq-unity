@@ -1090,12 +1090,31 @@ export class GameWorld {
   }
 
   /**
+   * 判定某件装备当前是否满足穿戴条件
+   */
+  canEquipItem(item: ItemInstance): { can: boolean; reason?: string } {
+    if (item.type !== 'equipment' || !item.slot) {
+      return { can: false, reason: '非可穿戴装备' };
+    }
+    const playerTier = this.player.stats.ascensionTier || 0;
+    // 飞升位面阶数限制：不可越阶穿戴超出当前飞升境界的神装
+    if (item.tier > playerTier) {
+      return { can: false, reason: `需达到 [${item.tier}阶飞升] 方可驾驭` };
+    }
+    // 等级要求限制 (0阶装备凡体皆可驾驭，无需等级限制)
+    if (item.tier > 0 && item.levelReq && item.levelReq > this.player.stats.level) {
+      return { can: false, reason: `等级不足，需达到 Lv.${item.levelReq}` };
+    }
+    return { can: true };
+  }
+
+  /**
    * 拾取后自动穿戴最适合自己的装备 (智能即刻替换)
    */
   tryAutoEquipIfBetter(item: ItemInstance): boolean {
     if (item.type !== 'equipment' || !item.slot) return false;
-    // 等级要求高于人物等级则暂不自动穿戴
-    if (item.levelReq && item.levelReq > this.player.stats.level) return false;
+    const check = this.canEquipItem(item);
+    if (!check.can) return false;
 
     const itemPower = StatCalculator.getItemCombatPower(item);
 
@@ -1161,15 +1180,20 @@ export class GameWorld {
     }
 
     if (item.type === 'equipment' && item.slot) {
-      this.equipItem(item);
-      return true;
+      return this.equipItem(item);
     }
 
     return false;
   }
 
-  equipItem(item: ItemInstance): void {
-    if (!item.slot) return;
+  equipItem(item: ItemInstance): boolean {
+    if (!item.slot) return false;
+    const check = this.canEquipItem(item);
+    if (!check.can) {
+      this.addBattleLog(`【穿戴限制】[${item.name}]：${check.reason}`, 'system');
+      return false;
+    }
+
     let targetSlot = item.slot;
 
     if (item.slot === 'bracelet_l' || item.slot === 'bracelet_r') {
@@ -1195,7 +1219,7 @@ export class GameWorld {
     }
 
     const oldEquip = this.equipped[targetSlot];
-    const invIdx = this.inventory.indexOf(item);
+    const invIdx = this.inventory.findIndex(i => i.instanceId === item.instanceId);
     if (invIdx !== -1) this.inventory.splice(invIdx, 1);
     if (oldEquip) this.addItemToInventory(oldEquip);
 
@@ -1209,6 +1233,7 @@ export class GameWorld {
     if (cpDiff > 0) {
       this.addDamagePopup(this.player.gridPos, `战力 +${cpDiff}`, '#fbbf24', true);
     }
+    return true;
   }
 
   /**
@@ -1216,7 +1241,6 @@ export class GameWorld {
    */
   oneKeyEquipBest(): number {
     let replacedCount = 0;
-    const playerLevel = this.player.stats.level;
 
     // 1. 单槽位比对优化: weapon, armor, helmet, necklace 以及 6 大专属特戒
     const singleSlots: EquipSlot[] = [
@@ -1234,7 +1258,7 @@ export class GameWorld {
       for (let i = 0; i < this.inventory.length; i++) {
         const item = this.inventory[i];
         if (item.type !== 'equipment' || item.slot !== slot) continue;
-        if (item.levelReq && item.levelReq > playerLevel) continue;
+        if (!this.canEquipItem(item).can) continue;
 
         const power = StatCalculator.getItemCombatPower(item);
         if (power > bestPower) {
@@ -1254,10 +1278,10 @@ export class GameWorld {
     }
 
     // 2. 双槽位手镯比对优化 (bracelet_l, bracelet_r)
-    replacedCount += this.optimizeDualSlots(['bracelet_l', 'bracelet_r'], playerLevel);
+    replacedCount += this.optimizeDualSlots(['bracelet_l', 'bracelet_r']);
 
     // 3. 双槽位戒指比对优化 (ring_l, ring_r)
-    replacedCount += this.optimizeDualSlots(['ring_l', 'ring_r'], playerLevel);
+    replacedCount += this.optimizeDualSlots(['ring_l', 'ring_r']);
 
     // 重新计算全身属性与战力
     const oldCp = this.player.stats.combatPower;
@@ -1275,13 +1299,40 @@ export class GameWorld {
         'system'
       );
     } else {
-      this.addBattleLog('【一键穿戴】当前身上穿戴已是同部位最高战力搭配！', 'system');
+      // 检查背包中是否有更高评分但受限未穿戴的装备
+      const unequippedBetter = this.inventory.find(item => {
+        if (item.type !== 'equipment' || !item.slot) return false;
+        let currentPower = -1;
+        if (item.slot === 'bracelet_l' || item.slot === 'bracelet_r') {
+          const p1 = this.equipped['bracelet_l'] ? StatCalculator.getItemCombatPower(this.equipped['bracelet_l']) : -1;
+          const p2 = this.equipped['bracelet_r'] ? StatCalculator.getItemCombatPower(this.equipped['bracelet_r']) : -1;
+          currentPower = Math.min(p1, p2);
+        } else if (item.slot === 'ring_l' || item.slot === 'ring_r') {
+          const p1 = this.equipped['ring_l'] ? StatCalculator.getItemCombatPower(this.equipped['ring_l']) : -1;
+          const p2 = this.equipped['ring_r'] ? StatCalculator.getItemCombatPower(this.equipped['ring_r']) : -1;
+          currentPower = Math.min(p1, p2);
+        } else {
+          const current = this.equipped[item.slot];
+          currentPower = current ? StatCalculator.getItemCombatPower(current) : -1;
+        }
+        return StatCalculator.getItemCombatPower(item) > currentPower && !this.canEquipItem(item).can;
+      });
+
+      if (unequippedBetter) {
+        const check = this.canEquipItem(unequippedBetter);
+        this.addBattleLog(
+          `【一键穿戴】背包中有更高评分神装 [${unequippedBetter.name}]，但${check.reason}，暂无法穿戴！`,
+          'system'
+        );
+      } else {
+        this.addBattleLog('【一键穿戴】当前身上穿戴已是同部位最高战力搭配！', 'system');
+      }
     }
 
     return replacedCount;
   }
 
-  private optimizeDualSlots(slots: [EquipSlot, EquipSlot], playerLevel: number): number {
+  private optimizeDualSlots(slots: [EquipSlot, EquipSlot]): number {
     const [slot1, slot2] = slots;
     const isMatchingSlot = (itemSlot?: EquipSlot) => itemSlot === slot1 || itemSlot === slot2;
 
@@ -1291,26 +1342,24 @@ export class GameWorld {
     }
 
     const candidates: Candidate[] = [];
-    if (this.equipped[slot1]) {
+    const seenInstances = new Set<string>();
+
+    const addCandidate = (item?: ItemInstance) => {
+      if (!item || seenInstances.has(item.instanceId)) return;
+      seenInstances.add(item.instanceId);
       candidates.push({
-        item: this.equipped[slot1]!,
-        power: StatCalculator.getItemCombatPower(this.equipped[slot1]!)
+        item,
+        power: StatCalculator.getItemCombatPower(item)
       });
-    }
-    if (this.equipped[slot2]) {
-      candidates.push({
-        item: this.equipped[slot2]!,
-        power: StatCalculator.getItemCombatPower(this.equipped[slot2]!)
-      });
-    }
+    };
+
+    addCandidate(this.equipped[slot1]);
+    addCandidate(this.equipped[slot2]);
 
     for (const it of this.inventory) {
       if (it.type === 'equipment' && isMatchingSlot(it.slot)) {
-        if (!it.levelReq || it.levelReq <= playerLevel) {
-          candidates.push({
-            item: it,
-            power: StatCalculator.getItemCombatPower(it)
-          });
+        if (this.canEquipItem(it).can) {
+          addCandidate(it);
         }
       }
     }
@@ -1318,49 +1367,52 @@ export class GameWorld {
     // 按战力从高到低排序
     candidates.sort((a, b) => b.power - a.power);
 
-    const desiredItems: ItemInstance[] = [];
-    if (candidates[0]) desiredItems.push(candidates[0].item);
-    if (candidates[1]) desiredItems.push(candidates[1].item);
+    const desired1 = candidates[0]?.item;
+    const desired2 = candidates[1]?.item;
 
     const current1 = this.equipped[slot1];
     const current2 = this.equipped[slot2];
 
-    const currentItems: ItemInstance[] = [];
-    if (current1) currentItems.push(current1);
-    if (current2) currentItems.push(current2);
+    const currentIds = new Set([current1?.instanceId, current2?.instanceId].filter(Boolean));
+    const desiredIds = new Set([desired1?.instanceId, desired2?.instanceId].filter(Boolean));
 
-    const isSameSet = desiredItems.length === currentItems.length &&
-      desiredItems.every(d => currentItems.includes(d));
-
-    if (isSameSet) {
+    // 如果目标组合与当前已穿戴组合完全一致，则无需替换
+    if (currentIds.size === desiredIds.size && [...desiredIds].every(id => id && currentIds.has(id))) {
       return 0;
     }
 
-    // 卸下当前槽位
-    if (current1) {
+    let replacedCount = 0;
+
+    // 找出需要从身上卸下的装备 (在 currentIds 但不在 desiredIds)
+    if (current1 && !desiredIds.has(current1.instanceId)) {
       delete this.equipped[slot1];
       this.addItemToInventory(current1);
     }
-    if (current2) {
+    if (current2 && !desiredIds.has(current2.instanceId)) {
       delete this.equipped[slot2];
       this.addItemToInventory(current2);
     }
 
-    let changes = 0;
-    if (desiredItems[0]) {
-      const idx = this.inventory.indexOf(desiredItems[0]);
+    // 装备 desired1 到 slot1
+    if (desired1 && this.equipped[slot1]?.instanceId !== desired1.instanceId) {
+      if (this.equipped[slot2]?.instanceId === desired1.instanceId) {
+        delete this.equipped[slot2];
+      }
+      const idx = this.inventory.findIndex(i => i.instanceId === desired1.instanceId);
       if (idx !== -1) this.inventory.splice(idx, 1);
-      this.equipped[slot1] = desiredItems[0];
-      changes++;
-    }
-    if (desiredItems[1]) {
-      const idx = this.inventory.indexOf(desiredItems[1]);
-      if (idx !== -1) this.inventory.splice(idx, 1);
-      this.equipped[slot2] = desiredItems[1];
-      changes++;
+      this.equipped[slot1] = desired1;
+      replacedCount++;
     }
 
-    return changes;
+    // 装备 desired2 到 slot2
+    if (desired2 && this.equipped[slot2]?.instanceId !== desired2.instanceId) {
+      const idx = this.inventory.findIndex(i => i.instanceId === desired2.instanceId);
+      if (idx !== -1) this.inventory.splice(idx, 1);
+      this.equipped[slot2] = desired2;
+      replacedCount++;
+    }
+
+    return replacedCount;
   }
 
   unequipItem(slot: EquipSlot): boolean {

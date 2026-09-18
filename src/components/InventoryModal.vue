@@ -167,9 +167,13 @@
             <div class="flex gap-2 mt-2">
               <button 
                 @click="handleUse(selectedItem)"
-                class="flex-1 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded text-xs font-bold transition-all shadow active:scale-95"
+                :disabled="selectedItem.type === 'equipment' && !canEquip(selectedItem)"
+                class="flex-1 py-1.5 rounded text-xs font-bold transition-all shadow active:scale-95"
+                :class="selectedItem.type === 'equipment' && !canEquip(selectedItem) 
+                  ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed border border-zinc-700' 
+                  : 'bg-amber-600 hover:bg-amber-500 text-white cursor-pointer'"
               >
-                {{ selectedItem.type === 'potion' ? '使用药水' : '穿戴装备' }}
+                {{ getEquipBtnText(selectedItem) }}
               </button>
               <button 
                 @click="handleDrop(selectedItem)"
@@ -197,8 +201,8 @@
       <div class="flex items-center justify-between border-t border-legend-border pt-2">
         <div class="flex flex-wrap gap-2">
           <button 
-            @click="$emit('oneKeyEquip')"
-            class="px-3.5 py-2 bg-gradient-to-r from-amber-700 to-yellow-600 hover:from-amber-600 hover:to-yellow-500 text-white font-bold rounded-lg text-xs shadow-gold-glow active:scale-95 transition-all flex items-center gap-1"
+            @click="handleOneKeyEquipClick"
+            class="px-3.5 py-2 bg-gradient-to-r from-amber-700 to-yellow-600 hover:from-amber-600 hover:to-yellow-500 text-white font-bold rounded-lg text-xs shadow-gold-glow active:scale-95 transition-all flex items-center gap-1 cursor-pointer"
           >
             <span>⚡</span>
             <span>一键穿戴战力最高</span>
@@ -233,12 +237,13 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
-import { EquipSlot, ItemInstance, ItemQuality } from '../types/game';
+import { Entity, EquipSlot, ItemInstance, ItemQuality } from '../types/game';
 import { StatCalculator } from '../domain/StatCalculator';
 
 const props = defineProps<{
   inventory: ItemInstance[];
   equipped: Partial<Record<EquipSlot, ItemInstance>>;
+  player?: Entity;
 }>();
 
 const emit = defineEmits<{
@@ -255,6 +260,27 @@ const getItemPower = (item?: ItemInstance | null) => {
   return StatCalculator.getItemCombatPower(item);
 };
 
+const canEquip = (item?: ItemInstance | null): boolean => {
+  if (!item || item.type !== 'equipment' || !item.slot) return false;
+  if (!props.player) return true;
+  const playerTier = props.player.stats.ascensionTier || 0;
+  if (item.tier > playerTier) return false;
+  if (item.tier > 0 && item.levelReq && item.levelReq > props.player.stats.level) return false;
+  return true;
+};
+
+const getEquipBtnText = (item?: ItemInstance | null): string => {
+  if (!item) return '';
+  if (item.type === 'potion') return '使用药水';
+  if (!props.player) return '穿戴装备';
+  const playerTier = props.player.stats.ascensionTier || 0;
+  if (item.tier > playerTier) return `需达到 [${item.tier}阶飞升]`;
+  if (item.tier > 0 && item.levelReq && item.levelReq > props.player.stats.level) {
+    return `需达 Lv.${item.levelReq}`;
+  }
+  return '穿戴装备';
+};
+
 const selectedItem = ref<ItemInstance | null>(props.inventory[0] || null);
 
 const handleSelect = (item?: ItemInstance) => {
@@ -263,12 +289,29 @@ const handleSelect = (item?: ItemInstance) => {
 
 const handleUse = (item: ItemInstance) => {
   emit('useItem', item);
-  selectedItem.value = null;
+  setTimeout(() => {
+    if (!props.inventory.some(i => i.instanceId === selectedItem.value?.instanceId)) {
+      selectedItem.value = props.inventory[0] || null;
+    }
+  }, 50);
 };
 
 const handleDrop = (item: ItemInstance) => {
   emit('dropItem', item);
-  selectedItem.value = null;
+  setTimeout(() => {
+    if (!props.inventory.some(i => i.instanceId === selectedItem.value?.instanceId)) {
+      selectedItem.value = props.inventory[0] || null;
+    }
+  }, 50);
+};
+
+const handleOneKeyEquipClick = () => {
+  emit('oneKeyEquip');
+  setTimeout(() => {
+    if (!props.inventory.some(i => i.instanceId === selectedItem.value?.instanceId)) {
+      selectedItem.value = props.inventory[0] || null;
+    }
+  }, 50);
 };
 
 const getSlotClass = (item?: ItemInstance, isSelected = false) => {

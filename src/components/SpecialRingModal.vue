@@ -246,7 +246,7 @@ const ringInfos: RingMeta[] = [
     tierName: '初始特戒',
     skillName: '【特戒神技 · 极速狂风】',
     effectDesc: '极限攻速狂飙 +35 急速，大幅缩短出刀间隔，连击斩与风雷残影触发率翻倍！',
-    levelReq: 20,
+    levelReq: 1,
     dropSource: '击败骷髅王、僵尸王、白野猪均有概率大爆'
   },
   {
@@ -268,7 +268,7 @@ const ringInfos: RingMeta[] = [
     tierName: '初始特戒',
     skillName: '【特戒神技 · 聚宝天运】',
     effectDesc: '击杀怪物金币掉落 +150%，极品神装、冲天光柱大爆几率翻倍提升！打宝挂机必备！',
-    levelReq: 20,
+    levelReq: 1,
     dropSource: '击败钉耙猫王、骷髅精灵、白野猪均可爆出'
   }
 ];
@@ -292,13 +292,6 @@ const equipRing = (item: ItemInstance) => {
 };
 
 const oneKeyEquipSpecialRings = () => {
-  for (const info of ringInfos) {
-    if (!props.equipped[info.slot]) {
-      const invRing = getInventoryRing(info.slot);
-      if (invRing && invRing.levelReq <= props.player.stats.level) {
-        emit('equip', invRing);
-      }
-    }
-  }
+  emit('oneKeyEquip');
 };
 </script>

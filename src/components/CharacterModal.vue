@@ -113,6 +113,16 @@
             </div>
           </div>
 
+          <!-- 一键穿戴最高战力按钮 -->
+          <button 
+            @click="$emit('oneKeyEquip')"
+            class="w-full mt-2 py-1.5 bg-gradient-to-r from-amber-700 via-yellow-600 to-amber-700 hover:from-amber-600 hover:to-yellow-500 text-white font-bold rounded text-xs shadow-gold-glow active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+            title="一键比对全身所有槽位评分，智能换上最强神装与特戒"
+          >
+            <span>⚡</span>
+            <span>一键穿戴战力最高</span>
+          </button>
+
           <div class="text-[10px] text-zinc-500 text-center mt-1">
             点击已穿戴装备/特戒可直接卸下退回背包
           </div>
@@ -320,6 +330,7 @@ const emit = defineEmits<{
   (e: 'unequip', slot: EquipSlot): void;
   (e: 'ascend'): void;
   (e: 'openSpecialRing'): void;
+  (e: 'oneKeyEquip'): void;
 }>();
 
 const leftSlots: { key: EquipSlot; name: string; placeholder: string }[] = [

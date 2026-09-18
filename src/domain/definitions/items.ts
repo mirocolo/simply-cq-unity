@@ -53,7 +53,7 @@ export const ITEM_DEFINITIONS: Record<string, ItemDef> = {
     maxHp: 45,
     maxMp: 0,
     hasteBonus: 3,
-    levelReq: 10,
+    levelReq: 1,
     price: 450,
     icon: '⚔️',
     desc: '战修启蒙阔剑，势大力沉。'
@@ -73,7 +73,7 @@ export const ITEM_DEFINITIONS: Record<string, ItemDef> = {
     maxMp: 0,
     critBonus: 2,
     hasteBonus: 5,
-    levelReq: 15,
+    levelReq: 1,
     price: 1200,
     icon: '⚔️',
     desc: '剑如疾风，挥动间带有破空之声。'
@@ -92,7 +92,7 @@ export const ITEM_DEFINITIONS: Record<string, ItemDef> = {
     maxHp: 110,
     maxMp: 0,
     critBonus: 4,
-    levelReq: 20,
+    levelReq: 1,
     price: 3500,
     icon: '🔪',
     desc: '沉重的阔刃斩刀，可轻易破开猛兽硬甲。'
@@ -457,7 +457,7 @@ export const ITEM_DEFINITIONS: Record<string, ItemDef> = {
     maxAC: 5,
     maxHp: 60,
     maxMp: 20,
-    levelReq: 11,
+    levelReq: 1,
     price: 500,
     icon: '🛡️',
     desc: '皮质混缀铁片的轻甲，防御力适中。'
@@ -475,7 +475,7 @@ export const ITEM_DEFINITIONS: Record<string, ItemDef> = {
     maxAC: 10,
     maxHp: 150,
     maxMp: 40,
-    levelReq: 20,
+    levelReq: 1,
     price: 3000,
     icon: '🦺',
     desc: '精钢锻打的厚重战甲，能抵御强力物理冲击。'
@@ -705,7 +705,7 @@ export const ITEM_DEFINITIONS: Record<string, ItemDef> = {
     maxAC: 4,
     maxHp: 50,
     maxMp: 20,
-    levelReq: 18,
+    levelReq: 1,
     price: 1500,
     icon: '🎩',
     desc: '绘有清心符咒的软布硬盔。'
@@ -913,7 +913,7 @@ export const ITEM_DEFINITIONS: Record<string, ItemDef> = {
     maxHp: 50,
     maxMp: 0,
     hasteBonus: 15,
-    levelReq: 19,
+    levelReq: 1,
     price: 3000,
     icon: '🌪️',
     desc: '刻有风之印记的轻巧挂饰，出刀迅疾如风。'
@@ -1154,7 +1154,7 @@ export const ITEM_DEFINITIONS: Record<string, ItemDef> = {
     maxAC: 4,
     maxHp: 40,
     maxMp: 20,
-    levelReq: 15,
+    levelReq: 1,
     price: 1200,
     icon: '🟡',
     desc: '黄铜镀金手镯，兼备少量物理与魔法防护。'
@@ -1370,7 +1370,7 @@ export const ITEM_DEFINITIONS: Record<string, ItemDef> = {
     maxHp: 40,
     maxMp: 0,
     critBonus: 2,
-    levelReq: 15,
+    levelReq: 1,
     price: 1500,
     icon: '🪸',
     desc: '深海红珊瑚雕出的指环，色泽艳丽。'
@@ -1580,7 +1580,7 @@ export const ITEM_DEFINITIONS: Record<string, ItemDef> = {
     hasteBonus: 35, // 狂飙 +35 急速！
     critBonus: 12,
     lifestealBonus: 3,
-    levelReq: 20,
+    levelReq: 1,
     price: 150000,
     icon: '🌪️',
     desc: '【特戒神技·疾风】极限攻速狂飙 +35 急速，风雷残影连击触发率巨幅提升！'
@@ -1600,7 +1600,7 @@ export const ITEM_DEFINITIONS: Record<string, ItemDef> = {
     maxHp: 800,
     maxMp: 200,
     critBonus: 10,
-    levelReq: 20,
+    levelReq: 1,
     price: 150000,
     icon: '💰',
     desc: '【特戒神技·聚宝】击杀怪物金币掉落 +150%，极品神装大爆几率翻倍提升！'

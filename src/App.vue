@@ -39,6 +39,7 @@
       @unequip="handleUnequip"
       @ascend="handleAscend"
       @openSpecialRing="openModal('special_ring')"
+      @oneKeyEquip="handleOneKeyEquip"
     />
 
     <!-- 模态弹窗：至尊六大特戒神殿 (R) -->
@@ -56,6 +57,7 @@
     <!-- 模态弹窗：40格随身包裹 (B) -->
     <InventoryModal 
       v-if="activeModal === 'inventory'"
+      :player="world.player"
       :inventory="world.inventory"
       :equipped="world.equipped"
       @close="activeModal = null"
