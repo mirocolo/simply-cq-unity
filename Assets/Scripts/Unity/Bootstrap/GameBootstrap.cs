@@ -41,10 +41,6 @@ namespace SimplyCQ.Unity
         private int _openPanels;
         private Camera _camera;
 
-        private GUIStyle _hudStyle;
-        private GUIStyle _debugStyle;
-        private GUIStyle _warnStyle;
-
         private readonly List<Intent> _intents = new List<Intent>();
         private float _accumulator;
         private float _tickDuration;
@@ -700,20 +696,6 @@ namespace SimplyCQ.Unity
         {
             if (_simulation == null) return;
 
-            if (_hudStyle == null)
-            {
-                _hudStyle = new GUIStyle(GUI.skin.label);
-                _hudStyle.fontSize = UiScale.Font(14);
-                _hudStyle.normal.textColor = Color.white;
-
-                _debugStyle = new GUIStyle(GUI.skin.label);
-                _debugStyle.fontSize = UiScale.Font(14);
-                _debugStyle.normal.textColor = UiColor.Srgb(0.85f, 0.90f, 0.95f);
-
-                _warnStyle = new GUIStyle(GUI.skin.label);
-                _warnStyle.fontSize = UiScale.Font(14);
-            }
-
             World world = _simulation.World;
 
             if (ShowDebugOverlay)
@@ -730,25 +712,25 @@ namespace SimplyCQ.Unity
 
                 const string line3 = "WASD 走路 · 按住空格/左键 持续普攻 · 1~3 战士技能 · I 背包 · C 角色 · E 商店 · F5 存档 · F9 读档 · 走到传送点自动换图 · Esc 退出";
 
-                GUI.Label(UiScale.R(10f, 8f, 1000f, 22f), line1, _debugStyle);
-                GUI.Label(UiScale.R(10f, 28f, 1000f, 22f), line2, _debugStyle);
-                GUI.Label(UiScale.R(10f, 48f, 1000f, 22f), line3, _debugStyle);
+                GUI.Label(UiScale.R(10f, 8f, 1000f, 22f), line1, UiSkin.Styles.Group);
+                GUI.Label(UiScale.R(10f, 28f, 1000f, 22f), line2, UiSkin.Styles.Group);
+                GUI.Label(UiScale.R(10f, 48f, 1000f, 22f), line3, UiSkin.Styles.Group);
 
                 // 输入 / 焦点状态放右上角，别挡住左边的面板
                 Rect inputRect = new Rect(Screen.width - UiScale.Px(620f), UiScale.Px(8f), UiScale.Px(610f), UiScale.Px(22f));
                 if (!Application.isFocused)
                 {
-                    _warnStyle.normal.textColor = UiColor.Srgb(1f, 0.45f, 0.4f);
-                    GUI.Label(inputRect, "⚠ 游戏窗口没有焦点！先用鼠标点一下窗口（或 Cmd+Tab 切过来），否则键盘鼠标都不会有反应", _warnStyle);
+                    GUI.Label(inputRect, "⚠ 游戏窗口没有焦点！先用鼠标点一下窗口（或 Cmd+Tab 切过来），否则键盘鼠标都不会有反应",
+                        UiSkin.Styles.Bad);
                 }
                 else if (_lastActivityAt <= 0f)
                 {
-                    _warnStyle.normal.textColor = UiColor.Srgb(1f, 0.85f, 0.4f);
-                    GUI.Label(inputRect, "窗口已有焦点，还没收到按键（WASD 走路 · 空格攻击 · I 背包 · Esc 退出）", _warnStyle);
+                    GUI.Label(inputRect, "窗口已有焦点，还没收到按键（WASD 走路 · 空格攻击 · I 背包 · Esc 退出）",
+                        UiSkin.Styles.Warn);
                 }
                 else
                 {
-                    GUI.Label(inputRect, "输入正常（最近：" + _lastActivity + "）  WASD 走路 · 空格攻击 · I 背包 · Esc 退出", _debugStyle);
+                    GUI.Label(inputRect, "输入正常（最近：" + _lastActivity + "）  WASD 走路 · 空格攻击 · I 背包 · Esc 退出", UiSkin.Styles.Group);
                 }
             }
 
@@ -762,6 +744,10 @@ namespace SimplyCQ.Unity
             _floatingText.Draw();
         }
 
+        /// <summary>
+        /// 左上角状态条。分段刻度 + 数字压在条上，和面板里那几条是同一个画法
+        /// （<see cref="UiSkin.Bar"/>），所以 HUD 和角色面板看起来是一套东西。
+        /// </summary>
         private void DrawHud(World world)
         {
             Entity p = world.Player;
@@ -772,37 +758,20 @@ namespace SimplyCQ.Unity
             const float h = 18f;
             float y = 78f;
 
-            DrawBar(x, y, w, h,
+            UiSkin.Bar(UiScale.R(x, y, w, h),
                 p.MaxHp > 0 ? p.Hp / (float)p.MaxHp : 0f,
-                UiColor.Srgb(0.16f, 0.05f, 0.05f, 0.85f),
-                UiColor.Srgb(0.80f, 0.19f, 0.16f, 0.95f),
-                "HP " + p.Hp + " / " + p.MaxHp);
+                UiSkin.HpFill, "HP " + p.Hp + " / " + p.MaxHp);
 
             y += h + 4f;
-            DrawBar(x, y, w, h,
+            UiSkin.Bar(UiScale.R(x, y, w, h),
                 p.ExpToNextLevel > 0 ? p.Exp / (float)p.ExpToNextLevel : 0f,
-                UiColor.Srgb(0.05f, 0.10f, 0.16f, 0.85f),
-                UiColor.Srgb(0.25f, 0.55f, 0.90f, 0.95f),
-                "EXP " + p.Exp + " / " + p.ExpToNextLevel);
+                UiSkin.ExpFill, "EXP " + p.Exp + " / " + p.ExpToNextLevel);
 
             y += h + 6f;
             string status = "Lv." + p.Level + "    金币 " + p.Gold + "    攻 " + p.MinDc + "-" + p.MaxDc + "    防 " + p.Ac;
             if (!p.IsAlive) status += "    （死亡，等待复活…）";
             status += "    音效 " + _audio.StatusText + "（M 静音）";
-            GUI.Label(UiScale.R(x, y, 640f, 20f), status, _hudStyle);
-        }
-
-        private void DrawBar(float x, float y, float w, float h, float percent, Color back, Color fill, string text)
-        {
-            float pct = Mathf.Clamp01(percent);
-
-            GUI.color = back;
-            GUI.DrawTexture(UiScale.R(x, y, w, h), Texture2D.whiteTexture);
-            GUI.color = fill;
-            GUI.DrawTexture(UiScale.R(x, y, w * pct, h), Texture2D.whiteTexture);
-            GUI.color = Color.white;
-
-            GUI.Label(UiScale.R(x + 6f, y, w, h), text, _hudStyle);
+            GUI.Label(UiScale.R(x, y, 640f, 20f), status, UiSkin.Styles.Label);
         }
     }
 }

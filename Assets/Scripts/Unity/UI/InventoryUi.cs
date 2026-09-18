@@ -7,9 +7,12 @@ namespace SimplyCQ.Unity
     /// <summary>
     /// 背包面板 + 角色面板。
     ///
-    /// 为什么用 IMGUI（OnGUI）而不是 UGUI：这个项目整套界面现在都是 OnGUI 画的（HUD、伤害飘字），
-    /// 零 prefab、零美术资源，M3 阶段先把玩法闭环打通最划算。
-    /// 以后要换 UGUI / UI Toolkit，只需要替换这一个类。
+    /// 为什么用 IMGUI（OnGUI）而不是 UGUI：这个项目整套界面都是 OnGUI 画的（HUD、伤害飘字、
+    /// 商店、传送员、调参面板），零 prefab、零美术资源。以后要换 UGUI / UI Toolkit，
+    /// 只需要替换这几个 Ui 类，Domain 一行都不用动。
+    ///
+    /// 皮肤（配色 / 金边 / 标题栏 / 字号 / 分段血条）全部走 <see cref="UiSkin"/> ——
+    /// 以前每个面板各画各的，改一次配色要动五个文件。
     ///
     /// 布局全部按"逻辑单位"写（基准 1080 高），真正落屏时由 UiScale 等比放大 ——
     /// 否则 Retina 屏上字小得看不清。
@@ -35,6 +38,11 @@ namespace SimplyCQ.Unity
         private readonly IItemCatalog _catalog;
         private readonly ShopTuning _shop;
         private readonly List<Intent> _pending = new List<Intent>();
+        private readonly PanelDrag _bagDrag = new PanelDrag();
+        private readonly PanelDrag _charDrag = new PanelDrag();
+
+        /// <summary>按品质缓存的文字样式（白/绿/蓝/紫各一份）。</summary>
+        private readonly GUIStyle[] _qualityLabels = new GUIStyle[ItemQualityRules.Count];
 
         private bool _bagOpen = true;
         private bool _charOpen;
@@ -43,19 +51,8 @@ namespace SimplyCQ.Unity
         private string _hint = "";
         private float _hintUntil;
 
-        private GUIStyle _label;
-        private GUIStyle _value;
-        private GUIStyle _bonus;
-        private GUIStyle _small;
-        private GUIStyle _title;
-        private GUIStyle _tipTitle;
-        private GUIStyle _tipBody;
-
-        /// <summary>按品质缓存的文字样式（白/绿/蓝/紫各一份）。</summary>
-        private readonly GUIStyle[] _qualityLabels = new GUIStyle[ItemQualityRules.Count];
-
-        private static Rect _bagRect;
-        private static Rect _charRect;
+        private Rect _bagRect;
+        private Rect _charRect;
 
         public InventoryUi(World world, IItemCatalog catalog, ShopTuning shop)
         {
@@ -96,36 +93,42 @@ namespace SimplyCQ.Unity
             SetHint("捡不起来：" + evt.Reason);
         }
 
-        // ------------------------------------------------------------------ 布局（逻辑单位）
+        // ------------------------------------------------------------------ 布局
 
-        private static Rect BagWindow()
+        private Rect BagWindow()
         {
             float w = Inventory.Columns * (Cell + Gap) + Gap + Pad * 2f;
-            return UiScale.R(10f, WindowY, w, WindowH);
+            return _bagDrag.Apply(UiScale.R(10f, WindowY, w, WindowH));
         }
 
-        private static Rect CharWindow()
+        private Rect CharWindow()
         {
             Rect bag = BagWindow();
-            return new Rect(bag.xMax + UiScale.Px(8f), UiScale.Px(WindowY), UiScale.Px(WindowW), UiScale.Px(WindowH));
-        }
-
-        private static Rect LRect(Rect outer, float lx, float ly, float lw, float lh)
-        {
-            return new Rect(outer.x + UiScale.Px(lx), outer.y + UiScale.Px(ly), UiScale.Px(lw), UiScale.Px(lh));
+            return _charDrag.Apply(new Rect(bag.xMax + UiScale.Px(8f), UiScale.Px(WindowY),
+                                            UiScale.Px(WindowW), UiScale.Px(WindowH)));
         }
 
         // ------------------------------------------------------------------ 入口
 
         public void Draw()
         {
-            EnsureStyles();
-
             Event e = Event.current;
-            MouseOverPanel = e != null && ((_bagOpen && _bagRect.Contains(e.mousePosition)) || (_charOpen && _charRect.Contains(e.mousePosition)));
 
             Entity player = _world != null ? _world.Player : null;
             if (player == null) return;
+
+            bool pressed, released;
+            Vector2 mouse;
+            PanelDrag.ReadMouse(e, out pressed, out released, out mouse);
+
+            if (_bagOpen) _bagDrag.Handle(BagWindow(), pressed, released, mouse);
+            if (_charOpen) _charDrag.Handle(CharWindow(), pressed, released, mouse);
+
+            _bagRect = BagWindow();
+            _charRect = CharWindow();
+            MouseOverPanel = e != null
+                && ((_bagOpen && _bagRect.Contains(e.mousePosition))
+                    || (_charOpen && _charRect.Contains(e.mousePosition)));
 
             if (_bagOpen) DrawBag(player, e);
             if (_charOpen) DrawChar(player, e);
@@ -139,12 +142,12 @@ namespace SimplyCQ.Unity
             Inventory bag = player.Bag;
             if (bag == null) return;
 
-            Rect r = BagWindow();
-            _bagRect = r;
-            Panel(r, "背包");
+            Rect r = _bagRect;
+            UiSkin.Panel(r, "背包   (I 关闭，标题栏可拖动)");
 
-            GUI.Label(LRect(r, Pad, 26f, 280f, 18f),
-                "金币 " + player.Gold + "      格子 " + bag.UsedSlots + " / " + Inventory.SlotCount, _label);
+            GUI.Label(UiSkin.LRect(r, Pad, 28f, 280f, 18f),
+                "金币 " + player.Gold + "      格子 " + bag.UsedSlots + " / " + Inventory.SlotCount,
+                UiSkin.Styles.Label);
 
             float cell = UiScale.Px(Cell);
             float step = UiScale.Px(Cell + Gap);
@@ -165,25 +168,28 @@ namespace SimplyCQ.Unity
                     bool hover = e != null && cellRect.Contains(e.mousePosition);
                     if (hover) _hoverBag = index;
 
-                    DrawCellBackground(cellRect, hover);
-
                     ItemInstance item = bag.At(index);
+                    ItemDef def = item != null && _catalog != null ? _catalog.Get(item.DefId) : null;
+
+                    UiSkin.Cell(cellRect, hover && item != null);
+
                     if (item != null)
                     {
-                        ItemDef def = _catalog != null ? _catalog.Get(item.DefId) : null;
-                        DrawIcon(cellRect, item, def);
+                        DrawIcon(cellRect, item);
                         QualityStripe(cellRect, item.Quality);
                         if (item.Count > 1)
-                            GUI.Label(new Rect(cellRect.xMax - UiScale.Px(20f), cellRect.yMax - UiScale.Px(18f), UiScale.Px(20f), UiScale.Px(16f)),
-                                item.Count.ToString(), _small);
+                            GUI.Label(new Rect(cellRect.xMax - UiScale.Px(20f), cellRect.yMax - UiScale.Px(18f),
+                                    UiScale.Px(20f), UiScale.Px(16f)),
+                                item.Count.ToString(), UiSkin.Styles.Small);
                     }
 
-                    if (hover && leftDown && item != null)
+                    if (item != null && hover && leftDown)
                     {
-                        if (def_IsEquip(item)) Queue(Intent.BagAction(player.Id, IntentKind.EquipItem, index));
-                        else Queue(Intent.BagAction(player.Id, IntentKind.UseItem, index));
+                        bool isEquip = def != null && def.IsEquip;
+                        Queue(Intent.BagAction(player.Id,
+                            isEquip ? IntentKind.EquipItem : IntentKind.UseItem, index));
                     }
-                    else if (hover && rightDown && item != null)
+                    else if (item != null && hover && rightDown)
                     {
                         Queue(Intent.BagAction(player.Id, IntentKind.DropItem, index));
                     }
@@ -197,45 +203,33 @@ namespace SimplyCQ.Unity
             }
         }
 
-        private bool def_IsEquip(ItemInstance item)
-        {
-            ItemDef def = _catalog != null ? _catalog.Get(item.DefId) : null;
-            return def != null && def.IsEquip;
-        }
-
         // ------------------------------------------------------------------ 角色
 
         private void DrawChar(Entity player, Event e)
         {
-            Rect r = CharWindow();
-            _charRect = r;
-            Panel(r, "角色");
+            Rect r = _charRect;
+            UiSkin.Panel(r, "角色   (C 关闭，标题栏可拖动)");
 
-            // 等级 / 金币
-            GUI.Label(LRect(r, Pad, 26f, 160f, 18f), "Lv." + player.Level, _value);
-            GUI.Label(LRect(r, 150f, 26f, 190f, 18f), "金币 " + player.Gold, _label);
+            GUI.Label(UiSkin.LRect(r, Pad, 28f, 160f, 18f), "Lv." + player.Level, UiSkin.Styles.Value);
+            GUI.Label(UiSkin.LRect(r, 150f, 28f, 190f, 18f), "金币 " + player.Gold, UiSkin.Styles.Label);
 
-            // 血条 / 经验条：数字之外给个图形，一眼知道还剩多少
-            Bar(LRect(r, Pad, 48f, WindowW - Pad * 2f, 16f),
+            // 分段血条 / 经验条 / 蓝条：一眼能估出还剩几格
+            UiSkin.Bar(UiSkin.LRect(r, Pad, 50f, WindowW - Pad * 2f, 16f),
                 player.MaxHp > 0 ? player.Hp / (float)player.MaxHp : 0f,
-                UiColor.Srgb(0.78f, 0.18f, 0.15f),
-                "生命  " + player.Hp + " / " + player.MaxHp);
+                UiSkin.HpFill, "生命  " + player.Hp + " / " + player.MaxHp);
 
-            Bar(LRect(r, Pad, 68f, WindowW - Pad * 2f, 16f),
+            UiSkin.Bar(UiSkin.LRect(r, Pad, 70f, WindowW - Pad * 2f, 16f),
                 player.ExpToNextLevel > 0 ? player.Exp / (float)player.ExpToNextLevel : 0f,
-                UiColor.Srgb(0.25f, 0.55f, 0.90f),
-                "经验  " + player.Exp + " / " + player.ExpToNextLevel);
+                UiSkin.ExpFill, "经验  " + player.Exp + " / " + player.ExpToNextLevel);
 
-            // 属性：总值 + 明细（基础 / 装备），这样换装有没有用一眼看得出
-            Bar(LRect(r, Pad, 88f, WindowW - Pad * 2f, 16f),
+            UiSkin.Bar(UiSkin.LRect(r, Pad, 90f, WindowW - Pad * 2f, 16f),
                 player.MaxMp > 0 ? player.Mp / (float)player.MaxMp : 0f,
-                new Color(0.28f, 0.34f, 0.85f),
-                "魔法  " + player.Mp + " / " + player.MaxMp);
+                UiSkin.MpFill, "魔法  " + player.Mp + " / " + player.MaxMp);
 
             int gearMin, gearMax, gearAc, gearHp;
             SumGearBonus(player, out gearMin, out gearMax, out gearAc, out gearHp);
 
-            float y = 114f;
+            float y = 116f;
             StatBlock(r, y, "攻击", player.MinDc + " - " + player.MaxDc,
                 "基础 " + player.BaseMinDc + "-" + player.BaseMaxDc,
                 (gearMin > 0 || gearMax > 0) ? "装备 +" + gearMin + "~+" + gearMax : "");
@@ -264,12 +258,13 @@ namespace SimplyCQ.Unity
             }
             else
             {
-                GUI.Label(LRect(r, Pad, y, WindowW - Pad * 2f, 18f), "魔法 / 道术：三职业在 M4 开放", _small);
+                GUI.Label(UiSkin.LRect(r, Pad, y, WindowW - Pad * 2f, 18f),
+                    "魔法 / 道术：三职业在 M4 开放", UiSkin.Styles.Small);
                 y += 26f;
             }
 
-            // 装备栏
-            GUI.Label(LRect(r, Pad, y, WindowW - Pad * 2f, 18f), "—— 装备（左键点一下卸下）——", _label);
+            GUI.Label(UiSkin.LRect(r, Pad, y, WindowW - Pad * 2f, 18f),
+                "—— 装备（左键点一下卸下）——", UiSkin.Styles.Group);
             y += 24f;
 
             _hoverGear = -1;
@@ -278,24 +273,27 @@ namespace SimplyCQ.Unity
             for (int i = 1; i < ItemDef.SlotCount; i++)
             {
                 EquipSlot slot = (EquipSlot)i;
-                Rect row = LRect(r, Pad, y + (i - 1) * GearRowH, WindowW - Pad * 2f, GearRowH - 3f);
+                Rect row = UiSkin.LRect(r, Pad, y + (i - 1) * GearRowH, WindowW - Pad * 2f, GearRowH - 3f);
                 ItemInstance worn = player.Gear != null ? player.Gear.Get(slot) : null;
                 ItemDef def = worn != null && _catalog != null ? _catalog.Get(worn.DefId) : null;
 
                 bool hover = e != null && row.Contains(e.mousePosition);
                 if (hover) _hoverGear = i;
 
-                DrawCellBackground(row, hover && worn != null);
+                UiSkin.Cell(row, hover && worn != null);
 
                 if (def != null)
-                    DrawIcon(new Rect(row.x + UiScale.Px(3f), row.y + UiScale.Px(3f), UiScale.Px(21f), UiScale.Px(21f)), worn, def);
-                if (worn != null) QualityStripe(row, worn.Quality);
+                {
+                    DrawIcon(new Rect(row.x + UiScale.Px(3f), row.y + UiScale.Px(3f),
+                             UiScale.Px(21f), UiScale.Px(21f)), worn);
+                    QualityStripe(row, worn.Quality);
+                }
 
                 string text = SlotNames[i] + "     " + (def != null ? def.Name : "（空）");
                 GUI.Label(new Rect(row.x + UiScale.Px(28f), row.y + UiScale.Px(5f), row.width, UiScale.Px(20f)),
-                    text, def != null ? QualityLabel(worn.Quality) : _small);
+                    text, def != null ? QualityLabel(worn.Quality) : UiSkin.Styles.Small);
 
-                if (hover && leftDown && worn != null)
+                if (worn != null && hover && leftDown)
                     Queue(Intent.BagAction(player.Id, IntentKind.UnequipItem, i));
             }
 
@@ -322,78 +320,42 @@ namespace SimplyCQ.Unity
             }
         }
 
-        // ------------------------------------------------------------------ 画图小工具
+        // ------------------------------------------------------------------ 小件
 
         private void StatBlock(Rect outer, float ly, string name, string total, string baseText, string bonusText)
         {
-            GUI.Label(LRect(outer, Pad + 4f, ly, 60f, 18f), name, _label);
-            GUI.Label(LRect(outer, Pad + 62f, ly, 120f, 18f), total, _value);
-            GUI.Label(LRect(outer, Pad + 22f, ly + 17f, 160f, 17f), baseText, _small);
+            GUI.Label(UiSkin.LRect(outer, Pad + 4f, ly, 60f, 18f), name, UiSkin.Styles.Small);
+            GUI.Label(UiSkin.LRect(outer, Pad + 62f, ly, 130f, 18f), total, UiSkin.Styles.Value);
+            GUI.Label(UiSkin.LRect(outer, Pad + 22f, ly + 17f, 170f, 17f), baseText, UiSkin.Styles.Small);
             if (!string.IsNullOrEmpty(bonusText))
-                GUI.Label(LRect(outer, Pad + 130f, ly + 17f, 160f, 17f), bonusText, _bonus);
-        }
-
-        private void Bar(Rect r, float percent, Color fill, string text)
-        {
-            float pct = Mathf.Clamp01(percent);
-            Fill(r, UiColor.Srgb(0.10f, 0.10f, 0.12f, 0.92f));
-            Fill(new Rect(r.x, r.y, r.width * pct, r.height), fill);
-            Border(r, UiColor.Srgb(0.44f, 0.39f, 0.26f, 1f));
-            GUI.Label(new Rect(r.x + UiScale.Px(6f), r.y, r.width, r.height), text, _label);
-        }
-
-        private void DrawCellBackground(Rect r, bool highlight)
-        {
-            Fill(r, highlight ? UiColor.Srgb(0.34f, 0.30f, 0.18f, 0.95f) : UiColor.Srgb(0.15f, 0.14f, 0.13f, 0.92f));
-            Border(r, UiColor.Srgb(0.44f, 0.39f, 0.26f, 1f));
+                GUI.Label(UiSkin.LRect(outer, Pad + 132f, ly + 17f, 170f, 17f), bonusText, UiSkin.Styles.Good);
         }
 
         /// <summary>格子/那一行左边的一条品质色带。白装不画（保持金色框那套原生观感）。</summary>
         private void QualityStripe(Rect r, ItemQuality q)
         {
             if (q == ItemQuality.White) return;
-            Fill(new Rect(r.x, r.y, UiScale.Px(3f), r.height), ItemQualityStyle.Srgb(q));
+            UiSkin.Fill(new Rect(r.x, r.y, UiScale.Px(3f), r.height), ItemQualityStyle.Srgb(q));
         }
 
-        /// <summary>按品质取文字样式（懒加载，第一次用到才建）。</summary>
-        private GUIStyle QualityLabel(ItemQuality q)
+        private void DrawIcon(Rect cell, ItemInstance item)
         {
-            int i = (int)q;
-            if (i < 0 || i >= _qualityLabels.Length) i = 0;
-            if (_qualityLabels[i] == null)
-            {
-                GUIStyle s = new GUIStyle(GUI.skin.label);
-                s.fontSize = UiScale.Font(14);
-                s.normal.textColor = ItemQualityStyle.Srgb((ItemQuality)i);
-                _qualityLabels[i] = s;
-            }
-            return _qualityLabels[i];
-        }
-
-        private void DrawIcon(Rect cell, ItemInstance item, ItemDef def)
-        {
+            ItemDef def = _catalog != null ? _catalog.Get(item.DefId) : null;
             ItemType type = def != null ? def.Type : ItemType.Material;
             string key = def != null ? def.SpriteId : item.DefId;
             Sprite sprite = PlaceholderArt.ItemIcon(key, type, 32);
             if (sprite == null || sprite.texture == null) return;
 
             float inset = UiScale.Px(6f);
-            GUI.DrawTexture(new Rect(cell.x + inset, cell.y + inset, cell.width - inset * 2f, cell.height - inset * 2f), sprite.texture);
-        }
-
-        private void Panel(Rect r, string title)
-        {
-            Fill(r, UiColor.Srgb(0.06f, 0.06f, 0.08f, 0.90f));
-            Border(r, UiColor.Srgb(0.55f, 0.47f, 0.28f, 1f));
-            GUI.Label(LRect(r, Pad, 4f, WindowW, 20f), title, _title);
+            GUI.DrawTexture(new Rect(cell.x + inset, cell.y + inset,
+                cell.width - inset * 2f, cell.height - inset * 2f), sprite.texture);
         }
 
         private void DrawTooltip(ItemDef def, ItemInstance item, Vector2 mouse)
         {
             if (def == null) return;
 
-            // 显示的是【这一件】的实际数值（按品质放大过），和面板/战斗用的是同一套换算 ——
-            // 否则会出现"提示说 +3、面板只涨了 +2"。
+            // 显示的是【这一件】的实际数值（按品质放大过），和面板/战斗用的是同一套换算
             ItemQuality q = item != null ? item.Quality : ItemQuality.White;
 
             string body = "";
@@ -423,12 +385,12 @@ namespace SimplyCQ.Unity
 
             if (!string.IsNullOrEmpty(def.Description)) body += "\n" + def.Description;
 
-            // 售价走和商店同一个算法。以前这里写的是 def.Price / 2，和实际回收价（×0.4）对不上。
+            // 售价走和商店同一个算法，界面才不会报错价
             body += "\n售价 " + _shop.SellPriceOf(def, q) + " 金币";
 
             int lines = body.Split('\n').Length;
             float lw = 240f;
-            float lh = 48f + lines * 18f;
+            float lh = 50f + lines * 18f;
 
             float mx = mouse.x + UiScale.Px(16f);
             float my = mouse.y + UiScale.Px(12f);
@@ -436,16 +398,16 @@ namespace SimplyCQ.Unity
             if (r.xMax > Screen.width) r.x = Screen.width - r.width - UiScale.Px(4f);
             if (r.yMax > Screen.height) r.y = Screen.height - r.height - UiScale.Px(4f);
 
-            Fill(r, UiColor.Srgb(0.04f, 0.04f, 0.05f, 0.97f));
-            Border(r, def.IsEquip ? ItemQualityStyle.Srgb(q) : UiColor.Srgb(0.70f, 0.60f, 0.32f, 1f));
+            UiSkin.Fill(r, UiColor.Srgb(0.035f, 0.033f, 0.040f, 0.97f));
+            UiSkin.Border(r, def.IsEquip ? ItemQualityStyle.Srgb(q) : UiSkin.PanelBorderInner, 1f);
 
             string name = ItemQualityStyle.TitledName(q, def.Name)
                           + (item != null && item.Count > 1 ? "  x" + item.Count : "");
 
-            // 装备走品质色（QualityLabel 本身就是 14 号字，和 _tipTitle 一致），材料/药水走原来的金色
             GUI.Label(new Rect(r.x + UiScale.Px(7f), r.y + UiScale.Px(4f), r.width, UiScale.Px(18f)),
-                name, def.IsEquip ? QualityLabel(q) : _tipTitle);
-            GUI.Label(new Rect(r.x + UiScale.Px(7f), r.y + UiScale.Px(26f), r.width, r.height), body, _tipBody);
+                name, def.IsEquip ? QualityLabel(q) : UiSkin.Styles.Title);
+            GUI.Label(new Rect(r.x + UiScale.Px(7f), r.y + UiScale.Px(26f), r.width, r.height),
+                body, UiSkin.Styles.Small);
         }
 
         private void DrawHint()
@@ -458,58 +420,23 @@ namespace SimplyCQ.Unity
                 return;
             }
 
-            Rect r = new Rect(Screen.width * 0.5f - UiScale.Px(180f), Screen.height - UiScale.Px(46f), UiScale.Px(360f), UiScale.Px(26f));
-            Fill(r, UiColor.Srgb(0.10f, 0.04f, 0.04f, 0.88f));
-            GUI.Label(new Rect(r.x, r.y + UiScale.Px(4f), r.width, r.height), _hint, _label);
+            Rect r = new Rect(Screen.width * 0.5f - UiScale.Px(190f), Screen.height - UiScale.Px(52f),
+                              UiScale.Px(380f), UiScale.Px(26f));
+            UiSkin.Hint(r, _hint);
         }
 
-        private static void Fill(Rect r, Color c)
+        /// <summary>按品质取文字样式（懒加载）。</summary>
+        private GUIStyle QualityLabel(ItemQuality q)
         {
-            Color prev = GUI.color;
-            GUI.color = c;
-            GUI.DrawTexture(r, Texture2D.whiteTexture);
-            GUI.color = prev;
-        }
-
-        private static void Border(Rect r, Color c)
-        {
-            Fill(new Rect(r.x, r.y, r.width, 1f), c);
-            Fill(new Rect(r.x, r.yMax - 1f, r.width, 1f), c);
-            Fill(new Rect(r.x, r.y, 1f, r.height), c);
-            Fill(new Rect(r.xMax - 1f, r.y, 1f, r.height), c);
-        }
-
-        private void EnsureStyles()
-        {
-            if (_label != null) return;
-
-            _label = new GUIStyle(GUI.skin.label);
-            _label.fontSize = UiScale.Font(13);
-            _label.normal.textColor = UiColor.Srgb(0.92f, 0.92f, 0.88f);
-
-            _value = new GUIStyle(GUI.skin.label);
-            _value.fontSize = UiScale.Font(14);
-            _value.normal.textColor = Color.white;
-
-            _bonus = new GUIStyle(GUI.skin.label);
-            _bonus.fontSize = UiScale.Font(12);
-            _bonus.normal.textColor = UiColor.Srgb(0.45f, 0.95f, 0.55f);
-
-            _small = new GUIStyle(GUI.skin.label);
-            _small.fontSize = UiScale.Font(12);
-            _small.normal.textColor = UiColor.Srgb(0.72f, 0.70f, 0.62f);
-
-            _title = new GUIStyle(GUI.skin.label);
-            _title.fontSize = UiScale.Font(15);
-            _title.normal.textColor = UiColor.Srgb(1f, 0.90f, 0.55f);
-
-            _tipTitle = new GUIStyle(GUI.skin.label);
-            _tipTitle.fontSize = UiScale.Font(14);
-            _tipTitle.normal.textColor = UiColor.Srgb(1f, 0.88f, 0.45f);
-
-            _tipBody = new GUIStyle(GUI.skin.label);
-            _tipBody.fontSize = UiScale.Font(12);
-            _tipBody.normal.textColor = UiColor.Srgb(0.85f, 0.85f, 0.82f);
+            int i = (int)q;
+            if (i < 0 || i >= _qualityLabels.Length) i = 0;
+            if (_qualityLabels[i] == null)
+            {
+                GUIStyle s = new GUIStyle(UiSkin.Styles.Label);
+                s.normal.textColor = ItemQualityStyle.Srgb((ItemQuality)i);
+                _qualityLabels[i] = s;
+            }
+            return _qualityLabels[i];
         }
     }
 }

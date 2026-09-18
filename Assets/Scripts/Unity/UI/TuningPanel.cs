@@ -51,12 +51,14 @@ namespace SimplyCQ.Unity
         private readonly GameDatabase _db;
         private readonly List<Group> _groups = new List<Group>();
 
+        private readonly PanelDrag _drag = new PanelDrag();
         private bool _open;
         private int _stepIndex;
         private string _status = "";
         private float _statusUntil;
 
-        private GUIStyle _label, _value, _title, _group, _small, _button;
+        /// <summary>数值列要右对齐，皮肤那套是左对齐的，所以这里派生一份并缓存（别每帧 new）。</summary>
+        private GUIStyle _valueRight;
 
         public TuningPanel(World world, GameDatabase db)
         {
@@ -247,18 +249,20 @@ namespace SimplyCQ.Unity
         public void Draw()
         {
             if (!_open) return;
-            EnsureStyles();
+            if (_valueRight == null) _valueRight = UiSkin.RightAligned(UiSkin.Styles.Value);
 
-            Rect r = UiScale.R(PanelX, PanelY, PanelW, PanelH);
             Event e = Event.current;
+            bool pressed, released;
+            Vector2 mouse;
+            PanelDrag.ReadMouse(e, out pressed, out released, out mouse);
+            _drag.Handle(_drag.Apply(UiScale.R(PanelX, PanelY, PanelW, PanelH)), pressed, released, mouse);
+
+            Rect r = _drag.Apply(UiScale.R(PanelX, PanelY, PanelW, PanelH));
             MouseOver = e != null && r.Contains(e.mousePosition);
 
-            Fill(r, UiColor.Srgb(0.05f, 0.05f, 0.07f, 0.94f));
-            Border(r, UiColor.Srgb(0.62f, 0.52f, 0.30f, 1f));
-
-            GUI.Label(LRect(r, Pad, 4f, PanelW, 20f), "手感调参  (F1 关闭)   改完立刻生效", _title);
-            GUI.Label(LRect(r, Pad, 24f, PanelW, 18f),
-                "步长 ×" + StepScale.ToString("0") + "    左键 -/+：整步长    右键 -/+：1/5 步长", _small);
+            UiSkin.Panel(r, "手感调参   (F1 关闭，改完立刻生效，标题栏可拖动)");
+            GUI.Label(UiSkin.LRect(r, Pad, 30f, PanelW, 18f),
+                "步长 ×" + StepScale.ToString("0") + "    左键 -/+：整步长    右键 -/+：1/5 步长", UiSkin.Styles.Small);
 
             DrawStepButtons(r, e);
 
@@ -266,7 +270,7 @@ namespace SimplyCQ.Unity
             bool rightDown = e != null && e.type == EventType.MouseDown && e.button == 1;
 
             // 两列：左列 战斗/成长，右列 掉落/经济/玩家/怪
-            float y1 = 52f, y2 = 52f;
+            float y1 = 56f, y2 = 56f;
             for (int i = 0; i < _groups.Count; i++)
             {
                 bool leftCol = i < 2;      // 战斗 / 成长 放左列，其余放右列
@@ -283,13 +287,9 @@ namespace SimplyCQ.Unity
             bool leftDown = e != null && e.type == EventType.MouseDown && e.button == 0;
             for (int i = 0; i < StepScales.Length; i++)
             {
-                Rect b = LRect(r, 340f + i * 54f, 22f, 48f, 18f);
+                Rect b = UiSkin.LRect(r, 360f + i * 54f, 28f, 48f, 18f);
                 bool hover = e != null && b.Contains(e.mousePosition);
-                Fill(b, _stepIndex == i ? UiColor.Srgb(0.45f, 0.36f, 0.16f, 0.95f)
-                                        : (hover ? UiColor.Srgb(0.22f, 0.20f, 0.16f, 0.9f)
-                                                 : UiColor.Srgb(0.13f, 0.12f, 0.11f, 0.9f)));
-                GUI.Label(new Rect(b.x + UiScale.Px(8f), b.y, b.width, b.height),
-                    "×" + StepScales[i].ToString("0"), _small);
+                UiSkin.Button(b, "×" + StepScales[i].ToString("0"), hover, _stepIndex == i);
                 if (hover && leftDown) _stepIndex = i;
             }
         }
@@ -297,7 +297,7 @@ namespace SimplyCQ.Unity
         /// <summary>画一组，返回它占了多少高度。</summary>
         private float DrawGroup(Rect panel, Group g, float x, float y, Event e, bool leftDown, bool rightDown)
         {
-            GUI.Label(LRect(panel, x, y, ColW - 12f, 18f), "— " + g.Title + " —", _group);
+            GUI.Label(UiSkin.LRect(panel, x, y, ColW - 12f, 18f), "— " + g.Title + " —", UiSkin.Styles.Group);
             y += 20f;
 
             for (int i = 0; i < g.Rows.Count; i++)
@@ -305,15 +305,15 @@ namespace SimplyCQ.Unity
                 Row row = g.Rows[i];
                 RowRects(panel, x, y, out Rect labelR, out Rect minusR, out Rect valueR, out Rect plusR);
 
-                GUI.Label(labelR, row.Label, _label);
+                GUI.Label(labelR, row.Label, UiSkin.Styles.Label);
 
                 float v = row.Get();
-                GUI.Label(valueR, row.AsInt ? Mathf.RoundToInt(v).ToString() : v.ToString("0.00"), _value);
+                GUI.Label(valueR, row.AsInt ? Mathf.RoundToInt(v).ToString() : v.ToString("0.00"), _valueRight);
 
                 bool hoverMinus = e != null && minusR.Contains(e.mousePosition);
                 bool hoverPlus = e != null && plusR.Contains(e.mousePosition);
-                Button(minusR, "-", hoverMinus);
-                Button(plusR, "+", hoverPlus);
+                UiSkin.Button(minusR, "-", hoverMinus);
+                UiSkin.Button(plusR, "+", hoverPlus);
 
                 float step = row.Step * StepScale;
                 if (hoverMinus)
@@ -336,37 +336,31 @@ namespace SimplyCQ.Unity
         private static void RowRects(Rect panel, float x, float y,
                                   out Rect label, out Rect minus, out Rect value, out Rect plus)
         {
-            label = LRect(panel, x, y, 176f, RowH - 2f);
-            minus = LRect(panel, x + 180f, y, 20f, RowH - 2f);
-            value = LRect(panel, x + 202f, y, 64f, RowH - 2f);
-            plus = LRect(panel, x + 268f, y, 20f, RowH - 2f);
-        }
-
-        private void Button(Rect r, string text, bool hover)
-        {
-            Fill(r, hover ? UiColor.Srgb(0.34f, 0.30f, 0.18f, 0.95f) : UiColor.Srgb(0.16f, 0.15f, 0.13f, 0.92f));
-            Border(r, UiColor.Srgb(0.46f, 0.40f, 0.26f, 1f));
-            GUI.Label(new Rect(r.x + UiScale.Px(6f), r.y, r.width, r.height), text, _button);
+            label = UiSkin.LRect(panel, x, y, 176f, RowH - 2f);
+            minus = UiSkin.LRect(panel, x + 180f, y, 20f, RowH - 2f);
+            value = UiSkin.LRect(panel, x + 202f, y, 64f, RowH - 2f);
+            plus = UiSkin.LRect(panel, x + 268f, y, 20f, RowH - 2f);
         }
 
         private void DrawStatus(Rect r, Event e)
         {
             // 导出 / 重载两个按钮放在底部
-            Rect export = LRect(r, Pad, PanelH - 30f, 150f, 22f);
-            Rect reload = LRect(r, Pad + 158f, PanelH - 30f, 150f, 22f);
+            Rect export = UiSkin.LRect(r, Pad, PanelH - 32f, 156f, 22f);
+            Rect reload = UiSkin.LRect(r, Pad + 164f, PanelH - 32f, 156f, 22f);
 
             bool hoverExport = e != null && export.Contains(e.mousePosition);
             bool hoverReload = e != null && reload.Contains(e.mousePosition);
             bool leftDown = e != null && e.type == EventType.MouseDown && e.button == 0;
 
-            Button(export, "导出到 balance.json", hoverExport);
-            Button(reload, "重新读表（放弃改动）", hoverReload);
+            UiSkin.Button(export, "导出到 balance.json", hoverExport);
+            UiSkin.Button(reload, "重新读表（放弃改动）", hoverReload);
 
             if (hoverExport && leftDown) Export();
             if (hoverReload && leftDown) Reload();
 
             if (!string.IsNullOrEmpty(_status) && Time.timeSinceLevelLoad < _statusUntil)
-                GUI.Label(LRect(r, Pad + 320f, PanelH - 30f, PanelW - 340f, 22f), _status, _small);
+                GUI.Label(UiSkin.LRect(r, Pad + 330f, PanelH - 32f, PanelW - 350f, 22f),
+                    _status, UiSkin.Styles.Small);
         }
 
         // ------------------------------------------------------------------ 导出 / 重载
@@ -450,58 +444,5 @@ namespace SimplyCQ.Unity
             _statusUntil = Time.timeSinceLevelLoad + 6f;
         }
 
-        // ------------------------------------------------------------------ 画图小工具
-
-        private static Rect LRect(Rect outer, float lx, float ly, float lw, float lh)
-        {
-            return new Rect(outer.x + UiScale.Px(lx), outer.y + UiScale.Px(ly), UiScale.Px(lw), UiScale.Px(lh));
-        }
-
-        private static void Fill(Rect r, Color c)
-        {
-            Color prev = GUI.color;
-            GUI.color = c;
-            GUI.DrawTexture(r, Texture2D.whiteTexture);
-            GUI.color = prev;
-        }
-
-        private static void Border(Rect r, Color c)
-        {
-            Fill(new Rect(r.x, r.y, r.width, 1f), c);
-            Fill(new Rect(r.x, r.yMax - 1f, r.width, 1f), c);
-            Fill(new Rect(r.x, r.y, 1f, r.height), c);
-            Fill(new Rect(r.xMax - 1f, r.y, 1f, r.height), c);
-        }
-
-        private void EnsureStyles()
-        {
-            if (_label != null) return;
-
-            _label = new GUIStyle(GUI.skin.label);
-            _label.fontSize = UiScale.Font(12);
-            _label.normal.textColor = UiColor.Srgb(0.86f, 0.86f, 0.82f);
-
-            _value = new GUIStyle(GUI.skin.label);
-            _value.fontSize = UiScale.Font(12);
-            _value.alignment = TextAnchor.MiddleRight;
-            _value.normal.textColor = UiColor.Srgb(1f, 0.88f, 0.45f);
-
-            _title = new GUIStyle(GUI.skin.label);
-            _title.fontSize = UiScale.Font(14);
-            _title.normal.textColor = UiColor.Srgb(1f, 0.90f, 0.55f);
-
-            _group = new GUIStyle(GUI.skin.label);
-            _group.fontSize = UiScale.Font(13);
-            _group.normal.textColor = UiColor.Srgb(0.70f, 0.84f, 1f);
-
-            _small = new GUIStyle(GUI.skin.label);
-            _small.fontSize = UiScale.Font(11);
-            _small.normal.textColor = UiColor.Srgb(0.72f, 0.70f, 0.62f);
-
-            _button = new GUIStyle(GUI.skin.label);
-            _button.fontSize = UiScale.Font(13);
-            _button.normal.textColor = UiColor.Srgb(0.95f, 0.95f, 0.90f);
-
-        }
     }
 }

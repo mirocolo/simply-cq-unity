@@ -126,6 +126,14 @@ namespace UnityEngine
         public float y;
         public Vector2(float x, float y) { this.x = x; this.y = y; }
         public static Vector2 zero { get { return new Vector2(0f, 0f); } }
+        public static Vector2 operator +(Vector2 a, Vector2 b) { return new Vector2(a.x + b.x, a.y + b.y); }
+        public static Vector2 operator -(Vector2 a, Vector2 b) { return new Vector2(a.x - b.x, a.y - b.y); }
+        public static Vector2 operator *(Vector2 a, float k) { return new Vector2(a.x * k, a.y * k); }
+        public static Vector2 operator /(Vector2 a, float k) { return new Vector2(a.x / k, a.y / k); }
+        public static bool operator ==(Vector2 a, Vector2 b) { return a.x == b.x && a.y == b.y; }
+        public static bool operator !=(Vector2 a, Vector2 b) { return !(a == b); }
+        public override bool Equals(object o) { return o is Vector2 && this == (Vector2)o; }
+        public override int GetHashCode() { return x.GetHashCode() ^ y.GetHashCode(); }
     }
 
     public struct Vector3
@@ -148,6 +156,11 @@ namespace UnityEngine
 
     public struct Rect
     {
+        public static bool operator ==(Rect a, Rect b)
+        { return a.x == b.x && a.y == b.y && a.width == b.width && a.height == b.height; }
+        public static bool operator !=(Rect a, Rect b) { return !(a == b); }
+        public override bool Equals(object o) { return o is Rect && this == (Rect)o; }
+        public override int GetHashCode() { return x.GetHashCode() ^ y.GetHashCode() ^ width.GetHashCode() ^ height.GetHashCode(); }
         public float x;
         public float y;
         public float width;
@@ -287,6 +300,8 @@ namespace UnityEngine
 
     public enum TextAnchor { UpperLeft = 0, UpperCenter = 1, UpperRight = 2, MiddleLeft = 3, MiddleCenter = 4, MiddleRight = 5, LowerLeft = 6, LowerCenter = 7, LowerRight = 8 }
 
+    public enum TextClipping { Overflow = 0, Clip = 1, Ellipsis = 2 }
+
     public class GUIStyleState { public Color textColor { get; set; } }
 
     public class GUIStyle
@@ -295,6 +310,7 @@ namespace UnityEngine
         public GUIStyle(GUIStyle other) { }
         public int fontSize { get; set; }
         public TextAnchor alignment { get; set; }
+        public TextClipping clipping { get; set; }
         public GUIStyleState normal { get { return null; } }
     }
 

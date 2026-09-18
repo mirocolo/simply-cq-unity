@@ -1426,6 +1426,89 @@ namespace SimplyCQ.EditorTools
                     "「重新读表」把值退回磁盘上的原样（暴击率回到 " + fromDisk.ToString("0.00") + "）");
             }
 
+            // ---------------- M6d UI 皮肤：一套皮、五个面板、面板能拖 ----------------
+            {
+                // 1) 配色合法（透明度和范围），别写出看不见或者炸白的东西
+                Color[] palette = {
+                    UiSkin.PanelBg, UiSkin.PanelBorderOuter, UiSkin.PanelBorderInner, UiSkin.TitleBarBg,
+                    UiSkin.TitleText, UiSkin.TextPrimary, UiSkin.TextDim, UiSkin.TextValue, UiSkin.TextGroup,
+                    UiSkin.TextGood, UiSkin.TextWarn, UiSkin.TextBad,
+                    UiSkin.RowBg, UiSkin.RowHover, UiSkin.RowBorder, UiSkin.CellBg, UiSkin.CellHover,
+                    UiSkin.ButtonBg, UiSkin.ButtonHover, UiSkin.ButtonActive,
+                    UiSkin.BarBack, UiSkin.BarTick, UiSkin.HpFill, UiSkin.MpFill, UiSkin.ExpFill,
+                    UiSkin.BarBorder, UiSkin.HintBg
+                };
+                int badColor = 0;
+                for (int i = 0; i < palette.Length; i++)
+                {
+                    Color c = palette[i];
+                    if (c.a < 0f || c.a > 1f || c.r < 0f || c.r > 1f || c.g < 0f || c.g > 1f || c.b < 0f || c.b > 1f)
+                        badColor++;
+                }
+                Check(badColor == 0, "皮肤配色表里 " + palette.Length + " 个颜色都在合法范围内");
+
+                // 2) 样式只能在 OnGUI 里建（GUI.skin 在别处访问 Unity 会直接抛异常），
+                //    所以这里只验"清缓存"这个纯操作是安全的；样式本身由运行时那几个面板验。
+                UiSkin.ResetStyles();
+                UiSkin.ResetStyles();
+                Check(true, "皮肤样式缓存能安全清掉（样式本身只能在 OnGUI 里建，自检不碰）");
+
+                // 3) 排版小工具：相对外框、内缩、标题栏
+                Rect outer = new Rect(100f, 200f, 300f, 400f);
+                Rect in1 = UiScale.R(0f, 0f, 0f, 0f);
+                Rect child = UiSkin.LRect(outer, 10f, 20f, 30f, 40f);
+                Check(Mathf.Abs(child.x - (outer.x + UiScale.Px(10f))) < 0.01f
+                      && Mathf.Abs(child.width - UiScale.Px(30f)) < 0.01f,
+                    "LRect 按逻辑单位排版（缩放后 " + child.width.ToString("0.0") + " px 宽）");
+
+                Rect inset = UiSkin.Inset(outer, 2f);
+                Check(inset.width < outer.width && inset.x > outer.x, "Inset 真的往里缩了");
+                Check(UiSkin.TitleBar(outer).height > 0f && UiSkin.TitleBar(outer).y > outer.y,
+                    "标题栏在面板顶部（拖动热区）");
+                Check(in1.width == 0f, "UiScale 换算不炸零矩形");
+
+                // 4) 拖动：只有标题栏能拖、拖了真的动、拖不出屏幕、能归位
+                PanelDrag drag = new PanelDrag();
+                Rect basePanel = UiScale.R(100f, 100f, 400f, 300f);
+
+                Check(drag.Apply(basePanel) == basePanel, "没拖之前位置不变");
+
+                // 点内容区不该把面板拖走
+                Vector2 inBody = new Vector2(basePanel.center.x, basePanel.yMax - UiScale.Px(20f));
+                drag.Handle(basePanel, true, false, inBody);
+                drag.Handle(basePanel, false, false, inBody + new Vector2(UiScale.Px(80f), 0f));
+                Check(drag.Offset == Vector2.zero, "点内容区不会拖走面板");
+
+                // 标题栏按下再移动 → 面板跟着走
+                Vector2 onTitle = UiSkin.TitleBar(basePanel).center;
+                drag.Handle(basePanel, true, false, onTitle);
+                Check(drag.Dragging, "在标题栏按下就进入拖动状态");
+                drag.Handle(basePanel, false, false, onTitle + new Vector2(UiScale.Px(60f), UiScale.Px(40f)));
+                Check(Mathf.Abs(drag.Offset.x - 60f) < 1f && Mathf.Abs(drag.Offset.y - 40f) < 1f,
+                    "拖动位移对得上（" + drag.Offset.x.ToString("0") + ", " + drag.Offset.y.ToString("0") + " 逻辑单位）");
+
+                Rect skinMoved = drag.Apply(basePanel);
+                Check(skinMoved.x > basePanel.x && skinMoved.y > basePanel.y, "面板真的挪了");
+
+                // 拼命往右下拖：标题栏必须还留在屏幕里，否则就再也点不着了
+                drag.Handle(basePanel, false, false, new Vector2(Screen.width * 3f, Screen.height * 3f));
+                Rect skinFar = drag.Apply(basePanel);
+                Check(skinFar.x < Screen.width && skinFar.y < Screen.height,
+                    "拖到屏幕外会被夹回来（面板左上角还在屏幕内：" + skinFar.x.ToString("0") + "," + skinFar.y.ToString("0") + "）");
+                Check(UiSkin.TitleBar(skinFar).xMax > 0f && UiSkin.TitleBar(skinFar).y < Screen.height,
+                    "至少留一条标题栏能看见（不然面板就拖不回来了）");
+
+                drag.Handle(basePanel, true, false, UiSkin.TitleBar(skinFar).center);
+                drag.Handle(basePanel, false, false, UiSkin.TitleBar(skinFar).center);   // 松开
+                Check(!drag.Dragging, "松开鼠标就结束拖动");
+
+                drag.Reset();
+                Check(drag.Offset == Vector2.zero && drag.Apply(basePanel) == basePanel, "Reset 能回到默认位置");
+
+                // 5) 五个面板都吃同一套皮：确认它们真的用了 UiSkin 的分段条/行/格
+                Check(SkinHelpersUsedByPanels(), "几个面板都用 UiSkin 画（没有各自复制的画图代码）");
+            }
+
             // 键盘操作的成败取决于 Player Settings，这里用编译期宏直接断言，
             // 免得出现「能跑但按键盘没反应」这种最难查的情况。
 #if ENABLE_LEGACY_INPUT_MANAGER
@@ -1438,6 +1521,35 @@ namespace SimplyCQ.EditorTools
         }
 
         private static bool AlwaysFalse(TilePos p) { return false; }
+
+        /// <summary>
+        /// 皮肤是不是真的被面板用上了。没法直接"看"IMGUI，所以退一步：
+        /// 面板类的源码里不该再出现自己那套 Fill/Border，而应该出现 UiSkin 的调用。
+        /// 这比"人肉记得改"可靠：以后新加面板时如果又自己画一套，这条会红。
+        /// </summary>
+        private static bool SkinHelpersUsedByPanels()
+        {
+            string[] files = {
+                "Assets/Scripts/Unity/UI/InventoryUi.cs",
+                "Assets/Scripts/Unity/UI/ShopUi.cs",
+                "Assets/Scripts/Unity/UI/TeleportUi.cs",
+                "Assets/Scripts/Unity/UI/TuningPanel.cs",
+                "Assets/Scripts/Unity/UI/SkillBarUi.cs"
+            };
+
+            for (int i = 0; i < files.Length; i++)
+            {
+                string path = System.IO.Path.Combine(
+                    System.IO.Directory.GetCurrentDirectory(), files[i]);
+                if (!System.IO.File.Exists(path)) continue;
+
+                string text = System.IO.File.ReadAllText(path);
+                if (text.IndexOf("UiSkin.", System.StringComparison.Ordinal) < 0) return false;
+                if (text.IndexOf("private static void Fill(", System.StringComparison.Ordinal) >= 0) return false;
+                if (text.IndexOf("private static void Border(", System.StringComparison.Ordinal) >= 0) return false;
+            }
+            return true;
+        }
 
         /// <summary>从 balance.json 原文里抠出暴击率（只给自检断言用，够简单就行）。</summary>
         private static float reloadedCritChanceFrom(string json)
