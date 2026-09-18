@@ -267,7 +267,7 @@ namespace UnityEngine
         public static float timeSinceLevelLoad { get { return 0f; } }
     }
 
-    public enum KeyCode { A, B, C, D, E, I, J, M, S, W, F5, F9, Space, Escape, Minus, Equals, Alpha1, Alpha2, Alpha3, Alpha4, Alpha5, Alpha6, UpArrow, DownArrow, LeftArrow, RightArrow }
+    public enum KeyCode { A, B, C, D, E, I, J, M, S, W, F1, F5, F9, Space, Escape, Minus, Equals, Alpha1, Alpha2, Alpha3, Alpha4, Alpha5, Alpha6, UpArrow, DownArrow, LeftArrow, RightArrow }
 
     public static class Input
     {
@@ -285,7 +285,7 @@ namespace UnityEngine
         public static int height { get { return 720; } }
     }
 
-    public enum TextAnchor { UpperLeft = 0, MiddleCenter = 4, MiddleLeft = 3 }
+    public enum TextAnchor { UpperLeft = 0, UpperCenter = 1, UpperRight = 2, MiddleLeft = 3, MiddleCenter = 4, MiddleRight = 5, LowerLeft = 6, LowerCenter = 7, LowerRight = 8 }
 
     public class GUIStyleState { public Color textColor { get; set; } }
 

@@ -23,6 +23,18 @@ namespace SimplyCQ.Data
         /// <summary>起始地图（进游戏时站的那张）。其余地图用 GetMap / AllMaps 取。</summary>
         public GameMap Map { get; private set; }
 
+        /// <summary>
+        /// 调试用：新刷出来的怪的整体数值倍率（调参面板 F1 改它）。
+        /// 默认全是 1，也就是线上行为和没有这几个字段时完全一样；
+        /// 20 种怪 × 5 个数值不可能一件件手调，有这组总倍率才能"整体偏硬"一键修正。
+        /// 只影响**之后新刷出来**的怪 —— 场上已经站着的不动。
+        /// </summary>
+        public float MonsterHpMul = 1f;
+        public float MonsterDamageMul = 1f;
+        public float MonsterSpeedMul = 1f;
+        public float MonsterExpMul = 1f;
+        public float MonsterGoldMul = 1f;
+
         public int MonsterKindCount { get { return _monsters.Count; } }
         public int MapCount { get { return _maps.Count; } }
         public IEnumerable<GameMap> AllMaps { get { return _maps.Values; } }
@@ -49,6 +61,7 @@ namespace SimplyCQ.Data
 
             db.Loot = db.Balance.loot != null ? db.Balance.loot : new LootTuning();
             db.Loot.Clamp();
+            db.ApplyMonsterMulsFromBalance();
 
             db.Shop = new ShopTuning();
             db.Shop.SellRatio = db.Balance.shopSellRatio;
@@ -236,22 +249,23 @@ namespace SimplyCQ.Data
             e.SpriteId = string.IsNullOrEmpty(d.sprite) ? d.id : d.sprite;
             e.Name = d.name;
             e.Level = d.level;
-            e.BaseMaxHp = d.hp;
-            e.BaseMinDc = d.minDc;
-            e.BaseMaxDc = d.maxDc;
+            // 调参面板的整体倍率在这里生效（默认 1，等于没有）
+            e.BaseMaxHp = Scale(d.hp, MonsterHpMul);
+            e.BaseMinDc = Scale(d.minDc, MonsterDamageMul);
+            e.BaseMaxDc = Scale(d.maxDc, MonsterDamageMul);
             e.BaseAc = d.ac;
-            e.Exp = d.exp;
+            e.Exp = Scale(d.exp, MonsterExpMul);
             e.MoveSpeed = d.moveSpeed;
-            e.AttackInterval = d.attackInterval;
+            e.AttackInterval = Mathf.Max(1, Mathf.RoundToInt(d.attackInterval / Mathf.Max(0.05f, MonsterSpeedMul)));
             e.AttackRange = d.attackRange;
             e.Vision = d.vision;
             e.Aggressive = d.aggressive;
             e.Leash = d.leash;
             e.PackRadius = d.packRadius > 0 ? d.packRadius : 0;   // 手抖填了负数就当独行
 
-            e.ExpReward = d.exp;
-            e.GoldMin = d.goldMin;
-            e.GoldMax = d.goldMax;
+            e.ExpReward = e.Exp;
+            e.GoldMin = Scale(d.goldMin, MonsterGoldMul);
+            e.GoldMax = Scale(d.goldMax, MonsterGoldMul);
             e.GoldChance = d.goldChance;
 
             if (d.drops != null)
@@ -272,6 +286,49 @@ namespace SimplyCQ.Data
             StatCalculator.Apply(e, Items);
             e.Hp = e.MaxHp;
             return e;
+        }
+
+        /// <summary>倍率缩放。至少留 1，免得调到 0 之后出现"0 血怪"。</summary>
+        private static int Scale(int value, float mul)
+        {
+            if (mul == 1f) return value;
+            int v = Mathf.RoundToInt(value * mul);
+            return v < 0 ? 0 : v;
+        }
+
+        /// <summary>把倍率从 balance.json 读进来（存过档的调参结果能直接用）。</summary>
+        private void ApplyMonsterMulsFromBalance()
+        {
+            if (Balance == null) return;
+            MonsterHpMul = ClampMul(Balance.monsterHpMul);
+            MonsterDamageMul = ClampMul(Balance.monsterDamageMul);
+            MonsterSpeedMul = ClampMul(Balance.monsterSpeedMul);
+            MonsterExpMul = ClampMul(Balance.monsterExpMul);
+            MonsterGoldMul = ClampMul(Balance.monsterGoldMul);
+        }
+
+        /// <summary>导出调参结果时把倍率写回 BalanceDto，好让它跟着 balance.json 一起存。</summary>
+        public void MonsterMulsToBalance()
+        {
+            if (Balance == null) return;
+            Balance.monsterHpMul = MonsterHpMul;
+            Balance.monsterDamageMul = MonsterDamageMul;
+            Balance.monsterSpeedMul = MonsterSpeedMul;
+            Balance.monsterExpMul = MonsterExpMul;
+            Balance.monsterGoldMul = MonsterGoldMul;
+        }
+
+        /// <summary>放弃调参：倍率回到 1 倍。</summary>
+        public void ResetMonsterMuls()
+        {
+            MonsterHpMul = 1f; MonsterDamageMul = 1f; MonsterSpeedMul = 1f;
+            MonsterExpMul = 1f; MonsterGoldMul = 1f;
+        }
+
+        private static float ClampMul(float v)
+        {
+            if (v <= 0f) return 1f;      // 0 或负数当作没填
+            return v > 10f ? 10f : v;
         }
 
         public Entity CreatePlayer()

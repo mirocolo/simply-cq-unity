@@ -29,6 +29,7 @@ namespace SimplyCQ.Unity
         private LootLabelOverlay _lootLabels;
         private CombatFxPool _fxPool;
         private LootBeamOverlay _lootBeams;
+        private TuningPanel _tuning;
         private SkillBarUi _skillBar;
         private CameraRig _cameraRig;
         private PlayerInputSource _input;
@@ -168,6 +169,7 @@ namespace SimplyCQ.Unity
             _inventoryUi.TickRate = _tickRate;   // 必须在这之后赋值，否则 Awake 直接 NRE
             _shopUi = new ShopUi(_simulation.World, _database.Items, _database.Shop);
             _teleportUi = new TeleportUi(_simulation.World, _database);
+            _tuning = new TuningPanel(_simulation.World, _database);
             _audio = new AudioDirector(_simulation.World, _projection, _camera);
 
             ParseCommandLine();
@@ -259,6 +261,7 @@ namespace SimplyCQ.Unity
             }
 
             if (_input.ReadInteractKey()) ToggleNpcPanel();
+            if (_input.ReadTuningToggle()) _tuning.Toggle();
 
             int audioKey = _input.ReadAudioToggle();
             if (audioKey == 1) Debug.Log("[SimplyCQ] 音效：" + (_audio.ToggleMute() ? "已静音" : "已打开"));
@@ -603,7 +606,8 @@ namespace SimplyCQ.Unity
         /// <summary>鼠标正压在某个面板上时，左键是"点面板"而不是"挥砍"。</summary>
         private bool AnyPanelConsumesMouse()
         {
-            return _inventoryUi.ConsumesMouse || _shopUi.ConsumesMouse || _teleportUi.ConsumesMouse;
+            return _inventoryUi.ConsumesMouse || _shopUi.ConsumesMouse
+                || _teleportUi.ConsumesMouse || _tuning.ConsumesMouse;
         }
 
         /// <summary>把玩家挪到商人旁边并打开商店面板，用来截图检查界面。</summary>
@@ -753,6 +757,7 @@ namespace SimplyCQ.Unity
             _inventoryUi.Draw();
             _shopUi.Draw();
             _teleportUi.Draw();
+            _tuning.Draw();
             _skillBar.Draw(world.Player, _database.Skills);
             _floatingText.Draw();
         }

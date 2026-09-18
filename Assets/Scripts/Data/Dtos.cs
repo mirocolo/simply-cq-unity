@@ -111,6 +111,8 @@ namespace SimplyCQ.Data
         public string id;
         public string name;
         public string sprite;
+        /// <summary>档次：trash / normal / tanky / elite / boss。只影响自检的严格程度和以后的表现（血条之类）。</summary>
+        public string tier;
         public int level = 1;
         public int hp = 30;
         public int ac;
@@ -209,6 +211,13 @@ namespace SimplyCQ.Data
 
         /// <summary>掉落品质调参。JsonUtility 直接反序列化成 Domain 的 LootTuning。</summary>
         public LootTuning loot;
+
+        // ---- 怪的整体数值倍率（调参面板 F1 导出到这里；默认 1 = 原样）----
+        public float monsterHpMul = 1f;
+        public float monsterDamageMul = 1f;
+        public float monsterSpeedMul = 1f;
+        public float monsterExpMul = 1f;
+        public float monsterGoldMul = 1f;
 
         /// <summary>把明显不合理的值夹到安全范围，避免一个手抖让游戏起不来。</summary>
         public void Normalize()

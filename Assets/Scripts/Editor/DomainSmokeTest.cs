@@ -1318,6 +1318,114 @@ namespace SimplyCQ.EditorTools
                 Check(true, "运行时建的特效物体能收干净");
             }
 
+            // ---------------- M6c 手感调参面板：改了真生效、导出真落盘 ----------------
+            {
+                Simulation tuneSim = db.CreateSimulation(6161u);
+                Entity tuneHero = db.CreatePlayer();
+                tuneHero.Pos = tuneSim.World.FindFreeTileNear(tuneSim.World.Map.Spawn, 6);
+                tuneHero.HomePos = tuneHero.Pos;
+                tuneSim.World.Spawn(tuneHero);
+                tuneSim.World.Player = tuneHero;
+
+                TuningPanel panel = new TuningPanel(tuneSim.World, db);
+
+                Check(panel.GroupCount >= 5, "调参面板分了 " + panel.GroupCount + " 组");
+                Check(panel.RowCount >= 25, "调参面板有 " + panel.RowCount + " 个可调字段");
+
+                // 1) 一个 NPC 都不该有"改了但没接线"的字段：逐个标签读一遍必须读得到
+                string[] probes = { "基础命中", "暴击率", "出手间隔", "经验曲线", "升级加血",
+                                    "紫装权重", "回收比例", "走一格", "基础血上限", "血量 ×" };
+                int unreadable = 0;
+                string unreadableWhere = "";
+                for (int i = 0; i < probes.Length; i++)
+                {
+                    float v;
+                    if (!panel.TryRead(probes[i], out v))
+                    {
+                        unreadable++;
+                        if (unreadableWhere.Length < 60) unreadableWhere += probes[i] + " ";
+                    }
+                }
+                Check(unreadable == 0, "10 个代表性字段都能读到"
+                    + (unreadable > 0 ? "，读不到的：" + unreadableWhere : ""));
+
+                // 2) 改了真的改到底层数据上（不是只改了面板自己的显示）
+                float before;
+                panel.TryRead("暴击率", out before);
+                Check(panel.Nudge("暴击率", +1) && db.Tuning.CritChance > before,
+                    "点「暴击率 +」真的改了 CombatTuning（" + before.ToString("0.00") + " -> "
+                    + db.Tuning.CritChance.ToString("0.00") + "）");
+
+                panel.TryRead("走一格", out before);
+                Check(panel.Nudge("走一格", +1) && tuneHero.MoveSpeed > before,
+                    "改「走一格」直接改了活着的玩家实体（" + before.ToString("0") + " -> "
+                    + tuneHero.MoveSpeed + " tick/格）");
+
+                // 3) 倍率要能"整体加硬"，而且只影响新刷出来的怪
+                Entity wolfBefore = db.CreateMonster("mon_wolf");
+                panel.TryRead("血量 ×", out before);
+                panel.Nudge("血量 ×", +1);
+                panel.Nudge("血量 ×", +1);      // 至少推到 1.1 倍
+                Entity wolfAfter = db.CreateMonster("mon_wolf");
+                Check(db.MonsterHpMul > before, "怪的整体血量倍率能调（" + before.ToString("0.00")
+                    + " -> " + db.MonsterHpMul.ToString("0.00") + "）");
+                Check(wolfAfter.MaxHp > wolfBefore.MaxHp,
+                    "调完倍率后新刷的怪真的更硬（" + wolfBefore.MaxHp + " -> " + wolfAfter.MaxHp + " 血）");
+
+                db.ResetMonsterMuls();
+                Check(db.CreateMonster("mon_wolf").MaxHp == wolfBefore.MaxHp,
+                    "放弃调参后新刷的怪回到原样（" + wolfBefore.MaxHp + " 血）");
+
+                // 4) 步长倍率会影响每次变动多少
+                panel.SetStep(0);
+                panel.TryRead("暴击率", out before);
+                panel.Nudge("暴击率", +1);
+                float oneStep = db.Tuning.CritChance - before;
+
+                panel.SetStep(2);                 // ×20
+                panel.TryRead("暴击率", out before);
+                panel.Nudge("暴击率", +1);
+                float twentyStep = db.Tuning.CritChance - before;
+                Check(oneStep > 0f && twentyStep > oneStep * 15f,
+                    "步长倍率生效：×1 每步 " + oneStep.ToString("0.000") + "，×20 每步 "
+                    + twentyStep.ToString("0.000"));
+                panel.SetStep(0);
+
+                // 5) 导出：真的写出一份能读回来的 balance.json，而且带着刚调的值。
+                //    导出会覆盖工作区里的 balance.json，所以先备份原文、测完原样写回 ——
+                //    自检不许把仓库搞脏。
+                string exportPath = System.IO.Path.Combine(Application.streamingAssetsPath, "Data/balance.json");
+                string original = System.IO.File.ReadAllText(exportPath);
+
+                try
+                {
+                    float critBeforeExport = db.Tuning.CritChance;
+                    Check(panel.Export(), "点「导出」能写盘");
+
+                    BalanceDto reloaded = GameDatabase.LoadJson<BalanceDto>("Data/balance.json");
+                    Check(reloaded != null && reloaded.combat != null, "导出的 JSON 能被重新解析");
+                    Check(reloaded != null && reloaded.combat != null
+                          && Mathf.Abs(reloaded.combat.CritChance - critBeforeExport) < 0.0001f,
+                        "导出的值和面板上的一致（暴击率 "
+                        + (reloaded != null && reloaded.combat != null
+                            ? reloaded.combat.CritChance.ToString("0.00") : "-") + "）");
+                    Check(reloaded != null && reloaded.loot != null && reloaded.loot.qualityWeights != null,
+                        "导出的 JSON 里也带着掉落品质权重和怪的整体倍率");
+                }
+                finally
+                {
+                    System.IO.File.WriteAllText(exportPath, original);   // 还原仓库文件
+                }
+
+                Check(System.IO.File.ReadAllText(exportPath) == original,
+                    "导出测完把 balance.json 原样还回去了（工作区没被搞脏）");
+
+                panel.Reload();
+                float fromDisk = reloadedCritChanceFrom(original);
+                Check(Mathf.Abs(db.Tuning.CritChance - fromDisk) < 0.0001f,
+                    "「重新读表」把值退回磁盘上的原样（暴击率回到 " + fromDisk.ToString("0.00") + "）");
+            }
+
             // 键盘操作的成败取决于 Player Settings，这里用编译期宏直接断言，
             // 免得出现「能跑但按键盘没反应」这种最难查的情况。
 #if ENABLE_LEGACY_INPUT_MANAGER
@@ -1330,6 +1438,17 @@ namespace SimplyCQ.EditorTools
         }
 
         private static bool AlwaysFalse(TilePos p) { return false; }
+
+        /// <summary>从 balance.json 原文里抠出暴击率（只给自检断言用，够简单就行）。</summary>
+        private static float reloadedCritChanceFrom(string json)
+        {
+            try
+            {
+                BalanceDto dto = JsonUtility.FromJson<BalanceDto>(json);
+                return dto != null && dto.combat != null ? dto.combat.CritChance : 0f;
+            }
+            catch { return 0f; }
+        }
 
         /// <summary>自检用：在地上放一件指定品质的掉落物（永不过期）。</summary>
         private static Entity MakeGroundLoot(World world, GameMap map, string defId, ItemQuality quality,

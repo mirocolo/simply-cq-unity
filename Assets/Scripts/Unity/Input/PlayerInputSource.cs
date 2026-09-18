@@ -149,6 +149,17 @@ namespace SimplyCQ.Unity
             return 0;
         }
 
+        /// <summary>F1：开关手感调参面板。</summary>
+        public bool ReadTuningToggle()
+        {
+            if (!Enabled) return false;
+#if ENABLE_LEGACY_INPUT_MANAGER
+            return Input.GetKeyDown(KeyCode.F1);
+#else
+            return false;
+#endif
+        }
+
         /// <summary>0 = 没按，1 = F5 存档，2 = F9 读档。</summary>
         public int ReadSaveLoad()
         {

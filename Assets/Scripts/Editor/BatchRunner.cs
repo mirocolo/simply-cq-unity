@@ -16,8 +16,11 @@ namespace SimplyCQ.EditorTools
             Debug.Log("[SimplyCQ] === 批处理开始 ===");
             SceneSetup.CreateM1Scene();
             DomainSmokeTest.Run();
-            Debug.Log("[SimplyCQ] === 批处理结束，失败项 " + DomainSmokeTest.FailureCount + " ===");
-            EditorApplication.Exit(DomainSmokeTest.FailureCount == 0 ? 0 : 1);
+            BalanceAudit.Run();     // 数值审计的失败项也并进退出码
+
+            int failed = DomainSmokeTest.FailureCount + BalanceAudit.FailureCount;
+            Debug.Log("[SimplyCQ] === 批处理结束，失败项 " + failed + " ===");
+            EditorApplication.Exit(failed == 0 ? 0 : 1);
         }
     }
 }
