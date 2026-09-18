@@ -122,7 +122,8 @@ namespace SimplyCQ.EditorTools
         /// </summary>
         private static void AuditGearTiers(GameDatabase db)
         {
-            foreach (int level in new[] { 1, 4, 7 })
+            // 覆盖全部五个装备等级段（和 gen_items.BANDS 对应）
+            foreach (int level in new[] { 1, 4, 7, 10, 13 })
             {
                 // Lv1 根本没有"蓝装"这一档（珍品款从 Lv4 才开始），所以比的是
                 // "该等级能拿到的最好一档" —— 不然会拿一身空的假玩家去比，得出的结论毫无意义
@@ -373,12 +374,54 @@ namespace SimplyCQ.EditorTools
         ///
         /// 固定种子：审计结论要可复现，不然改一次数据结论就飘。
         /// </summary>
+        /// <summary>
+        /// 打很多遍取平均。单遍的"玩家掉多少血"会随 RNG 对齐方式大幅摆动
+        /// （同样的种子，玩家变强一点就可能刚好错开怪的那几次出手），
+        /// 只看一遍得出的结论不可信 —— 定标要靠平均，不靠手气。
+        /// </summary>
         private static FightResult Fight(Entity player, Entity monster, MonsterDto md, CombatTuning tuning)
+        {
+            const int samples = 5;
+
+            FightResult sum = default(FightResult);
+            int killed = 0;
+            bool anyDeath = false;
+
+            for (int i = 0; i < samples; i++)
+            {
+                FightResult one = FightOnce(player, monster, md, tuning, 20240617u + (uint)i * 7919u);
+                if (one.Killed) killed++;
+                if (one.PlayerDied) anyDeath = true;
+
+                sum.Seconds += one.Seconds;
+                sum.Hits += one.Hits;
+                sum.PlayerHpLost += one.PlayerHpLost;
+                sum.ExpPerSecond += one.ExpPerSecond;
+                sum.GoldPerSecond += one.GoldPerSecond;
+            }
+
+            FightResult r = default(FightResult);
+            r.Seconds = sum.Seconds / samples;
+            r.Hits = Mathf.RoundToInt(sum.Hits / (float)samples);
+            r.PlayerHpLost = Mathf.RoundToInt(sum.PlayerHpLost / (float)samples);
+            r.ExpPerSecond = sum.ExpPerSecond / samples;
+            r.GoldPerSecond = sum.GoldPerSecond / samples;
+
+            // 严格一点：5 遍里有一遍打不死/被打死，就认为这个数值不可靠
+            r.PlayerDied = anyDeath;
+            r.Killed = killed == samples && !anyDeath;
+            r.ChainKills = r.PlayerHpLost <= 0 ? 99
+                         : Mathf.Max(0, Mathf.FloorToInt(player.MaxHp / (float)r.PlayerHpLost));
+            return r;
+        }
+
+        private static FightResult FightOnce(Entity player, Entity monster, MonsterDto md,
+                                             CombatTuning tuning, uint seed)
         {
             FightResult r = default(FightResult);
             if (player == null || monster == null) return r;
 
-            Rng rng = new Rng(20240617u);
+            Rng rng = new Rng(seed);
 
             int monsterHp = monster.MaxHp;
             int playerHp = player.MaxHp;
@@ -415,17 +458,10 @@ namespace SimplyCQ.EditorTools
             r.Seconds = ticks / (float)TicksPerSecond;
             r.PlayerHpLost = player.MaxHp - Mathf.Max(0, playerHp);
 
-            if (r.Killed)
+            if (r.Killed && r.Seconds > 0f)
             {
-                r.ChainKills = r.PlayerHpLost <= 0
-                    ? 99
-                    : Mathf.Max(0, Mathf.FloorToInt(player.MaxHp / (float)r.PlayerHpLost));
-
-                if (r.Seconds > 0f)
-                {
-                    r.ExpPerSecond = monster.ExpReward / r.Seconds;
-                    r.GoldPerSecond = GoldExpectation(md) / r.Seconds;
-                }
+                r.ExpPerSecond = monster.ExpReward / r.Seconds;
+                r.GoldPerSecond = GoldExpectation(md) / r.Seconds;
             }
             return r;
         }

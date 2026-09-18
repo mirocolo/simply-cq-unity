@@ -120,8 +120,9 @@ def fail(msg):
 
 def build_monsters(items):
     """怪名单 -> monsters.json 的 monsters 数组（含掉落表）。"""
-    item_tier_of = {item_id: tier for item_id, _, _, _, tier in gen_items.TABLE}
-    band_of = {item_id: band for item_id, _, _, band, _ in gen_items.TABLE}
+    rows = gen_items.all_rows()
+    item_tier_of = {item_id: tier for item_id, _, _, _, tier in rows}
+    band_of = {item_id: band for item_id, _, _, band, _ in rows}
     equip_by_id = {i["id"]: i for i in items if i.get("type") == "equip"}
 
     out = []

@@ -2201,146 +2201,122 @@
       "goldChance": 1.0,
       "drops": [
         {
-          "itemId": "ar_bronze",
-          "chance": 0.024,
+          "itemId": "ar_coldiron",
+          "chance": 0.026,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "be_bronze",
-          "chance": 0.024,
+          "itemId": "be_coldiron",
+          "chance": 0.026,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "br_gold",
-          "chance": 0.024,
+          "itemId": "br_coldiron",
+          "chance": 0.026,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "bt_bronze",
-          "chance": 0.024,
+          "itemId": "bt_coldiron",
+          "chance": 0.026,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "he_bronze",
-          "chance": 0.024,
+          "itemId": "he_coldiron",
+          "chance": 0.026,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "nk_gold",
-          "chance": 0.024,
+          "itemId": "nk_coldiron",
+          "chance": 0.026,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "rg_gold",
-          "chance": 0.024,
+          "itemId": "rg_coldiron",
+          "chance": 0.026,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "wp_long",
-          "chance": 0.024,
+          "itemId": "wp_coldiron",
+          "chance": 0.026,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "ar_steel",
-          "chance": 0.013,
+          "itemId": "ar_mithril",
+          "chance": 0.015,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "be_steel",
-          "chance": 0.013,
+          "itemId": "be_mithril",
+          "chance": 0.015,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "br_steel",
-          "chance": 0.013,
+          "itemId": "br_mithril",
+          "chance": 0.015,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "bt_steel",
-          "chance": 0.013,
+          "itemId": "bt_mithril",
+          "chance": 0.015,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "he_steel",
-          "chance": 0.013,
+          "itemId": "he_mithril",
+          "chance": 0.015,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "nk_steel",
-          "chance": 0.013,
+          "itemId": "nk_mithril",
+          "chance": 0.015,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "rg_steel",
-          "chance": 0.013,
+          "itemId": "rg_mithril",
+          "chance": 0.015,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "wp_bronze",
-          "chance": 0.013,
+          "itemId": "wp_mithril",
+          "chance": 0.015,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "ar_black",
-          "chance": 0.007,
+          "itemId": "ar_mithril_rare",
+          "chance": 0.008,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "be_black",
-          "chance": 0.007,
+          "itemId": "nk_mithril_rare",
+          "chance": 0.008,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "br_black",
-          "chance": 0.007,
+          "itemId": "rg_mithril_rare",
+          "chance": 0.008,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "bt_black",
-          "chance": 0.007,
-          "min": 1,
-          "max": 1
-        },
-        {
-          "itemId": "he_black",
-          "chance": 0.007,
-          "min": 1,
-          "max": 1
-        },
-        {
-          "itemId": "nk_black",
-          "chance": 0.007,
-          "min": 1,
-          "max": 1
-        },
-        {
-          "itemId": "rg_black",
-          "chance": 0.007,
-          "min": 1,
-          "max": 1
-        },
-        {
-          "itemId": "wp_black",
-          "chance": 0.007,
+          "itemId": "wp_mithril_rare",
+          "chance": 0.008,
           "min": 1,
           "max": 1
         }
@@ -2369,145 +2345,121 @@
       "goldChance": 1.0,
       "drops": [
         {
-          "itemId": "ar_bronze",
-          "chance": 0.026,
+          "itemId": "ar_coldiron",
+          "chance": 0.028,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "be_bronze",
-          "chance": 0.026,
+          "itemId": "be_coldiron",
+          "chance": 0.028,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "br_gold",
-          "chance": 0.026,
+          "itemId": "br_coldiron",
+          "chance": 0.028,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "bt_bronze",
-          "chance": 0.026,
+          "itemId": "bt_coldiron",
+          "chance": 0.028,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "he_bronze",
-          "chance": 0.026,
+          "itemId": "he_coldiron",
+          "chance": 0.028,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "nk_gold",
-          "chance": 0.026,
+          "itemId": "nk_coldiron",
+          "chance": 0.028,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "rg_gold",
-          "chance": 0.026,
+          "itemId": "rg_coldiron",
+          "chance": 0.028,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "wp_long",
-          "chance": 0.026,
+          "itemId": "wp_coldiron",
+          "chance": 0.028,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "ar_steel",
-          "chance": 0.014,
+          "itemId": "ar_mithril",
+          "chance": 0.015,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "be_steel",
-          "chance": 0.014,
+          "itemId": "be_mithril",
+          "chance": 0.015,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "br_steel",
-          "chance": 0.014,
+          "itemId": "br_mithril",
+          "chance": 0.015,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "bt_steel",
-          "chance": 0.014,
+          "itemId": "bt_mithril",
+          "chance": 0.015,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "he_steel",
-          "chance": 0.014,
+          "itemId": "he_mithril",
+          "chance": 0.015,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "nk_steel",
-          "chance": 0.014,
+          "itemId": "nk_mithril",
+          "chance": 0.015,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "rg_steel",
-          "chance": 0.014,
+          "itemId": "rg_mithril",
+          "chance": 0.015,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "wp_bronze",
-          "chance": 0.014,
+          "itemId": "wp_mithril",
+          "chance": 0.015,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "ar_black",
+          "itemId": "ar_mithril_rare",
           "chance": 0.008,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "be_black",
+          "itemId": "nk_mithril_rare",
           "chance": 0.008,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "br_black",
+          "itemId": "rg_mithril_rare",
           "chance": 0.008,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "bt_black",
-          "chance": 0.008,
-          "min": 1,
-          "max": 1
-        },
-        {
-          "itemId": "he_black",
-          "chance": 0.008,
-          "min": 1,
-          "max": 1
-        },
-        {
-          "itemId": "nk_black",
-          "chance": 0.008,
-          "min": 1,
-          "max": 1
-        },
-        {
-          "itemId": "rg_black",
-          "chance": 0.008,
-          "min": 1,
-          "max": 1
-        },
-        {
-          "itemId": "wp_black",
+          "itemId": "wp_mithril_rare",
           "chance": 0.008,
           "min": 1,
           "max": 1
@@ -2537,146 +2489,122 @@
       "goldChance": 1.0,
       "drops": [
         {
-          "itemId": "ar_bronze",
-          "chance": 0.027,
+          "itemId": "ar_coldiron",
+          "chance": 0.029,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "be_bronze",
-          "chance": 0.027,
+          "itemId": "be_coldiron",
+          "chance": 0.029,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "br_gold",
-          "chance": 0.027,
+          "itemId": "br_coldiron",
+          "chance": 0.029,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "bt_bronze",
-          "chance": 0.027,
+          "itemId": "bt_coldiron",
+          "chance": 0.029,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "he_bronze",
-          "chance": 0.027,
+          "itemId": "he_coldiron",
+          "chance": 0.029,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "nk_gold",
-          "chance": 0.027,
+          "itemId": "nk_coldiron",
+          "chance": 0.029,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "rg_gold",
-          "chance": 0.027,
+          "itemId": "rg_coldiron",
+          "chance": 0.029,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "wp_long",
-          "chance": 0.027,
+          "itemId": "wp_coldiron",
+          "chance": 0.029,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "ar_steel",
-          "chance": 0.015,
+          "itemId": "ar_mithril",
+          "chance": 0.016,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "be_steel",
-          "chance": 0.015,
+          "itemId": "be_mithril",
+          "chance": 0.016,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "br_steel",
-          "chance": 0.015,
+          "itemId": "br_mithril",
+          "chance": 0.016,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "bt_steel",
-          "chance": 0.015,
+          "itemId": "bt_mithril",
+          "chance": 0.016,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "he_steel",
-          "chance": 0.015,
+          "itemId": "he_mithril",
+          "chance": 0.016,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "nk_steel",
-          "chance": 0.015,
+          "itemId": "nk_mithril",
+          "chance": 0.016,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "rg_steel",
-          "chance": 0.015,
+          "itemId": "rg_mithril",
+          "chance": 0.016,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "wp_bronze",
-          "chance": 0.015,
+          "itemId": "wp_mithril",
+          "chance": 0.016,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "ar_black",
-          "chance": 0.008,
+          "itemId": "ar_mithril_rare",
+          "chance": 0.009,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "be_black",
-          "chance": 0.008,
+          "itemId": "nk_mithril_rare",
+          "chance": 0.009,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "br_black",
-          "chance": 0.008,
+          "itemId": "rg_mithril_rare",
+          "chance": 0.009,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "bt_black",
-          "chance": 0.008,
-          "min": 1,
-          "max": 1
-        },
-        {
-          "itemId": "he_black",
-          "chance": 0.008,
-          "min": 1,
-          "max": 1
-        },
-        {
-          "itemId": "nk_black",
-          "chance": 0.008,
-          "min": 1,
-          "max": 1
-        },
-        {
-          "itemId": "rg_black",
-          "chance": 0.008,
-          "min": 1,
-          "max": 1
-        },
-        {
-          "itemId": "wp_black",
-          "chance": 0.008,
+          "itemId": "wp_mithril_rare",
+          "chance": 0.009,
           "min": 1,
           "max": 1
         }
@@ -2705,146 +2633,122 @@
       "goldChance": 1.0,
       "drops": [
         {
-          "itemId": "ar_bronze",
-          "chance": 0.031,
+          "itemId": "ar_dragonbone",
+          "chance": 0.034,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "be_bronze",
-          "chance": 0.031,
+          "itemId": "be_dragonbone",
+          "chance": 0.034,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "br_gold",
-          "chance": 0.031,
+          "itemId": "br_dragonbone",
+          "chance": 0.034,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "bt_bronze",
-          "chance": 0.031,
+          "itemId": "bt_dragonbone",
+          "chance": 0.034,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "he_bronze",
-          "chance": 0.031,
+          "itemId": "he_dragonbone",
+          "chance": 0.034,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "nk_gold",
-          "chance": 0.031,
+          "itemId": "nk_dragonbone",
+          "chance": 0.034,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "rg_gold",
-          "chance": 0.031,
+          "itemId": "rg_dragonbone",
+          "chance": 0.034,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "wp_long",
-          "chance": 0.031,
+          "itemId": "wp_dragonbone",
+          "chance": 0.034,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "ar_steel",
-          "chance": 0.017,
+          "itemId": "ar_sky",
+          "chance": 0.019,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "be_steel",
-          "chance": 0.017,
+          "itemId": "be_sky",
+          "chance": 0.019,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "br_steel",
-          "chance": 0.017,
+          "itemId": "br_sky",
+          "chance": 0.019,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "bt_steel",
-          "chance": 0.017,
+          "itemId": "bt_sky",
+          "chance": 0.019,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "he_steel",
-          "chance": 0.017,
+          "itemId": "he_sky",
+          "chance": 0.019,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "nk_steel",
-          "chance": 0.017,
+          "itemId": "nk_sky",
+          "chance": 0.019,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "rg_steel",
-          "chance": 0.017,
+          "itemId": "rg_sky",
+          "chance": 0.019,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "wp_bronze",
-          "chance": 0.017,
+          "itemId": "wp_sky",
+          "chance": 0.019,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "ar_black",
-          "chance": 0.009,
+          "itemId": "ar_sky_rare",
+          "chance": 0.01,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "be_black",
-          "chance": 0.009,
+          "itemId": "nk_sky_rare",
+          "chance": 0.01,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "br_black",
-          "chance": 0.009,
+          "itemId": "rg_sky_rare",
+          "chance": 0.01,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "bt_black",
-          "chance": 0.009,
-          "min": 1,
-          "max": 1
-        },
-        {
-          "itemId": "he_black",
-          "chance": 0.009,
-          "min": 1,
-          "max": 1
-        },
-        {
-          "itemId": "nk_black",
-          "chance": 0.009,
-          "min": 1,
-          "max": 1
-        },
-        {
-          "itemId": "rg_black",
-          "chance": 0.009,
-          "min": 1,
-          "max": 1
-        },
-        {
-          "itemId": "wp_black",
-          "chance": 0.009,
+          "itemId": "wp_sky_rare",
+          "chance": 0.01,
           "min": 1,
           "max": 1
         }
@@ -2873,146 +2777,122 @@
       "goldChance": 1.0,
       "drops": [
         {
-          "itemId": "ar_bronze",
-          "chance": 0.061,
+          "itemId": "ar_dragonbone",
+          "chance": 0.066,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "be_bronze",
-          "chance": 0.061,
+          "itemId": "be_dragonbone",
+          "chance": 0.066,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "br_gold",
-          "chance": 0.061,
+          "itemId": "br_dragonbone",
+          "chance": 0.066,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "bt_bronze",
-          "chance": 0.061,
+          "itemId": "bt_dragonbone",
+          "chance": 0.066,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "he_bronze",
-          "chance": 0.061,
+          "itemId": "he_dragonbone",
+          "chance": 0.066,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "nk_gold",
-          "chance": 0.061,
+          "itemId": "nk_dragonbone",
+          "chance": 0.066,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "rg_gold",
-          "chance": 0.061,
+          "itemId": "rg_dragonbone",
+          "chance": 0.066,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "wp_long",
-          "chance": 0.061,
+          "itemId": "wp_dragonbone",
+          "chance": 0.066,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "ar_steel",
-          "chance": 0.033,
+          "itemId": "ar_sky",
+          "chance": 0.036,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "be_steel",
-          "chance": 0.033,
+          "itemId": "be_sky",
+          "chance": 0.036,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "br_steel",
-          "chance": 0.033,
+          "itemId": "br_sky",
+          "chance": 0.036,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "bt_steel",
-          "chance": 0.033,
+          "itemId": "bt_sky",
+          "chance": 0.036,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "he_steel",
-          "chance": 0.033,
+          "itemId": "he_sky",
+          "chance": 0.036,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "nk_steel",
-          "chance": 0.033,
+          "itemId": "nk_sky",
+          "chance": 0.036,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "rg_steel",
-          "chance": 0.033,
+          "itemId": "rg_sky",
+          "chance": 0.036,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "wp_bronze",
-          "chance": 0.033,
+          "itemId": "wp_sky",
+          "chance": 0.036,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "ar_black",
-          "chance": 0.018,
+          "itemId": "ar_sky_rare",
+          "chance": 0.02,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "be_black",
-          "chance": 0.018,
+          "itemId": "nk_sky_rare",
+          "chance": 0.02,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "br_black",
-          "chance": 0.018,
+          "itemId": "rg_sky_rare",
+          "chance": 0.02,
           "min": 1,
           "max": 1
         },
         {
-          "itemId": "bt_black",
-          "chance": 0.018,
-          "min": 1,
-          "max": 1
-        },
-        {
-          "itemId": "he_black",
-          "chance": 0.018,
-          "min": 1,
-          "max": 1
-        },
-        {
-          "itemId": "nk_black",
-          "chance": 0.018,
-          "min": 1,
-          "max": 1
-        },
-        {
-          "itemId": "rg_black",
-          "chance": 0.018,
-          "min": 1,
-          "max": 1
-        },
-        {
-          "itemId": "wp_black",
-          "chance": 0.018,
+          "itemId": "wp_sky_rare",
+          "chance": 0.02,
           "min": 1,
           "max": 1
         }

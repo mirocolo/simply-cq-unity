@@ -1,19 +1,22 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-items.json 生成 + 校验（M5c：60 件装备）
+items.json 生成 + 校验（M5c 铺 60 件，M6e 补到 100 件）
 
-为什么不手写：60 件装备手敲一定会敲出前后矛盾的数值 ——
+为什么不手写：几十上百件装备手敲一定会敲出前后矛盾的数值 ——
 同一部位越高级越弱、价格倒挂、掉落表引用了不存在的 id、品质下限和属性不匹配。
 这个脚本把「设计表 -> 数值」的规则和 ItemCatalog 的解析规则各实现一遍，
 再把 Domain 侧的硬约束全跑一次，默认**只校验并打印**，加 --write 才落盘。
 
 用法：
-    python3 Tools/gen_items.py            # 校验现有 items.json + 打印将要生成的样子
+    python3 Tools/gen_items.py            # 只校验 items.json + 打印阶梯，不落盘
     python3 Tools/gen_items.py --write    # 真的写回 items.json
 
+改完 items.json 记得让掉落表跟上（掉落表在 monsters.json，归另一个脚本管）：
+    python3 Tools/gen_monsters.py --write
+
 设计三条轴（和 docs/计划-M5c-铺60件装备.md 一致）：
-    部位 × 等级段（Lv1 / Lv4 / Lv7，对上 鸡(1) / 野狼(4) / 野猪(6)）
+    部位 × 等级段（Lv1 / Lv4 / Lv7 / Lv10 / Lv13，对上怪的等级分段）
     × 档次（基础=品质下限白 / 上品=下限绿 / 珍品=下限蓝，且基础属性也更高）
 """
 
@@ -27,8 +30,10 @@ MONSTERS_PATH = os.path.join(ROOT, "Assets", "StreamingAssets", "Data", "monster
 
 # ----------------------------------------------------------------- 设计表
 
-# 等级段 -> 需求等级
-BANDS = {"b1": 1, "b2": 4, "b3": 7}
+# 等级段 -> 需求等级。b4/b5 是对齐怪的最高等级（Lv15）补的 ——
+# 之前装备只到 Lv7，而怪铺到了 Lv15，等于后 8 级没有装备成长，
+# 「爆装 -> 换装变强」这条主线在后半程直接断掉。
+BANDS = {"b1": 1, "b2": 4, "b3": 7, "b4": 10, "b5": 13}
 
 # 档次 -> (品质下限, 属性预算倍率, 价格倍率)
 # 关键：珍品不只是"更容易摇出好品质"，它的**白装基础属性**也比上品高 ——
@@ -145,6 +150,57 @@ TABLE = [
     ("bt_black",   "黑铁靴",     "boots", "b3", "rare"),
 ]
 
+# ---- b4 / b5 两个后期等级段 ----
+#
+# 前三个段（Lv1/4/7）是逐条手写的，因为那时候还在摸数值曲线。
+# 到了 b4/b5，形状已经固定成"每部位 基础款 + 上品款，武器/衣服/项链/戒指再各加一个珍品款"，
+# 手抄 40 行只会抄错，所以用命名表生成 —— 数值照样由公式推，校验照样全跑。
+SLOT_NOUN = {
+    "weapon": "剑", "armour": "甲(男)", "helmet": "盔", "necklace": "项链",
+    "bracelet": "手镯", "ring": "戒指", "belt": "腰带", "boots": "靴",
+}
+
+LATE_BANDS = [
+    ("b4", "寒铁", "coldiron", "秘银", "mithril",
+     {"weapon": "霜刃剑", "armour": "霜甲(男)", "necklace": "霜牙项链", "ring": "霜纹指环"}),
+    ("b5", "龙骨", "dragonbone", "玄天", "sky",
+     {"weapon": "龙牙剑", "armour": "龙鳞甲(男)", "necklace": "龙瞳项链", "ring": "龙纹指环"}),
+]
+
+
+def all_rows():
+    """全部装备的设计行：手写的前三段 + 生成的后期两段。
+    别的脚本（gen_monsters）也要用，所以只在这里拼一次。"""
+    return TABLE + build_late_rows()
+
+
+# 部位 -> id 前缀。必须和手写那批老 id 完全一致，所以不能简单取前两个字母
+# （boots 的老 id 是 bt_straw，不是 bo_*）。
+SLOT_ID_PREFIX = {
+    "weapon": "wp_", "armour": "ar_", "helmet": "he_", "necklace": "nk_",
+    "bracelet": "br_", "ring": "rg_", "belt": "be_", "boots": "bt_",
+}
+
+
+def id_prefix(slot_key):
+    """部位 -> id 前缀，和手写的那批老 id 保持一致。"""
+    return SLOT_ID_PREFIX.get(slot_key, slot_key[:2] + "_")
+
+
+def build_late_rows():
+    """把 b4/b5 的装备行摊成和前三个段一样的 (id, 名字, 部位, 等级段, 档次) 形式。"""
+    rows = []
+    for band, base_name, base_id, fine_name, fine_id, rare_names in LATE_BANDS:
+        for slot, noun in SLOT_NOUN.items():
+            prefix = id_prefix(slot)
+            rows.append((prefix + base_id, base_name + noun, slot, band, "base"))
+            rows.append((prefix + fine_id, fine_name + noun, slot, band, "fine"))
+        # 珍品款只给"大件"：武器/衣服/项链/戒指（和 b2 的处理一致）
+        for slot, name in rare_names.items():
+            rows.append((id_prefix(slot) + fine_id + "_rare", name, slot, band, "rare"))
+    return rows
+
+
 # 非装备物品原样保留（消耗品 / 材料），这一版不动它们
 KEEP_KINDS = ("consumable", "material")
 
@@ -154,11 +210,16 @@ KEEP_KINDS = ("consumable", "material")
 
 
 def band_for_level(level):
+    """怪的等级 -> 它掉哪个等级段的装备。分段和 BANDS 一一对应。"""
     if level <= 3:
         return "b1"
     if level <= 6:
         return "b2"
-    return "b3"
+    if level <= 9:
+        return "b3"
+    if level <= 12:
+        return "b4"
+    return "b5"
 
 
 # 掉落表的概率调参属于怪那一侧，放在 gen_monsters.py 里
@@ -366,7 +427,7 @@ def validate_drops_in(monsters_data, items):
     ref_problems = []
     coverage = {}
     band_problems = []
-    band_of = {item_id: band for item_id, _, _, band, _ in TABLE}
+    band_of = {item_id: band for item_id, _, _, band, _ in all_rows()}
 
     for mon in monsters:
         for drop in mon.get("drops", []):
@@ -418,15 +479,16 @@ def generate(existing):
     keepers = [i for i in existing if i.get("type") in KEEP_KINDS]
 
     equips, points = [], {}
-    for item_id, name, slot, band, tier in TABLE:
+    for item_id, name, slot, band, tier in all_rows():
         dto, p = build_equip(item_id, name, slot, band, tier)
         equips.append(dto)
         points[item_id] = p
 
     # 装备按 部位 -> 等级段 -> 档次 排，读起来顺；消耗品/材料放最前面（和原来一样）
+    rows = all_rows()
     order_tier = {"base": 0, "fine": 1, "rare": 2}
-    tier_of = {item_id: tier for item_id, _, _, _, tier in TABLE}
-    band_of = {item_id: band for item_id, _, _, band, _ in TABLE}
+    tier_of = {item_id: tier for item_id, _, _, _, tier in rows}
+    band_of = {item_id: band for item_id, _, _, band, _ in rows}
     equips.sort(key=lambda d: (d["slot"], BANDS[band_of[d["id"]]], order_tier[tier_of[d["id"]]]))
 
     return keepers + equips
@@ -446,8 +508,16 @@ def main():
     monsters_data = json.load(open(MONSTERS_PATH, encoding="utf-8")) if os.path.exists(MONSTERS_PATH) else {"monsters": []}
 
     print()
+    # 只管 items.json 自己的校验：monsters.json 的掉落表是 gen_monsters.py 的产物，
+    # 它还没重新生成时不该拦住 items.json 落盘（否则两个脚本会互相卡住）
     bad = validate(items, keepers)
-    bad += validate_drops_in(monsters_data, items)
+
+    print()
+    drop_problems = validate_drops_in(monsters_data, items)
+    if drop_problems:
+        print()
+        print("注意：掉落表还是旧的。items.json 改过之后要跑一次：")
+        print("    python3 Tools/gen_monsters.py --write")
 
     print()
     print("汇总：装备 %d 件 + 消耗品/材料 %d 件 = %d 件" % (len(equips), len(keepers), len(items)))
