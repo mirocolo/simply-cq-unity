@@ -374,6 +374,7 @@ namespace DomainCheck
             // 武器长暴击、手镯长攻速（和生成器的部位分工一致）
             cat.Equip("wp_crit", EquipSlot.Weapon, 5, 9, 0, critBonus: 2);
             cat.Equip("br_haste", EquipSlot.Bracelet, 0, 0, 0, hasteBonus: 20);
+            cat.Equip("nk_haste", EquipSlot.Necklace, 0, 0, 0, hasteBonus: 20);
             cat.Equip("rg_crit", EquipSlot.Ring, 0, 0, 0, critBonus: 3);
 
             Entity hero = MakeFullPlayer(cat, new TilePos(2, 2));
@@ -404,6 +405,11 @@ namespace DomainCheck
             StatCalculator.Apply(bare, cat);
             Check(bare.CritBonus == 0 && bare.HasteBonus == 0, "空手玩家没有词条加成");
 
+            // 攻速真实生效：同一时长、同一位置按住攻击，急速装出手更多次
+            Check(CountHeldAttacks(cat, true) > CountHeldAttacks(cat, false),
+                "同一时长按住攻击：带急速装出手次数更多（"
+                + CountHeldAttacks(cat, false) + " -> " + CountHeldAttacks(cat, true) + " 次）");
+
             // 伤害公式确实吃到暴击词条：固定种子下，带词条的期望伤害更高
             Entity target = MakeFullPlayer(cat, new TilePos(3, 2));
             CombatTuning t = new CombatTuning();
@@ -420,6 +426,52 @@ namespace DomainCheck
             }
             Check(sumWith > sumWithout, "40 个种子平均：带暴击词条的期望伤害更高（"
                 + sumWithout.ToString("0") + " -> " + sumWith.ToString("0") + "）");
+        }
+
+        /// <summary>
+        /// 攻速是否"真的"生效：建一个小图，玩家贴着木桩按住攻击 100 tick，
+        /// 数命中的次数。带急速装备的必须比不带的多 —— 证明有效间隔被战斗循环消费了，
+        /// 而不只是面板数字。
+        /// </summary>
+        private static int CountHeldAttacks(TestCatalog cat, bool haste)
+        {
+            string[] open = { "..........", "..........", "..........", "..........", ".........." };
+            GameMap map = NamedMap("haste" + haste, open);
+
+            Entity hero = MakeFullPlayer(cat, new TilePos(2, 2));
+            hero.BaseAttackInterval = 7;
+            if (haste)
+            {
+                hero.Gear.Set(EquipSlot.Bracelet, new ItemInstance("br_haste", 1, ItemQuality.White));
+                hero.Gear.Set(EquipSlot.Necklace, new ItemInstance("nk_haste", 1, ItemQuality.White));
+            }
+            StatCalculator.Apply(hero, cat);
+            hero.Hp = hero.MaxHp;
+            hero.ExpToNextLevel = int.MaxValue;
+
+            Entity dummy = MakeFullPlayer(cat, new TilePos(3, 2));   // 木桩：人形靶，血厚
+            dummy.Kind = EntityKind.Monster;
+            dummy.MaxHp = 99999; dummy.Hp = 99999;
+            dummy.Aggressive = false; dummy.Vision = 0;
+            dummy.MoveSpeed = 100000; dummy.HomePos = dummy.Pos; dummy.Leash = 0;   // 钉在原地，不然它游荡出攻击弧
+
+            Simulation sim = new Simulation(map, 77u, null, new CombatTuning(), cat, null, null, null, null);
+            World w = sim.World;
+            w.Spawn(hero); w.Player = hero;
+            w.Spawn(dummy);
+
+            int hits = 0, swings = 0, misses = 0;
+            sim.Bus.Subscribe<AttackSwing>(delegate(AttackSwing e) { if (e.Actor == hero.Id) swings++; });
+            sim.Bus.Subscribe<AttackMissed>(delegate(AttackMissed e) { if (e.Source == hero.Id) misses++; });
+            sim.Bus.Subscribe<DamageDealt>(delegate(DamageDealt e)
+            {
+                if (e.Source == hero.Id) hits++;   // 挥空会走 AttackMissed，发 DamageDealt 的就是命中
+            });
+
+            List<Intent> acts = new List<Intent>();
+            acts.Add(Intent.Attack(hero.Id, Dir.Right));
+            for (int tick = 0; tick < 100; tick++) sim.Step(acts);
+            return swings;
         }
 
         private static void TestTilePos()

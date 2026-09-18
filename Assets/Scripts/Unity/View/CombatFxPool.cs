@@ -45,6 +45,9 @@ namespace SimplyCQ.Unity
             /// <summary>上浮高度（格）。烟团往上升，别的都是 0。</summary>
             public float Rise;
             public Vector3 BasePos;
+            /// <summary>挥砍的初始朝向 + 扫过角度（攻速缩放之外，让平 A 有"挥过去"的过程）。</summary>
+            public Quaternion StartRot;
+            public float Sweep;
             public Color Tint;
             public bool Active;
         }
@@ -100,7 +103,18 @@ namespace SimplyCQ.Unity
 
         private void OnSwing(AttackSwing evt)
         {
-            SpawnSlash(evt.Actor, evt.Dir, 0.16f, 0.85f, 1f);
+            // 刀光节奏跟随攻速：出手越快，刀光越快 —— 不然攻速词条只改数字、看不出变快
+            float life = SwingLife(evt.Actor, 0.16f);
+            SpawnSlash(evt.Actor, evt.Dir, life, 0.85f, 1f);
+        }
+
+        /// <summary>动作时长按出手间隔缩放（间隔 7 tick = 0.16s 基准），夹在手感区间里。</summary>
+        private float SwingLife(ActorId actor, float baseLife)
+        {
+            Entity e = _world != null ? _world.Get(actor) : null;
+            if (e == null || e.AttackInterval <= 7) return baseLife;
+            float life = baseLife * e.AttackInterval / 7f;
+            return Mathf.Clamp(life, 0.10f, 0.34f);
         }
 
         /// <summary>三个战士技能给三种不同的样子 —— 不然放了技能只看得出"扣了蓝"。</summary>
@@ -191,7 +205,9 @@ namespace SimplyCQ.Unity
 
             Fx fx = Rent(FxKind.Slash);
             Begin(fx, at, life, scale, scale * 1.6f, Color.white);
-            fx.Go.transform.localRotation = Quaternion.Euler(0f, 0f, angle);
+            fx.StartRot = Quaternion.Euler(0f, 0f, angle - 45f);
+            fx.Sweep = 90f;                  // 生命期内扫过 90°，是"挥过去"不是"闪一下"
+            fx.Go.transform.localRotation = fx.StartRot;
             fx.Renderer.sprite = SlashSprite();
         }
 
@@ -209,7 +225,9 @@ namespace SimplyCQ.Unity
 
             Fx fx = Rent(FxKind.Line);
             Begin(fx, at, 0.22f, 0.35f, 1.25f, SkillTint);
-            fx.Go.transform.localRotation = Quaternion.Euler(0f, 0f, angle);
+            fx.StartRot = Quaternion.Euler(0f, 0f, angle);
+            fx.Sweep = 0f;
+            fx.Go.transform.localRotation = fx.StartRot;
             fx.Renderer.sprite = LineSprite();
         }
 
@@ -251,6 +269,8 @@ namespace SimplyCQ.Unity
             fx.Rise = 0f;
             fx.BasePos = at;
             fx.Tint = tint;
+            fx.StartRot = Quaternion.identity;
+            fx.Sweep = 0f;
             fx.Active = true;
 
             fx.Go.transform.position = at;
@@ -393,6 +413,8 @@ namespace SimplyCQ.Unity
 
             fx.Go.transform.localScale = new Vector3(scale, scale, 1f);
             if (fx.Rise > 0f) fx.Go.transform.position = fx.BasePos + new Vector3(0f, fx.Rise * k, 0f);
+            if (fx.Sweep != 0f)
+                fx.Go.transform.localRotation = fx.StartRot * Quaternion.Euler(0f, 0f, fx.Sweep * k);
 
             Color c = fx.Tint;
             c.a = fx.Tint.a * alpha;

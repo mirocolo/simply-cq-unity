@@ -21,6 +21,7 @@ namespace SimplyCQ.Unity
             public Dir RenderedDir;
             public bool SpriteDirty = true;
             public float Lunge;       // 攻击前冲剩余时间
+            public float LungeTotal;  // 本次前冲总时长（随攻速缩放）
             public Vector3 LungeDir;
         }
 
@@ -94,7 +95,7 @@ namespace SimplyCQ.Unity
                 if (v.Lunge > 0f)
                 {
                     v.Lunge -= dt;
-                    float k = Mathf.Clamp01(v.Lunge / LungeSeconds);
+                    float k = Mathf.Clamp01(v.Lunge / Mathf.Max(0.01f, v.LungeTotal));
                     lunge = v.LungeDir * (Mathf.Sin(k * Mathf.PI) * 0.30f);
                 }
                 v.Transform.position = v.Base + lunge;
@@ -227,7 +228,12 @@ namespace SimplyCQ.Unity
         {
             View v;
             if (!_views.TryGetValue(evt.Actor.Value, out v)) return;
-            v.Lunge = LungeSeconds;
+            // 前冲时长跟着出手间隔走：攻速越快，冲得越快 —— 手感才对得上数值
+            Entity attacker = _world != null ? _world.Get(evt.Actor) : null;
+            float lunge = LungeSeconds * (attacker != null && attacker.AttackInterval > 7
+                ? attacker.AttackInterval / 7f : 1f);
+            v.Lunge = lunge;
+            v.LungeTotal = lunge;
             v.LungeDir = new Vector3(DirHelper.Dx(evt.Dir), -DirHelper.Dy(evt.Dir), 0f);
         }
 

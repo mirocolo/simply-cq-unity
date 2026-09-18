@@ -118,6 +118,7 @@ namespace UnityEngine
     {
         public static Quaternion identity { get { return default(Quaternion); } }
         public static Quaternion Euler(float x, float y, float z) { return default(Quaternion); }
+        public static Quaternion operator *(Quaternion a, Quaternion b) { return a; }
     }
 
     public struct Vector2
