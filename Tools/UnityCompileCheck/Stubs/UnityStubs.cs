@@ -228,6 +228,9 @@ namespace UnityEngine
         public static int FloorToInt(float v) { return 0; }
         public static int CeilToInt(float v) { return 0; }
         public static float Sin(float v) { return 0f; }
+        public static float Cos(float v) { return 0f; }
+        public static float Sqrt(float v) { return v; }
+        public static float InverseLerp(float a, float b, float v) { return 0f; }
         public static float Exp(float v) { return 0f; }
         public static float Lerp(float a, float b, float t) { return a; }
         public static float SmoothDamp(float current, float target, ref float currentVelocity, float smoothTime) { return current; }

@@ -28,6 +28,7 @@ namespace SimplyCQ.Unity
         private FloatingTextOverlay _floatingText;
         private LootLabelOverlay _lootLabels;
         private CombatFxPool _fxPool;
+        private LootBeamOverlay _lootBeams;
         private SkillBarUi _skillBar;
         private CameraRig _cameraRig;
         private PlayerInputSource _input;
@@ -131,13 +132,16 @@ namespace SimplyCQ.Unity
 
             _floatingText = new FloatingTextOverlay(_entityViews, _camera, _simulation.World, _database.Items);
             _lootLabels = new LootLabelOverlay(_simulation.World, _entityViews, _database.Items, _camera);
-            _fxPool = new CombatFxPool(entityRoot, _projection, _simulation.World, _entityViews);
-            _skillBar = new SkillBarUi();
-            _skillBar.TickRate = _tickRate;
-
             _cameraRig = new CameraRig(_camera, _entityViews.GetTransform(player.Id),
                 _projection.MapWorldRect(_simulation.World.Map.Width, _simulation.World.Map.Height),
                 balance.cameraSmoothTime);
+
+            // 特效池要拿相机 rig 做暴击/挨打的镜头震动，所以必须建在它之后
+            _fxPool = new CombatFxPool(entityRoot, _projection, _simulation.World, _entityViews, _cameraRig);
+            _lootBeams = new LootBeamOverlay(entityRoot, _simulation.World, _entityViews,
+                                             _database.Items, _projection);
+            _skillBar = new SkillBarUi();
+            _skillBar.TickRate = _tickRate;
 
             if (_database.Items == null || _database.Items.Count == 0)
                 Debug.LogError("[SimplyCQ] items.json 一件物品都没读到 —— 捡东西和穿装备都会失效！");
@@ -203,6 +207,7 @@ namespace SimplyCQ.Unity
 
             _floatingText.Clear();
             _fxPool.Clear();
+            _lootBeams.Clear();
 
             // 上一张图的 NPC 已经被 ChangeMap 清掉，这里补新图的
             _database.SpawnNpcs(world);
@@ -312,6 +317,7 @@ namespace SimplyCQ.Unity
 
             _entityViews.Tick(dt);
             _fxPool.Tick(dt);
+            _lootBeams.Tick(dt);
             _floatingText.Tick(dt);
             _audio.Tick(dt);
             PlayPanelSound();

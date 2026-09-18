@@ -1178,6 +1178,146 @@ namespace SimplyCQ.EditorTools
                 Check(true, "运行时建的音频物体能收干净（不留跨场景的残留）");
             }
 
+            // ---------------- M6b 战斗特效：图形能生成、事件能触发、池子复用 ----------------
+            {
+                // 1) 程序化图形本身
+                int badSprite = 0;
+                string badSpriteWhere = "";
+                Sprite[] shapes = {
+                    PlaceholderArt.Blast(48, 32f),
+                    PlaceholderArt.Ring(56, 32f),
+                    PlaceholderArt.Puff(52, 32f),
+                    PlaceholderArt.Beam(26, 96, 32f),
+                    PlaceholderArt.Line(96, 18, 32f),
+                    PlaceholderArt.Slash(64, 22, 32f)
+                };
+                string[] shapeNames = { "星芒", "扩散环", "烟团", "光柱", "直线斩", "刀光" };
+                for (int i = 0; i < shapes.Length; i++)
+                {
+                    if (shapes[i] == null || shapes[i].texture == null)
+                    {
+                        badSprite++;
+                        if (badSpriteWhere.Length < 60) badSpriteWhere += shapeNames[i] + " ";
+                    }
+                }
+                Check(badSprite == 0, "6 种特效图形都能程序化生成（星芒/环/烟/光柱/直线斩/刀光）"
+                    + (badSprite > 0 ? "，失败：" + badSpriteWhere : ""));
+
+                // 2) 事件 -> 特效。用一个独立的小 world，不干扰前面的用例。
+                GameMap fxMap = MapLoader.CreateFallbackMap(24, 24);
+                World fxWorld = new World(fxMap, 4242u, new EventBus());
+                Projection fxProj = new Projection(
+                    db.Balance.tileWidthPx / (float)db.Balance.pixelsPerUnit,
+                    db.Balance.tileHeightPx / (float)db.Balance.pixelsPerUnit);
+
+                GameObject fxRoot = new GameObject("smoke_fx_root");
+                EntityViewRegistry fxViews = new EntityViewRegistry(fxRoot.transform, fxProj, fxWorld,
+                    db.Balance.characterWidthPx, db.Balance.characterHeightPx,
+                    db.Balance.pixelsPerUnit, db.Balance.tickPerSecond);
+
+                Entity fxHero = db.CreatePlayer();
+                fxHero.Pos = fxMap.Spawn;
+                fxHero.HomePos = fxHero.Pos;
+                fxWorld.Spawn(fxHero);
+                fxWorld.Player = fxHero;
+
+                Entity fxFoe = db.CreateMonster("mon_wolf");
+                fxFoe.Pos = fxMap.FindNearestWalkable(new TilePos(fxMap.Spawn.X + 2, fxMap.Spawn.Y), 6);
+                fxFoe.HomePos = fxFoe.Pos;
+                fxWorld.Spawn(fxFoe);
+
+                // 相机 rig：特效池拿它做震动。这里给个空相机就够（只验震动数值）
+                Camera fxCam = new GameObject("smoke_cam").AddComponent<Camera>();
+                CameraRig fxRig = new CameraRig(fxCam, fxViews.GetTransform(fxHero.Id),
+                    fxProj.MapWorldRect(fxMap.Width, fxMap.Height), 0.1f);
+
+                fxViews.Tick(0.05f);
+                CombatFxPool fx = new CombatFxPool(fxRoot.transform, fxProj, fxWorld, fxViews, fxRig);
+
+                int fxFired = 0, fxSilent = 0;
+                string fxSilentWhere = "";
+                System.Action<string, System.Action> fxProbe = delegate(string name, System.Action fire)
+                {
+                    fx.Clear();
+                    fire();
+                    if (fx.ActiveCount > 0) fxFired++;
+                    else { fxSilent++; if (fxSilentWhere.Length < 70) fxSilentWhere += name + " "; }
+                };
+
+                fxProbe("普攻刀光", delegate { fxWorld.Events.Publish(new AttackSwing { Actor = fxHero.Id, Dir = Dir.Right, Range = 1 }); });
+                fxProbe("命中", delegate { fxWorld.Events.Publish(new DamageDealt { Source = fxHero.Id, Target = fxFoe.Id, Amount = 3 }); });
+                fxProbe("暴击", delegate { fxWorld.Events.Publish(new DamageDealt { Source = fxHero.Id, Target = fxFoe.Id, Amount = 9, Crit = true }); });
+                fxProbe("自己挨打", delegate { fxWorld.Events.Publish(new DamageDealt { Source = fxFoe.Id, Target = fxHero.Id, Amount = 5 }); });
+                fxProbe("怪死", delegate { fxWorld.Events.Publish(new EntityDied { Id = fxFoe.Id, Killer = fxHero.Id }); });
+                fxProbe("玩家死", delegate { fxWorld.Events.Publish(new EntityDied { Id = fxHero.Id }); });
+                fxProbe("升级", delegate { fxWorld.Events.Publish(new LevelUp { Id = fxHero.Id, Level = 3 }); });
+                fxProbe("复活", delegate { fxWorld.Events.Publish(new PlayerRespawned { Id = fxHero.Id, At = fxMap.Spawn }); });
+                fxProbe("攻杀剑术", delegate { fxWorld.Events.Publish(new SkillCast { Caster = fxHero.Id, SkillId = "sk_slash", Dir = Dir.Right, TargetCount = 1, Success = true }); });
+                fxProbe("刺杀剑术", delegate { fxWorld.Events.Publish(new SkillCast { Caster = fxHero.Id, SkillId = "sk_thrust", Dir = Dir.Right, TargetCount = 1, Success = true }); });
+                fxProbe("烈火剑法", delegate { fxWorld.Events.Publish(new SkillCast { Caster = fxHero.Id, SkillId = "sk_flame", Dir = Dir.Right, TargetCount = 2, Success = true }); });
+
+                Check(fxSilent == 0, fxFired + " 类事件都能炸出特效"
+                    + (fxSilent > 0 ? "，没反应的：" + fxSilentWhere : ""));
+
+                // 3) 池化：连着打 200 下，池子不能一直涨（每次 new 会一直产生 GC 垃圾）
+                fx.Clear();
+                for (int i = 0; i < 200; i++)
+                {
+                    fxWorld.Events.Publish(new DamageDealt { Source = fxHero.Id, Target = fxFoe.Id, Amount = 3 });
+                    fx.Tick(0.5f);      // 让上一批过期，才能回到池里复用
+                }
+                Check(fx.PoolSize <= 8, "连着打 200 下，特效池只建了 " + fx.PoolSize + " 个物体（复用了，没有每次 new）");
+
+                // 4) 生命周期：过期后自己关掉，Clear 能一次全关
+                fx.Clear();
+                fxWorld.Events.Publish(new DamageDealt { Source = fxHero.Id, Target = fxFoe.Id, Amount = 3 });
+                Check(fx.ActiveCount > 0, "刚炸出来的特效是活的");
+                fx.Tick(2f);
+                Check(fx.ActiveCount == 0, "特效到时间会自己消失（不会一直留在屏幕上）");
+
+                fxWorld.Events.Publish(new DamageDealt { Source = fxHero.Id, Target = fxFoe.Id, Amount = 3, Crit = true });
+                fxWorld.Events.Publish(new LevelUp { Id = fxHero.Id, Level = 4 });
+                Check(fx.ActiveCount > 1, "可以同时有多个特效在飞");
+                fx.Clear();
+                Check(fx.ActiveCount == 0, "换图时一次全关（它们停在上一张图的世界坐标上）");
+
+                // 5) 镜头震动：震了要衰减回 0，Snap 要能立刻停
+                fxRig.Shake(0.2f, 0.3f);
+                Check(fxRig.ShakeLevel > 0f, "挨打/暴击会让相机震一下");
+                for (int i = 0; i < 20; i++) fxRig.Update(0.05f);   // 1 秒，远超 0.3 秒的时长
+                Check(fxRig.ShakeLevel == 0f, "震完之后自己回到 0（不会一直晃）");
+
+                fxRig.Shake(0.2f, 0.5f);
+                fxRig.Snap();
+                Check(fxRig.ShakeLevel == 0f, "换图/读档的 Snap 会立刻停掉震动（不会把抖动带过去）");
+
+                // 6) 掉落光柱：只给蓝装以上，捡走/换图就灭
+                LootBeamOverlay beams = new LootBeamOverlay(fxRoot.transform, fxWorld, fxViews, db.Items, fxProj);
+
+                Entity whiteLoot = MakeGroundLoot(fxWorld, fxMap, "wp_wood", ItemQuality.White, 12, 12);
+                Entity blueLoot = MakeGroundLoot(fxWorld, fxMap, "wp_wood", ItemQuality.Blue, 13, 12);
+                Entity purpleLoot = MakeGroundLoot(fxWorld, fxMap, "wp_wood", ItemQuality.Purple, 14, 12);
+                Entity potionLoot = MakeGroundLoot(fxWorld, fxMap, "pot_hp_s", ItemQuality.Purple, 15, 12);
+
+                fxViews.Tick(0.05f);
+                beams.Tick(0.05f);
+                // 蓝 + 紫各一道；白装不给，药水哪怕是"紫"也不给（它不是装备）
+                Check(beams.ActiveCount == 2,
+                    "只有蓝装和紫装立光柱，白装和药水不立（实际 " + beams.ActiveCount + " 道）");
+
+                fxWorld.Despawn(purpleLoot.Id);
+                fxViews.Tick(0.05f);
+                beams.Tick(0.05f);
+                Check(beams.ActiveCount == 1, "捡走之后光柱跟着消失（剩 " + beams.ActiveCount + " 道）");
+
+                beams.Clear();
+                Check(beams.ActiveCount == 0, "换图时光柱全部还回池里（不留上一张图的幽灵光柱）");
+
+                Object.DestroyImmediate(fxRoot);
+                Object.DestroyImmediate(fxCam.gameObject);
+                Check(true, "运行时建的特效物体能收干净");
+            }
+
             // 键盘操作的成败取决于 Player Settings，这里用编译期宏直接断言，
             // 免得出现「能跑但按键盘没反应」这种最难查的情况。
 #if ENABLE_LEGACY_INPUT_MANAGER
@@ -1190,6 +1330,25 @@ namespace SimplyCQ.EditorTools
         }
 
         private static bool AlwaysFalse(TilePos p) { return false; }
+
+        /// <summary>自检用：在地上放一件指定品质的掉落物（永不过期）。</summary>
+        private static Entity MakeGroundLoot(World world, GameMap map, string defId, ItemQuality quality,
+                                             int x, int y)
+        {
+            Entity e = new Entity();
+            e.Kind = EntityKind.GroundItem;
+            e.DefId = defId;
+            e.SpriteId = defId;
+            e.Name = defId;
+            e.Quality = quality;
+            e.BlocksTile = false;
+            e.Count = 1;
+            e.LifetimeTicks = 0;
+            e.Pos = map.FindNearestWalkable(new TilePos(x, y), 4);
+            e.HomePos = e.Pos;
+            world.Spawn(e);
+            return e;
+        }
 
         /// <summary>
         /// 把一件装备的【白装】属性折算成一个"强度点"，用来比较同部位同等级的装备谁更强。

@@ -314,6 +314,184 @@ namespace SimplyCQ.Unity
             }
         }
 
+        // ------------------------------------------------------------------ 特效
+        //
+        // 都是"白色/中性的底图"，具体颜色由特效池用 SpriteRenderer.color 染 ——
+        // 一张图能当命中、暴击、升级光柱、品质光柱用，不用给每种颜色各生成一张。
+
+        /// <summary>星芒爆点：亮核 + 四长四短的尖刺。命中/暴击那一下用。</summary>
+        public static Sprite Blast(int sizePx, float ppu)
+        {
+            string key = "blast|" + sizePx;
+            Sprite cached;
+            if (Cache.TryGetValue(key, out cached) && cached != null) return cached;
+
+            Color core = new Color(1f, 1f, 1f, 0.95f);
+            Color spike = new Color(1f, 1f, 1f, 0.75f);
+            Color fade = new Color(1f, 1f, 1f, 0.35f);
+
+            int w = sizePx, h = sizePx;
+            Color[] px = new Color[w * h];
+            int c = sizePx / 2;
+
+            Ellipse(px, w, h, c, c, Mathf.Max(1, sizePx / 6), Mathf.Max(1, sizePx / 6), core);
+
+            // 四长（上下左右）+ 四短（对角）
+            int longLen = sizePx / 2 - 1;
+            int shortLen = Mathf.RoundToInt(longLen * 0.55f);
+            int[][] dirs = { new[] { 1, 0 }, new[] { -1, 0 }, new[] { 0, 1 }, new[] { 0, -1 } };
+            for (int d = 0; d < dirs.Length; d++)
+                Spike(px, w, h, c, c, dirs[d][0], dirs[d][1], longLen, spike, fade);
+            int[][] diag = { new[] { 1, 1 }, new[] { 1, -1 }, new[] { -1, 1 }, new[] { -1, -1 } };
+            for (int d = 0; d < diag.Length; d++)
+                Spike(px, w, h, c, c, diag[d][0], diag[d][1], shortLen, spike, fade);
+
+            Sprite sprite = Build(px, w, h, ppu, new Vector2(0.5f, 0.5f), key);
+            Cache[key] = sprite;
+            return sprite;
+        }
+
+        /// <summary>一圈冲击波：中间空的圆环，越往外越淡。</summary>
+        public static Sprite Ring(int sizePx, float ppu)
+        {
+            string key = "ring|" + sizePx;
+            Sprite cached;
+            if (Cache.TryGetValue(key, out cached) && cached != null) return cached;
+
+            int w = sizePx, h = sizePx;
+            Color[] px = new Color[w * h];
+            float outer = sizePx * 0.48f;
+            float inner = sizePx * 0.34f;
+            float cx = (sizePx - 1) * 0.5f;
+            float cy = (sizePx - 1) * 0.5f;
+
+            for (int y = 0; y < h; y++)
+            {
+                for (int x = 0; x < w; x++)
+                {
+                    float d = Mathf.Sqrt((x - cx) * (x - cx) + (y - cy) * (y - cy));
+                    if (d > outer || d < inner) continue;
+                    float t = Mathf.InverseLerp(inner, outer, d);
+                    px[y * w + x] = new Color(1f, 1f, 1f, Mathf.Lerp(0.9f, 0.15f, t));
+                }
+            }
+
+            Sprite sprite = Build(px, w, h, ppu, new Vector2(0.5f, 0.5f), key);
+            Cache[key] = sprite;
+            return sprite;
+        }
+
+        /// <summary>烟团：几个叠在一起的圆，边缘抖一点，别是个完美圆。</summary>
+        public static Sprite Puff(int sizePx, float ppu)
+        {
+            string key = "puff|" + sizePx;
+            Sprite cached;
+            if (Cache.TryGetValue(key, out cached) && cached != null) return cached;
+
+            int w = sizePx, h = sizePx;
+            Color[] px = new Color[w * h];
+            int c = sizePx / 2;
+            int big = Mathf.Max(2, Mathf.RoundToInt(sizePx * 0.30f));
+            int small = Mathf.Max(1, Mathf.RoundToInt(sizePx * 0.20f));
+
+            Ellipse(px, w, h, c, c, big, big, new Color(1f, 1f, 1f, 0.42f));
+            Ellipse(px, w, h, c - big, c - big / 2, small, small, new Color(1f, 1f, 1f, 0.34f));
+            Ellipse(px, w, h, c + big, c - small, small, small, new Color(1f, 1f, 1f, 0.34f));
+            Ellipse(px, w, h, c - small, c + big, small, small, new Color(1f, 1f, 1f, 0.30f));
+            Ellipse(px, w, h, c + small / 2, c + big, small, small, new Color(1f, 1f, 1f, 0.30f));
+
+            Sprite sprite = Build(px, w, h, ppu, new Vector2(0.5f, 0.5f), key);
+            Cache[key] = sprite;
+            return sprite;
+        }
+
+        /// <summary>光柱：中间亮、两侧淡，顶端收细。pivot 在底部中心，方便"从地上长出来"。</summary>
+        public static Sprite Beam(int widthPx, int heightPx, float ppu)
+        {
+            string key = "beam|" + widthPx + "x" + heightPx;
+            Sprite cached;
+            if (Cache.TryGetValue(key, out cached) && cached != null) return cached;
+
+            int w = widthPx, h = heightPx;
+            Color[] px = new Color[w * h];
+            float half = (w - 1) * 0.5f;
+
+            for (int y = 0; y < h; y++)
+            {
+                float ty = y / (float)(h - 1);
+                // 越靠顶端越窄越淡
+                float widthK = Mathf.Lerp(1f, 0.45f, ty);
+                float alphaK = Mathf.Lerp(1f, 0.15f, ty * ty);
+
+                for (int x = 0; x < w; x++)
+                {
+                    float dx = Mathf.Abs(x - half) / Mathf.Max(0.001f, half * widthK);
+                    if (dx > 1f) continue;
+                    float a = Mathf.Lerp(0.65f, 0.10f, dx * dx) * alphaK;
+                    px[y * w + x] = new Color(1f, 1f, 1f, a);
+                }
+            }
+
+            Sprite sprite = Build(px, w, h, ppu, new Vector2(0.5f, 0f), key);
+            Cache[key] = sprite;
+            return sprite;
+        }
+
+        /// <summary>直线斩：一条两头收尖的横线（刺杀剑术那种直线攻击）。</summary>
+        public static Sprite Line(int widthPx, int heightPx, float ppu)
+        {
+            string key = "line|" + widthPx + "x" + heightPx;
+            Sprite cached;
+            if (Cache.TryGetValue(key, out cached) && cached != null) return cached;
+
+            int w = widthPx, h = heightPx;
+            Color[] px = new Color[w * h];
+            int mid = h / 2;
+
+            for (int x = 0; x < w; x++)
+            {
+                float t = x / (float)(w - 1);
+                float taper = Mathf.Sin(t * Mathf.PI);          // 两头细
+                int thickness = Mathf.Max(1, Mathf.RoundToInt(taper * (h * 0.45f)));
+                float a = Mathf.Lerp(0.5f, 1f, taper);
+                for (int k = -thickness; k <= thickness; k++)
+                {
+                    int y = mid + k;
+                    if (y < 0 || y >= h) continue;
+                    px[y * w + x] = new Color(1f, 1f, 1f, a);
+                }
+            }
+
+            Sprite sprite = Build(px, w, h, ppu, new Vector2(0.5f, 0.5f), key);
+            Cache[key] = sprite;
+            return sprite;
+        }
+
+        /// <summary>从中心沿一个方向画一条尖刺：越远越细越淡。</summary>
+        private static void Spike(Color[] px, int w, int h, int cx, int cy,
+                                  int dx, int dy, int len, Color near, Color far)
+        {
+            for (int i = 1; i <= len; i++)
+            {
+                // 斜向的尖刺走得慢一点，视觉上长度才接近
+                float step = (dx != 0 && dy != 0) ? 0.71f : 1f;
+                int x = cx + Mathf.RoundToInt(dx * i * step);
+                int y = cy + Mathf.RoundToInt(dy * i * step);
+                if (x < 0 || x >= w || y < 0 || y >= h) continue;
+
+                float t = i / (float)len;
+                float thickness = Mathf.Lerp(1f, 0f, t);
+                px[y * w + x] = t < 0.5f ? near : (t < 0.85f ? far : new Color(1f, 1f, 1f, 0.18f));
+
+                if (thickness > 0.5f)
+                {
+                    int px2 = Mathf.Clamp(x + (dy != 0 ? 1 : 0), 0, w - 1);
+                    int py2 = Mathf.Clamp(y + (dx != 0 ? 1 : 0), 0, h - 1);
+                    px[py2 * w + px2] = new Color(1f, 1f, 1f, 0.55f);
+                }
+            }
+        }
+
         private static Sprite Build(Color[] px, int w, int h, float ppu, Vector2 pivot, string name)
         {
             Texture2D tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
