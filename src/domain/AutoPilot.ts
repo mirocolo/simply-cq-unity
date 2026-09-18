@@ -1,4 +1,5 @@
 import { AutoPilotConfig, Entity, GroundItem, ItemInstance, SkillDef } from '../types/game';
+import { PortalDef } from '../types/map';
 import { PathFinder } from './PathFinder';
 
 export interface AutoPilotAction {
@@ -31,7 +32,8 @@ export class AutoPilot {
     skills: SkillDef[],
     config: AutoPilotConfig,
     currentTick: number,
-    isWalkable: (x: number, y: number) => boolean
+    isWalkable: (x: number, y: number) => boolean,
+    portals?: PortalDef[]
   ): AutoPilotAction {
     if (!config.enabled || player.state === 'dead') {
       return { type: 'none' };
@@ -78,7 +80,7 @@ export class AutoPilot {
           if (entry.dist > 6 || entry.dist <= 0) return false;
           // 若背包已满 40 格，过滤掉无法入包的物品（除已有的可堆叠药水外），避免在满包掉落物周围来回抽搐卡死
           if (isBagFull) {
-            if (entry.item.item.type === 'potion') {
+            if (entry.item.item.type === 'potion' || entry.item.item.type === 'material') {
               return inventory.some(i => i.defId === entry.item.item.defId);
             }
             return false;
@@ -115,6 +117,19 @@ export class AutoPilot {
       : monsters.filter(m => m.state !== 'dead');
 
     if (availableMonsters.length === 0) {
+      // 破境推图模式：若图内无野怪，自动寻找可进入的下层传送门前往破境
+      if (config.progressionMode && portals && portals.length > 0) {
+        const eligiblePortals = portals.filter(p => 
+          p.requiredTier <= (player.stats.ascensionTier || 0) &&
+          p.requiredLevel <= player.stats.level
+        );
+        if (eligiblePortals.length > 0) {
+          const path = PathFinder.findPath(player.gridPos, eligiblePortals[0].pos, isWalkable, 180);
+          if (path.length > 0) {
+            return { type: 'move', targetPos: path[0] };
+          }
+        }
+      }
       return { type: 'none' };
     }
 

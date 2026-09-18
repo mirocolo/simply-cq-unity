@@ -22,6 +22,17 @@ import { SKILL_DEFINITIONS } from './definitions/skills';
 import { StorageManager } from './StorageManager';
 import { ASCENSION_DEFINITIONS } from './definitions/ascension';
 import { SET_DEFINITIONS } from './definitions/sets';
+import { MapManager } from './MapManager';
+import { MapDefinition, PortalDef } from '../types/map';
+import { 
+  ENHANCEABLE_SLOTS, 
+  ENHANCE_COSTS, 
+  MAX_ENHANCE_LEVEL, 
+  getActiveResonance, 
+  getSlotEnhanceStats, 
+  EnhancementResonance 
+} from './definitions/enhancement';
+import { MAP_DEFINITIONS } from './definitions/maps';
 
 const DIR_OFFSETS: Record<Direction8, { x: number; y: number }> = {
   0: { x: 0, y: -1 },
@@ -35,9 +46,20 @@ const DIR_OFFSETS: Record<Direction8, { x: number; y: number }> = {
 };
 
 export class GameWorld {
-  readonly MAP_WIDTH = 36;
-  readonly MAP_HEIGHT = 36;
-  private obstacles = new Set<string>();
+  mapManager = new MapManager('map_biqi_0');
+  slotEnhancements: Partial<Record<EquipSlot, number>> = {};
+  slotEnhancePity: Partial<Record<EquipSlot, number>> = {};
+
+  get currentMap(): MapDefinition {
+    return this.mapManager.currentMap;
+  }
+  get MAP_WIDTH(): number {
+    return this.mapManager.currentMap.width;
+  }
+  get MAP_HEIGHT(): number {
+    return this.mapManager.currentMap.height;
+  }
+
   private lastFullBagWarnTick = 0;
   private isEmergencyCleaning = false;
 
@@ -58,7 +80,8 @@ export class GameWorld {
     autoSkill: true,
     autoPickup: true,
     autoRecycleWeaker: true,
-    searchRadius: 16
+    searchRadius: 16,
+    progressionMode: false
   };
   autoStats: AutoPilotStats = {
     activeTimeSeconds: 0,
@@ -84,34 +107,14 @@ export class GameWorld {
   onSlashVFX?: (gridPos: GridCoord, dir: Direction8, isFire: boolean, haste: number, isPhantom?: boolean) => void;
 
   constructor() {
-    this.initMapObstacles();
     this.player = this.createPlayer();
     this.skills = Object.values(SKILL_DEFINITIONS).map(s => ({ ...s }));
     this.initStartingInventory();
-    this.spawnInitialMonsters();
-  }
-
-  private initMapObstacles(): void {
-    for (let x = 0; x < this.MAP_WIDTH; x++) {
-      this.obstacles.add(`${x},0`);
-      this.obstacles.add(`${x},${this.MAP_HEIGHT - 1}`);
-    }
-    for (let y = 0; y < this.MAP_HEIGHT; y++) {
-      this.obstacles.add(`0,${y}`);
-      this.obstacles.add(`${this.MAP_WIDTH - 1},${y}`);
-    }
-
-    const rocks = [
-      { x: 10, y: 10 }, { x: 11, y: 10 }, { x: 10, y: 11 },
-      { x: 24, y: 22 }, { x: 25, y: 22 }, { x: 25, y: 23 },
-      { x: 18, y: 14 }, { x: 19, y: 14 }
-    ];
-    rocks.forEach(r => this.obstacles.add(`${r.x},${r.y}`));
+    this.spawnMonstersForMap();
   }
 
   isWalkable = (x: number, y: number): boolean => {
-    if (x < 0 || x >= this.MAP_WIDTH || y < 0 || y >= this.MAP_HEIGHT) return false;
-    return !this.obstacles.has(`${x},${y}`);
+    return this.mapManager.isWalkable(x, y);
   };
 
   hasSpecialEffect(effect: string): boolean {
@@ -152,7 +155,7 @@ export class GameWorld {
 
     // 重算人物四维与战力
     const base = StatCalculator.getBaseStatsForLevel(this.player.stats.level, nextTier);
-    this.player.stats = StatCalculator.applyEquipment(base, this.equipped);
+    this.player.stats = StatCalculator.applyEquipment(base, this.equipped, this.slotEnhancements);
     this.player.stats.hp = this.player.stats.maxHp;
     this.player.stats.mp = this.player.stats.maxMp;
 
@@ -167,6 +170,19 @@ export class GameWorld {
       'system'
     );
     return true;
+  }
+
+  recalculatePlayerStats(): void {
+    const prevGold = this.player.stats.gold;
+    const prevExp = this.player.stats.exp;
+    const prevHp = this.player.stats.hp;
+    const prevMp = this.player.stats.mp;
+    const base = StatCalculator.getBaseStatsForLevel(this.player.stats.level, this.player.stats.ascensionTier || 0);
+    this.player.stats = StatCalculator.applyEquipment(base, this.equipped, this.slotEnhancements);
+    this.player.stats.hp = Math.min(this.player.stats.maxHp, prevHp);
+    this.player.stats.mp = Math.min(this.player.stats.maxMp, prevMp);
+    this.player.stats.gold = prevGold;
+    this.player.stats.exp = prevExp;
   }
 
   updateMonstersForAscension(): void {
@@ -201,11 +217,11 @@ export class GameWorld {
       id: 'player_1',
       name: '至尊战神',
       isPlayer: true,
-      gridPos: { x: 18, y: 18 },
+      gridPos: { ...this.currentMap.spawnPoint },
       targetGridPos: null,
       moveProgress: 0,
       direction: 4,
-      stats: StatCalculator.applyEquipment(base, {}),
+      stats: StatCalculator.applyEquipment(base, {}, this.slotEnhancements),
       targetEntityId: null,
       lastAttackTick: -100,
       state: 'idle',
@@ -246,21 +262,12 @@ export class GameWorld {
     this.addBattleLog('【挂机提示】自动挂机默认开启，按【T】暂停/恢复挂机，【B】包裹，【C】人物属性。', 'system');
   }
 
-  private spawnInitialMonsters(): void {
-    const monsterDistributions = [
-      { templateId: 'm_scarecrow', count: 6, center: { x: 16, y: 16 }, radius: 6 },
-      { templateId: 'm_cat', count: 5, center: { x: 22, y: 16 }, radius: 5 },
-      { templateId: 'm_spider', count: 4, center: { x: 14, y: 24 }, radius: 5 },
-      { templateId: 'm_skeleton', count: 5, center: { x: 24, y: 25 }, radius: 6 },
-      { templateId: 'm_zombie', count: 4, center: { x: 10, y: 18 }, radius: 5 },
-      { templateId: 'm_white_pig', count: 5, center: { x: 28, y: 10 }, radius: 6 },
-      { templateId: 'm_wooma_boss', count: 2, center: { x: 28, y: 28 }, radius: 4 },
-      { templateId: 'm_red_moon', count: 1, center: { x: 8, y: 28 }, radius: 3 }
-    ];
-
+  spawnMonstersForMap(): void {
+    this.monsters = [];
+    const map = this.currentMap;
     const tier = this.player?.stats?.ascensionTier || 0;
     const playerLevel = this.player?.stats?.level || 1;
-    // Boss 随玩家等级动态成长 (未成长阶段处于低难度，30级以上与高转阶位面难度适当拉升)
+    // Boss 随玩家等级动态成长
     const bossGrowthFactor = playerLevel < 25 
       ? 1 
       : Math.max(1, (playerLevel / 20) ** 1.35);
@@ -269,16 +276,25 @@ export class GameWorld {
     const acMult = 1 + tier * 0.5;
 
     let idGen = 1;
-    for (const dist of monsterDistributions) {
-      const template = MONSTER_TEMPLATES[dist.templateId];
+    for (const rule of map.spawns) {
+      const template = MONSTER_TEMPLATES[rule.templateId];
       if (!template) continue;
 
-      for (let i = 0; i < dist.count; i++) {
-        let gx = dist.center.x + Math.floor((Math.random() - 0.5) * dist.radius * 2);
-        let gy = dist.center.y + Math.floor((Math.random() - 0.5) * dist.radius * 2);
+      // 如果首领怪还在复活倒计时中，跳过
+      if (template.isBoss && !this.mapManager.isBossReady(rule.templateId, this.currentTick)) {
+        continue;
+      }
+
+      for (let i = 0; i < rule.count; i++) {
+        let gx = rule.center.x + Math.floor((Math.random() - 0.5) * rule.radius * 2);
+        let gy = rule.center.y + Math.floor((Math.random() - 0.5) * rule.radius * 2);
 
         gx = Math.max(2, Math.min(this.MAP_WIDTH - 3, gx));
         gy = Math.max(2, Math.min(this.MAP_HEIGHT - 3, gy));
+        if (!this.isWalkable(gx, gy)) {
+          gx = rule.center.x;
+          gy = rule.center.y;
+        }
 
         const baseStats = StatCalculator.getBaseStatsForLevel(template.level);
         const finalHpMult = template.isBoss ? bossGrowthFactor * hpMult : hpMult;
@@ -324,6 +340,144 @@ export class GameWorld {
           hitStunTicks: 0
         });
       }
+    }
+  }
+
+  switchMap(targetMapId: string, targetPos?: GridCoord): boolean {
+    if (!this.mapManager.switchMap(targetMapId)) return false;
+    this.groundItems = [];
+    this.spawnMonstersForMap();
+    const spawn = targetPos || this.currentMap.spawnPoint;
+    this.player.gridPos = { ...spawn };
+    this.player.targetGridPos = null;
+    this.player.moveProgress = 0;
+    this.player.state = 'idle';
+    this.screenShake = 12;
+    this.onSound?.('revive');
+    this.addDamagePopup(this.player.gridPos, `🌀踏入【${this.currentMap.name}】`, '#38bdf8', true);
+    this.addBattleLog(`【位面穿梭】虚空裂解，大侠已破空传送至【${this.currentMap.name}】（第${this.currentMap.tier}阶位面）！`, 'system');
+    return true;
+  }
+
+  fastTravelToMap(mapId: string): { success: boolean; message: string } {
+    const tier = this.player.stats.ascensionTier || 0;
+    const level = this.player.stats.level;
+    const check = this.mapManager.canFastTravelToMap(mapId, level, tier);
+    if (!check.allowed) {
+      return { success: false, message: check.reason || '无法传送' };
+    }
+    const targetMap = MAP_DEFINITIONS[mapId];
+    if (!targetMap) {
+      return { success: false, message: '目标位面不存在' };
+    }
+    this.switchMap(mapId, targetMap.spawnPoint);
+    return { success: true, message: `已成功传送至【${targetMap.name}】！` };
+  }
+
+  private checkPortalStep(): void {
+    const portal = this.mapManager.checkPortalTrigger(this.player.gridPos);
+    if (!portal) return;
+
+    const tier = this.player.stats.ascensionTier || 0;
+    const level = this.player.stats.level;
+    const check = this.mapManager.canEnterPortal(portal, level, tier);
+
+    if (check.allowed) {
+      this.switchMap(portal.targetMapId, portal.targetPos);
+    } else {
+      this.screenShake = 6;
+      this.addDamagePopup(this.player.gridPos, `🚫${check.reason}`, '#ef4444', true);
+      this.addBattleLog(`【位面结界】阻挡前往【${portal.name}】：${check.reason}`, 'system');
+      // 弹性微退避 1 格
+      const backX = Math.max(1, Math.min(this.MAP_WIDTH - 2, this.player.gridPos.x + (this.player.gridPos.x < 18 ? 1 : -1)));
+      this.player.gridPos.x = backX;
+    }
+  }
+
+  getMaterialCount(defId: string): number {
+    const it = this.inventory.find(i => i.defId === defId);
+    return it ? (it.count || 1) : 0;
+  }
+
+  consumeMaterial(defId: string, count: number): boolean {
+    if (count <= 0) return true;
+    const it = this.inventory.find(i => i.defId === defId);
+    if (!it || (it.count || 1) < count) return false;
+    it.count = (it.count || 1) - count;
+    if (it.count <= 0) {
+      const idx = this.inventory.indexOf(it);
+      if (idx !== -1) this.inventory.splice(idx, 1);
+    }
+    return true;
+  }
+
+  enhanceSlot(slot: EquipSlot): { success: boolean; message: string; newLevel: number } {
+    if (!ENHANCEABLE_SLOTS.includes(slot)) {
+      return { success: false, message: '该部位不支持强化！', newLevel: 0 };
+    }
+
+    const currentLevel = this.slotEnhancements[slot] || 0;
+    if (currentLevel >= MAX_ENHANCE_LEVEL) {
+      return { success: false, message: '该部位已达到当前最高强化等级(+15)！', newLevel: currentLevel };
+    }
+
+    const cost = ENHANCE_COSTS[currentLevel];
+    if (!cost) {
+      return { success: false, message: '未找到强化消耗配置', newLevel: currentLevel };
+    }
+
+    if (this.player.stats.gold < cost.gold) {
+      return { success: false, message: `金币不足！需要 ${cost.gold.toLocaleString()} 金币`, newLevel: currentLevel };
+    }
+
+    const ironCount = this.getMaterialCount('mat_iron_ore');
+    const pureCount = this.getMaterialCount('mat_pure_iron');
+    const godCount = this.getMaterialCount('mat_god_stone');
+
+    if (cost.ironOre > 0 && ironCount < cost.ironOre) {
+      return { success: false, message: `黑铁矿石不足！需要 ${cost.ironOre} 个（当前持有 ${ironCount} 个）`, newLevel: currentLevel };
+    }
+    if (cost.pureIron > 0 && pureCount < cost.pureIron) {
+      return { success: false, message: `纯黑玄铁不足！需要 ${cost.pureIron} 个（当前持有 ${pureCount} 个）`, newLevel: currentLevel };
+    }
+    if (cost.godStone > 0 && godCount < cost.godStone) {
+      return { success: false, message: `天工神石不足！需要 ${cost.godStone} 个（当前持有 ${godCount} 个）`, newLevel: currentLevel };
+    }
+
+    // 扣除金币与材料
+    this.player.stats.gold -= cost.gold;
+    if (cost.ironOre > 0) this.consumeMaterial('mat_iron_ore', cost.ironOre);
+    if (cost.pureIron > 0) this.consumeMaterial('mat_pure_iron', cost.pureIron);
+    if (cost.godStone > 0) this.consumeMaterial('mat_god_stone', cost.godStone);
+
+    const pity = this.slotEnhancePity[slot] || 0;
+    const finalRate = Math.min(1.0, cost.baseSuccessRate + pity * 0.05);
+    const isSuccess = Math.random() < finalRate;
+
+    const slotNames: Record<string, string> = {
+      weapon: '武器', armor: '衣服', helmet: '头盔', necklace: '项链',
+      bracelet_l: '左手镯', bracelet_r: '右手镯', ring_l: '左戒指', ring_r: '右戒指'
+    };
+    const sName = slotNames[slot] || slot;
+
+    if (isSuccess) {
+      const nextLevel = currentLevel + 1;
+      this.slotEnhancements[slot] = nextLevel;
+      this.slotEnhancePity[slot] = 0;
+      this.recalculatePlayerStats();
+      this.onSound?.('crit');
+      this.screenShake = 12;
+
+      this.addDamagePopup(this.player.gridPos, `✨强化+${nextLevel}!`, '#facc15', true);
+      this.addBattleLog(`【锻造成功】乾坤炉火纯青！部位【${sName}】淬炼升华至 +${nextLevel}！战力大幅飙升！`, 'system');
+      return { success: true, message: `强化成功！【${sName}】升至 +${nextLevel}！`, newLevel: nextLevel };
+    } else {
+      const nextPity = pity + 1;
+      this.slotEnhancePity[slot] = nextPity;
+      this.onSound?.('hit');
+      this.addDamagePopup(this.player.gridPos, '💨淬火未成', '#94a3b8');
+      this.addBattleLog(`【锻造未成】部位【${sName}】淬炼失手，等级保留不降！保底概率累加 +5%（当前保底: +${nextPity * 5}%）！`, 'system');
+      return { success: false, message: `强化未成！保底累加 +5%（当前保底: +${nextPity * 5}%）`, newLevel: currentLevel };
     }
   }
 
@@ -413,7 +567,8 @@ export class GameWorld {
         this.skills,
         this.autoConfig,
         this.currentTick,
-        this.isWalkable
+        this.isWalkable,
+        this.currentMap.portals
       );
 
       if (decision.type === 'move' && decision.targetPos) {
@@ -447,6 +602,11 @@ export class GameWorld {
         if (m.respawnTicks !== undefined && m.respawnTicks > 0) {
           m.respawnTicks--;
           if (m.respawnTicks <= 0) {
+            const tmpl = Object.values(MONSTER_TEMPLATES).find(t => t.name === m.name);
+            if (tmpl && tmpl.isBoss && !this.mapManager.isBossReady(tmpl.templateId, this.currentTick)) {
+              m.respawnTicks = 30; // 延后 3 秒再检测
+              continue;
+            }
             m.state = 'idle';
             const tier = this.player.stats.ascensionTier || 0;
             const playerLevel = this.player.stats.level || 1;
@@ -456,7 +616,6 @@ export class GameWorld {
             const hpMult = 1 + (tier ** 1.25) * 2.5;
             const dcMult = 1 + (tier ** 1.1) * 0.7;
             const acMult = 1 + tier * 0.5;
-            const tmpl = Object.values(MONSTER_TEMPLATES).find(t => t.name === m.name);
             if (tmpl) {
               const finalHpMult = tmpl.isBoss ? bossGrowthFactor * hpMult : hpMult;
               const finalDcMult = tmpl.isBoss ? (1 + (bossGrowthFactor - 1) * 0.5) * dcMult : dcMult;
@@ -607,6 +766,10 @@ export class GameWorld {
       entity.targetGridPos = null;
       entity.moveProgress = 0;
       entity.state = 'idle';
+
+      if (entity.isPlayer) {
+        this.checkPortalStep();
+      }
     }
   }
 
@@ -961,6 +1124,10 @@ export class GameWorld {
     if (!deadEntity.isPlayer) {
       const tmpl = Object.values(MONSTER_TEMPLATES).find(t => t.name === deadEntity.name);
       if (tmpl) {
+        if (tmpl.isBoss) {
+          this.mapManager.recordBossDeath(tmpl.templateId, tmpl.respawnTicks || 300, this.currentTick);
+        }
+
         const minG = tmpl.goldDrop[0];
         const maxG = tmpl.goldDrop[1];
         let gold = Math.floor(Math.random() * (maxG - minG + 1)) + minG;
@@ -1009,7 +1176,7 @@ export class GameWorld {
       this.addBattleLog('【阵亡】大侠在战斗中力竭倒下，安全区回城元神聚顶中...', 'system');
       setTimeout(() => {
         this.player.state = 'idle';
-        this.player.gridPos = { x: 18, y: 18 };
+        this.player.gridPos = { ...this.currentMap.spawnPoint };
         this.player.targetGridPos = null;
         this.player.moveProgress = 0;
         this.player.stats.hp = this.player.stats.maxHp;
@@ -1030,7 +1197,7 @@ export class GameWorld {
       this.player.stats.level++;
       
       const base = StatCalculator.getBaseStatsForLevel(this.player.stats.level, this.player.stats.ascensionTier || 0);
-      this.player.stats = StatCalculator.applyEquipment(base, this.equipped);
+      this.player.stats = StatCalculator.applyEquipment(base, this.equipped, this.slotEnhancements);
       this.player.stats.hp = this.player.stats.maxHp;
       this.player.stats.mp = this.player.stats.maxMp;
 
@@ -1052,10 +1219,10 @@ export class GameWorld {
   }
 
   /**
-   * 添加物品到背包 (同类药品无限堆叠合并，装备按槽位独立存放；满包时启动紧急智能腾挪清理)
+   * 添加物品到背包 (同类药品与矿石材料无限堆叠合并，装备按槽位独立存放；满包时启动紧急智能腾挪清理)
    */
   addItemToInventory(item: ItemInstance): boolean {
-    if (item.type === 'potion') {
+    if (item.type === 'potion' || item.type === 'material') {
       const existing = this.inventory.find(i => i.defId === item.defId);
       if (existing) {
         existing.count = (existing.count || 1) + (item.count || 1);
@@ -1270,7 +1437,7 @@ export class GameWorld {
 
     const oldCp = this.player.stats.combatPower;
     const base = StatCalculator.getBaseStatsForLevel(this.player.stats.level, this.player.stats.ascensionTier || 0);
-    this.player.stats = StatCalculator.applyEquipment(base, this.equipped);
+    this.player.stats = StatCalculator.applyEquipment(base, this.equipped, this.slotEnhancements);
     const cpDiff = this.player.stats.combatPower - oldCp;
 
     if (cpDiff > 0) {
@@ -1329,7 +1496,7 @@ export class GameWorld {
     // 重新计算全身属性与战力
     const oldCp = this.player.stats.combatPower;
     const base = StatCalculator.getBaseStatsForLevel(this.player.stats.level, this.player.stats.ascensionTier || 0);
-    this.player.stats = StatCalculator.applyEquipment(base, this.equipped);
+    this.player.stats = StatCalculator.applyEquipment(base, this.equipped, this.slotEnhancements);
     const cpDiff = this.player.stats.combatPower - oldCp;
 
     if (replacedCount > 0) {
@@ -1481,7 +1648,7 @@ export class GameWorld {
     this.addItemToInventory(item);
 
     const base = StatCalculator.getBaseStatsForLevel(this.player.stats.level, this.player.stats.ascensionTier || 0);
-    this.player.stats = StatCalculator.applyEquipment(base, this.equipped);
+    this.player.stats = StatCalculator.applyEquipment(base, this.equipped, this.slotEnhancements);
     return true;
   }
 
@@ -1795,7 +1962,11 @@ export class GameWorld {
       equipped: this.equipped,
       inventory: this.inventory,
       autoConfig: this.autoConfig,
-      skills: this.skills
+      skills: this.skills,
+      slotEnhancements: this.slotEnhancements,
+      slotEnhancePity: this.slotEnhancePity,
+      currentMapId: this.mapManager.currentMapId,
+      unlockedMaps: Array.from(this.mapManager.unlockedMaps)
     });
   }
 
@@ -1810,6 +1981,16 @@ export class GameWorld {
     this.equipped = saved.equipped || {};
     this.inventory = saved.inventory || [];
     this.autoConfig = { ...this.autoConfig, ...saved.autoConfig };
+    this.slotEnhancements = saved.slotEnhancements || {};
+    this.slotEnhancePity = saved.slotEnhancePity || {};
+
+    if (saved.currentMapId) {
+      this.mapManager.importState({
+        currentMapId: saved.currentMapId,
+        unlockedMaps: saved.unlockedMaps
+      });
+      this.spawnMonstersForMap();
+    }
 
     if (saved.skills && Array.isArray(saved.skills)) {
       for (const sk of saved.skills) {
@@ -1841,7 +2022,7 @@ export class GameWorld {
     this.updateMonstersForAscension();
 
     const base = StatCalculator.getBaseStatsForLevel(this.player.stats.level, this.player.stats.ascensionTier || 0);
-    this.player.stats = StatCalculator.applyEquipment(base, this.equipped);
+    this.player.stats = StatCalculator.applyEquipment(base, this.equipped, this.slotEnhancements);
     this.player.stats.hp = saved.player.hp || this.player.stats.maxHp;
     this.player.stats.mp = saved.player.mp || this.player.stats.maxMp;
 

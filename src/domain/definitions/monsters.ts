@@ -256,7 +256,380 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
       { defId: 'r_mabi', chance: 0.35 }, // 35% 爆特戒麻痹
       { defId: 'r_fuhuo', chance: 0.30 }, // 30% 爆复活戒指！
       { defId: 'r_hushen', chance: 0.30 }, // 30% 爆护身戒指！
-      { defId: 'r_xingyun', chance: 0.25 }  // 25% 幸运特戒！
+      { defId: 'r_xingyun', chance: 0.25 }, // 25% 幸运特戒！
+      { defId: 'mat_pure_iron', chance: 0.8, minCount: 2, maxCount: 4 }
+    ]
+  },
+
+  // 2阶 祖玛位面
+  'm_zuma_statue': {
+    templateId: 'm_zuma_statue',
+    name: '祖玛雕像',
+    level: 34,
+    hp: 1200,
+    mp: 0,
+    minDC: 24,
+    maxDC: 45,
+    minAC: 12,
+    maxAC: 20,
+    critRate: 0.12,
+    haste: 10,
+    baseAttackInterval: 8,
+    goldDrop: [800, 1800],
+    expReward: 1200,
+    respawnTicks: 180,
+    color: '#d97706',
+    icon: '🗿',
+    lootTable: [
+      { defId: 'pot_sun', chance: 0.8, minCount: 2, maxCount: 4 },
+      { defId: 'mat_iron_ore', chance: 0.6, minCount: 1, maxCount: 3 },
+      { defId: 'w_jingzhongyue', chance: 0.20 },
+      { defId: 'h_heitie', chance: 0.20 }
+    ]
+  },
+  'm_zuma_boss': {
+    templateId: 'm_zuma_boss',
+    name: '★★ 祖玛教主(首领)',
+    level: 42,
+    hp: 16000,
+    mp: 2000,
+    minDC: 38,
+    maxDC: 68,
+    minAC: 20,
+    maxAC: 32,
+    critRate: 0.18,
+    haste: 14,
+    baseAttackInterval: 7,
+    goldDrop: [12000, 30000],
+    expReward: 14000,
+    isBoss: true,
+    respawnTicks: 180,
+    color: '#b45309',
+    icon: '🐂',
+    lootTable: [
+      { defId: 'pot_sun', chance: 1.0, minCount: 6, maxCount: 12 },
+      { defId: 'mat_iron_ore', chance: 0.9, minCount: 3, maxCount: 6 },
+      { defId: 'mat_pure_iron', chance: 0.6, minCount: 1, maxCount: 3 },
+      { defId: 'w_caijue', chance: 0.65 },
+      { defId: 'a_zhanshen', chance: 0.55 },
+      { defId: 'r_liliang', chance: 0.50 },
+      { defId: 'r_mabi', chance: 0.25 },
+      { defId: 'r_kuangfeng_ring', chance: 0.25 }
+    ]
+  },
+
+  // 4阶 苍月骨魔位面
+  'm_cangyue_skeleton': {
+    templateId: 'm_cangyue_skeleton',
+    name: '骨魔恶灵',
+    level: 46,
+    hp: 2200,
+    mp: 0,
+    minDC: 35,
+    maxDC: 60,
+    minAC: 16,
+    maxAC: 26,
+    critRate: 0.14,
+    haste: 12,
+    baseAttackInterval: 8,
+    goldDrop: [1500, 3500],
+    expReward: 2600,
+    respawnTicks: 190,
+    color: '#64748b',
+    icon: '☠️',
+    lootTable: [
+      { defId: 'pot_sun', chance: 0.9, minCount: 3, maxCount: 6 },
+      { defId: 'mat_pure_iron', chance: 0.5, minCount: 1, maxCount: 2 }
+    ]
+  },
+  'm_huangquan_boss': {
+    templateId: 'm_huangquan_boss',
+    name: '★★★ 黄泉教主(魔王)',
+    level: 50,
+    hp: 36000,
+    mp: 4000,
+    minDC: 55,
+    maxDC: 95,
+    minAC: 28,
+    maxAC: 44,
+    critRate: 0.22,
+    haste: 16,
+    baseAttackInterval: 6,
+    goldDrop: [30000, 70000],
+    expReward: 35000,
+    isBoss: true,
+    respawnTicks: 220,
+    color: '#0284c7',
+    icon: '👻',
+    lootTable: [
+      { defId: 'pot_sun', chance: 1.0, minCount: 8, maxCount: 16 },
+      { defId: 'pot_liaoshang', chance: 0.8, minCount: 2, maxCount: 4 },
+      { defId: 'mat_pure_iron', chance: 0.9, minCount: 2, maxCount: 5 },
+      { defId: 'mat_god_stone', chance: 0.3, minCount: 1, maxCount: 2 },
+      { defId: 'w_tulong', chance: 0.50 },
+      { defId: 'w_bazhe', chance: 0.40 },
+      { defId: 'r_xingyun', chance: 0.30 }
+    ]
+  },
+
+  // 5阶 雷霆雪域魔龙位面
+  'm_molong_blade': {
+    templateId: 'm_molong_blade',
+    name: '魔龙战将',
+    level: 53,
+    hp: 4200,
+    mp: 0,
+    minDC: 50,
+    maxDC: 85,
+    minAC: 22,
+    maxAC: 35,
+    critRate: 0.16,
+    haste: 14,
+    baseAttackInterval: 7,
+    goldDrop: [3000, 6500],
+    expReward: 5000,
+    respawnTicks: 200,
+    color: '#7e22ce',
+    icon: '🐲',
+    lootTable: [
+      { defId: 'pot_sun', chance: 1.0, minCount: 4, maxCount: 8 },
+      { defId: 'mat_pure_iron', chance: 0.7, minCount: 1, maxCount: 3 }
+    ]
+  },
+  'm_molong_boss': {
+    templateId: 'm_molong_boss',
+    name: '★★★ 魔龙教主(神兽)',
+    level: 58,
+    hp: 65000,
+    mp: 6000,
+    minDC: 75,
+    maxDC: 130,
+    minAC: 35,
+    maxAC: 55,
+    critRate: 0.25,
+    haste: 18,
+    baseAttackInterval: 6,
+    goldDrop: [50000, 120000],
+    expReward: 65000,
+    isBoss: true,
+    respawnTicks: 240,
+    color: '#9333ea',
+    icon: '🐉',
+    lootTable: [
+      { defId: 'pot_liaoshang', chance: 1.0, minCount: 4, maxCount: 8 },
+      { defId: 'mat_pure_iron', chance: 1.0, minCount: 3, maxCount: 6 },
+      { defId: 'mat_god_stone', chance: 0.5, minCount: 1, maxCount: 3 },
+      { defId: 'w_tulong', chance: 0.60 },
+      { defId: 'r_hushen', chance: 0.35 },
+      { defId: 'r_fuhuo', chance: 0.35 }
+    ]
+  },
+
+  // 6阶 九霄牛魔位面
+  'm_niumo_general': {
+    templateId: 'm_niumo_general',
+    name: '牛魔祭司',
+    level: 57,
+    hp: 7500,
+    mp: 0,
+    minDC: 70,
+    maxDC: 120,
+    minAC: 28,
+    maxAC: 45,
+    critRate: 0.18,
+    haste: 15,
+    baseAttackInterval: 7,
+    goldDrop: [5000, 11000],
+    expReward: 8500,
+    respawnTicks: 200,
+    color: '#ea580c',
+    icon: '👺',
+    lootTable: [
+      { defId: 'pot_liaoshang', chance: 0.8, minCount: 2, maxCount: 5 },
+      { defId: 'mat_god_stone', chance: 0.4, minCount: 1, maxCount: 2 }
+    ]
+  },
+  'm_niumo_boss': {
+    templateId: 'm_niumo_boss',
+    name: '★★★★ 牛魔王(至尊)',
+    level: 64,
+    hp: 110000,
+    mp: 8000,
+    minDC: 110,
+    maxDC: 185,
+    minAC: 45,
+    maxAC: 70,
+    critRate: 0.28,
+    haste: 20,
+    baseAttackInterval: 5,
+    goldDrop: [80000, 200000],
+    expReward: 120000,
+    isBoss: true,
+    respawnTicks: 250,
+    color: '#c2410c',
+    icon: '👑',
+    lootTable: [
+      { defId: 'pot_liaoshang', chance: 1.0, minCount: 6, maxCount: 12 },
+      { defId: 'mat_god_stone', chance: 0.8, minCount: 2, maxCount: 5 },
+      { defId: 'r_mabi', chance: 0.40 },
+      { defId: 'r_fuhuo', chance: 0.40 },
+      { defId: 'r_xingyun', chance: 0.35 }
+    ]
+  },
+
+  // 7阶 焚天火龙位面
+  'm_huolong_beast': {
+    templateId: 'm_huolong_beast',
+    name: '炎狱魔龙',
+    level: 66,
+    hp: 13500,
+    mp: 0,
+    minDC: 100,
+    maxDC: 170,
+    minAC: 38,
+    maxAC: 58,
+    critRate: 0.20,
+    haste: 16,
+    baseAttackInterval: 7,
+    goldDrop: [8000, 18000],
+    expReward: 16000,
+    respawnTicks: 210,
+    color: '#ef4444',
+    icon: '🔥',
+    lootTable: [
+      { defId: 'pot_liaoshang', chance: 0.9, minCount: 3, maxCount: 6 },
+      { defId: 'mat_god_stone', chance: 0.6, minCount: 1, maxCount: 3 }
+    ]
+  },
+  'm_huolong_boss': {
+    templateId: 'm_huolong_boss',
+    name: '★★★★ 焚天火龙神(灭世)',
+    level: 70,
+    hp: 180000,
+    mp: 12000,
+    minDC: 150,
+    maxDC: 260,
+    minAC: 60,
+    maxAC: 90,
+    critRate: 0.30,
+    haste: 22,
+    baseAttackInterval: 5,
+    goldDrop: [150000, 350000],
+    expReward: 220000,
+    isBoss: true,
+    respawnTicks: 260,
+    color: '#991b1b',
+    icon: '🌋',
+    lootTable: [
+      { defId: 'pot_liaoshang', chance: 1.0, minCount: 8, maxCount: 16 },
+      { defId: 'mat_god_stone', chance: 1.0, minCount: 3, maxCount: 8 },
+      { defId: 'r_mabi', chance: 0.45 },
+      { defId: 'r_fuhuo', chance: 0.45 }
+    ]
+  },
+
+  // 8阶 万劫修罗位面
+  'm_shura_warrior': {
+    templateId: 'm_shura_warrior',
+    name: '万劫修罗兵',
+    level: 72,
+    hp: 24000,
+    mp: 0,
+    minDC: 140,
+    maxDC: 240,
+    minAC: 50,
+    maxAC: 78,
+    critRate: 0.22,
+    haste: 18,
+    baseAttackInterval: 6,
+    goldDrop: [14000, 30000],
+    expReward: 32000,
+    respawnTicks: 220,
+    color: '#831843',
+    icon: '🥷',
+    lootTable: [
+      { defId: 'pot_liaoshang', chance: 1.0, minCount: 4, maxCount: 8 },
+      { defId: 'mat_god_stone', chance: 0.8, minCount: 2, maxCount: 4 }
+    ]
+  },
+  'm_shura_boss': {
+    templateId: 'm_shura_boss',
+    name: '★★★★★ 万劫修罗皇(极恶)',
+    level: 76,
+    hp: 300000,
+    mp: 20000,
+    minDC: 220,
+    maxDC: 380,
+    minAC: 85,
+    maxAC: 130,
+    critRate: 0.35,
+    haste: 25,
+    baseAttackInterval: 5,
+    goldDrop: [250000, 600000],
+    expReward: 400000,
+    isBoss: true,
+    respawnTicks: 280,
+    color: '#701a75',
+    icon: '💀',
+    lootTable: [
+      { defId: 'pot_liaoshang', chance: 1.0, minCount: 10, maxCount: 20 },
+      { defId: 'mat_god_stone', chance: 1.0, minCount: 5, maxCount: 12 },
+      { defId: 'r_mabi', chance: 0.50 },
+      { defId: 'r_fuhuo', chance: 0.50 },
+      { defId: 'r_hushen', chance: 0.50 }
+    ]
+  },
+
+  // 9阶 混沌鸿蒙虚空位面
+  'm_void_beast': {
+    templateId: 'm_void_beast',
+    name: '混沌虚空兽',
+    level: 78,
+    hp: 40000,
+    mp: 0,
+    minDC: 200,
+    maxDC: 340,
+    minAC: 70,
+    maxAC: 105,
+    critRate: 0.25,
+    haste: 20,
+    baseAttackInterval: 6,
+    goldDrop: [25000, 55000],
+    expReward: 60000,
+    respawnTicks: 230,
+    color: '#4c1d95',
+    icon: '🌌',
+    lootTable: [
+      { defId: 'pot_liaoshang', chance: 1.0, minCount: 5, maxCount: 10 },
+      { defId: 'mat_god_stone', chance: 1.0, minCount: 3, maxCount: 6 }
+    ]
+  },
+  'm_void_boss': {
+    templateId: 'm_void_boss',
+    name: '★★★★★★ 混元鸿蒙天尊(终极神道)',
+    level: 85,
+    hp: 600000,
+    mp: 50000,
+    minDC: 340,
+    maxDC: 580,
+    minAC: 120,
+    maxAC: 180,
+    critRate: 0.40,
+    haste: 30,
+    baseAttackInterval: 4,
+    goldDrop: [500000, 1500000],
+    expReward: 1000000,
+    isBoss: true,
+    respawnTicks: 300,
+    color: '#facc15',
+    icon: '⚡',
+    lootTable: [
+      { defId: 'pot_liaoshang', chance: 1.0, minCount: 15, maxCount: 30 },
+      { defId: 'mat_god_stone', chance: 1.0, minCount: 10, maxCount: 25 },
+      { defId: 'r_mabi', chance: 0.60 },
+      { defId: 'r_fuhuo', chance: 0.60 },
+      { defId: 'r_hushen', chance: 0.60 },
+      { defId: 'r_xingyun', chance: 0.60 }
     ]
   }
 };

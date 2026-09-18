@@ -16,6 +16,10 @@ export interface SaveData {
   inventory: ItemInstance[];
   autoConfig: AutoPilotConfig;
   skills?: SkillDef[];
+  slotEnhancements?: Partial<Record<EquipSlot, number>>;
+  slotEnhancePity?: Partial<Record<EquipSlot, number>>;
+  currentMapId?: string;
+  unlockedMaps?: string[];
 }
 
 export interface OfflineReward {

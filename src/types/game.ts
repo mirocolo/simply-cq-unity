@@ -30,7 +30,7 @@ export type EquipSlot =
   | 'special_luck'
   | 'special_greed';
 
-export type ItemType = 'equipment' | 'potion';
+export type ItemType = 'equipment' | 'potion' | 'material';
 
 export interface ItemDef {
   id: string;
@@ -222,6 +222,7 @@ export interface AutoPilotConfig {
   autoPickup: boolean;
   autoRecycleWeaker: boolean;
   searchRadius: number;
+  progressionMode?: boolean; // 是否开启自动破境推图 (遇传送门自动下层)
 }
 
 export interface AutoPilotStats {

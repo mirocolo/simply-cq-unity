@@ -87,6 +87,22 @@
       @reloadGame="handleReloadGame"
     />
 
+    <!-- 模态弹窗：九州十界万象星图 (M) -->
+    <WorldMapModal 
+      v-if="activeModal === 'world_map'"
+      :world="world"
+      :currentTick="world.currentTick"
+      @close="activeModal = null"
+      @fastTravel="handleFastTravel"
+    />
+
+    <!-- 模态弹窗：装备部位强化 (U) -->
+    <EnhanceModal 
+      v-if="activeModal === 'enhance'"
+      :world="world"
+      @close="activeModal = null"
+    />
+
     <!-- 模态弹窗：离线挂机收益结算 -->
     <OfflineRewardModal 
       v-if="offlineReward"
@@ -113,13 +129,15 @@ import AutoPilotModal from './components/AutoPilotModal.vue';
 import SettingsModal from './components/SettingsModal.vue';
 import OfflineRewardModal from './components/OfflineRewardModal.vue';
 import SpecialRingModal from './components/SpecialRingModal.vue';
+import WorldMapModal from './components/WorldMapModal.vue';
+import EnhanceModal from './components/EnhanceModal.vue';
 
 const world = reactive(new GameWorld()) as GameWorld;
 const renderer = new IsometricRenderer();
 const sound = new SoundEffects();
 
 const selectedTargetId = ref<string | null>(null);
-const activeModal = ref<'character' | 'inventory' | 'autopilot' | 'settings' | 'special_ring' | null>(null);
+const activeModal = ref<'character' | 'inventory' | 'autopilot' | 'settings' | 'special_ring' | 'world_map' | 'enhance' | null>(null);
 const offlineReward = ref<OfflineReward | null>(null);
 
 const isSoundOn = ref(true);
@@ -290,6 +308,13 @@ const handleClaimOfflineReward = () => {
   }
 };
 
+const handleFastTravel = (mapId: string) => {
+  const res = world.fastTravelToMap(mapId);
+  if (res.success) {
+    activeModal.value = null;
+  }
+};
+
 const handleKeyDown = (e: KeyboardEvent) => {
   if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
 
@@ -302,6 +327,10 @@ const handleKeyDown = (e: KeyboardEvent) => {
     openModal('character');
   } else if (key === 'R') {
     openModal('special_ring');
+  } else if (key === 'M') {
+    openModal('world_map');
+  } else if (key === 'U') {
+    openModal('enhance');
   } else if (key === 'L') {
     openModal('autopilot');
   } else if (key === 'O' || e.key === 'Escape') {

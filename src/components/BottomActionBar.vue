@@ -213,6 +213,14 @@
             <span>💍</span>
             <span>特戒(R)</span>
           </button>
+          <button 
+            @click="$emit('openModal', 'world_map')"
+            class="w-16 py-1.5 bg-gradient-to-b from-[#1e293b] to-[#0f172a] hover:from-[#334155] hover:to-[#1e293b] text-[#38bdf8] border-2 border-[#38bdf8]/60 rounded text-xs font-black transition-all shadow-[0_0_8px_rgba(56,189,248,0.25)] active:scale-95 flex items-center justify-center gap-0.5"
+            title="查看九州十界万象星图 (按 M)"
+          >
+            <span>🗺️</span>
+            <span>星图(M)</span>
+          </button>
         </div>
 
         <div class="flex gap-2">
@@ -221,6 +229,14 @@
             class="w-16 py-1.5 bg-gradient-to-b from-[#3a2f23] to-[#1e1710] hover:from-[#4d3e2d] hover:to-[#2c2217] text-[#f3c258] border-2 border-[#6d563a] rounded text-xs font-bold transition-all shadow-md active:scale-95"
           >
             挂机(L)
+          </button>
+          <button 
+            @click="$emit('openModal', 'enhance')"
+            class="w-16 py-1.5 bg-gradient-to-b from-[#3a2023] to-[#1e0f12] hover:from-[#522c31] hover:to-[#2c151a] text-[#f87171] border-2 border-[#7a3b45] rounded text-xs font-black transition-all shadow-[0_0_8px_rgba(248,113,113,0.25)] active:scale-95 flex items-center justify-center gap-0.5"
+            title="装备部位强化与共鸣 (按 U)"
+          >
+            <span>⚒️</span>
+            <span>强化(U)</span>
           </button>
           <button 
             @click="$emit('openModal', 'settings')"

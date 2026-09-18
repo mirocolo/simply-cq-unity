@@ -1,5 +1,7 @@
 import { Direction8, Entity, GroundItem } from '../types/game';
 import { GameWorld } from '../domain/GameWorld';
+import { PortalDef } from '../types/map';
+import { getActiveResonance } from '../domain/definitions/enhancement';
 
 interface SlashAnimation {
   gridX: number;
@@ -220,6 +222,7 @@ export class IsometricRenderer {
   ): void {
     const hw = this.TILE_WIDTH / 2;
     const hh = this.TILE_HEIGHT / 2;
+    const theme = world.currentMap.theme;
 
     for (let y = 0; y < world.MAP_HEIGHT; y++) {
       for (let x = 0; x < world.MAP_WIDTH; x++) {
@@ -240,13 +243,13 @@ export class IsometricRenderer {
         ctx.closePath();
 
         if (isWall) {
-          ctx.fillStyle = '#1c1815';
+          ctx.fillStyle = theme.wallBaseColor;
           ctx.fill();
-          ctx.strokeStyle = '#2c251f';
+          ctx.strokeStyle = theme.wallBorderColor;
           ctx.lineWidth = 1;
           ctx.stroke();
 
-          ctx.fillStyle = '#29221b';
+          ctx.fillStyle = theme.wallBaseColor;
           ctx.beginPath();
           ctx.moveTo(scr.x - hw, scr.y);
           ctx.lineTo(scr.x, scr.y - hh);
@@ -255,7 +258,7 @@ export class IsometricRenderer {
           ctx.closePath();
           ctx.fill();
 
-          ctx.fillStyle = '#3a3026';
+          ctx.fillStyle = theme.wallTopColor;
           ctx.beginPath();
           ctx.moveTo(scr.x, scr.y - hh);
           ctx.lineTo(scr.x + hw, scr.y);
@@ -265,27 +268,90 @@ export class IsometricRenderer {
           ctx.fill();
         } else {
           const seed = (x * 13 + y * 17) % 10;
-          if (x >= 16 && x <= 20) {
-            ctx.fillStyle = seed > 5 ? '#24201c' : '#1f1c18';
-          } else {
-            ctx.fillStyle = seed > 6 ? '#1b1d16' : (seed > 3 ? '#191b15' : '#161713');
-          }
+          ctx.fillStyle = seed > 6 ? theme.secondaryColor : (seed > 2 ? theme.primaryColor : theme.accentColor);
           ctx.fill();
 
-          ctx.strokeStyle = '#23201b';
-          ctx.lineWidth = 0.6;
+          ctx.strokeStyle = theme.wallBorderColor;
+          ctx.lineWidth = 0.5;
           ctx.stroke();
-
-          if (seed === 7) {
-            ctx.fillStyle = '#2b2a22';
-            ctx.fillRect(scr.x - 4, scr.y - 2, 3, 2);
-          } else if (seed === 2) {
-            ctx.fillStyle = '#28241d';
-            ctx.fillRect(scr.x + 3, scr.y + 1, 4, 3);
-          }
         }
       }
     }
+
+    // 渲染位面传送门 (光涡与冲天接引光柱)
+    for (const portal of world.currentMap.portals) {
+      const pScr = this.gridToScreen(portal.pos.x, portal.pos.y);
+      if (pScr.x + hw < camX - 100 || pScr.x - hw > camX + w + 100 ||
+          pScr.y + hh < camY - 260 || pScr.y - hh > camY + h + 100) {
+        continue;
+      }
+      this.renderPortal(ctx, portal, pScr);
+    }
+  }
+
+  private renderPortal(ctx: CanvasRenderingContext2D, portal: PortalDef, pos: { x: number; y: number }): void {
+    const color = portal.beamColor || '#38bdf8';
+
+    ctx.save();
+    // 1. 地面旋转奥术光涡
+    const vortexAngle = this.animFrame * 0.04;
+    ctx.save();
+    ctx.translate(pos.x, pos.y);
+    ctx.rotate(vortexAngle);
+    const grad = ctx.createRadialGradient(0, 0, 4, 0, 0, 32);
+    grad.addColorStop(0, color);
+    grad.addColorStop(0.5, 'rgba(56, 189, 248, 0.4)');
+    grad.addColorStop(1, 'transparent');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 32, 16, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.restore();
+
+    // 2. 通天接引传送光柱
+    const beamPulse = 0.65 + Math.sin(this.animFrame * 0.1) * 0.25;
+    const beamGrad = ctx.createLinearGradient(pos.x, pos.y, pos.x, pos.y - 180);
+    beamGrad.addColorStop(0, color);
+    beamGrad.addColorStop(0.7, color);
+    beamGrad.addColorStop(1, 'transparent');
+    ctx.fillStyle = beamGrad;
+    ctx.globalAlpha = beamPulse;
+    ctx.fillRect(pos.x - 10, pos.y - 180, 20, 180);
+
+    // 内部高亮白芯
+    ctx.fillStyle = '#ffffff';
+    ctx.globalAlpha = 0.85;
+    ctx.fillRect(pos.x - 2, pos.y - 180, 4, 180);
+    ctx.restore();
+
+    // 3. 悬浮传送门铭牌
+    ctx.save();
+    ctx.font = 'bold 12px "SimSun", "Songti SC", sans-serif';
+    const tagText = portal.name;
+    const tw = ctx.measureText(tagText).width;
+    const pad = 6;
+    const tagX = pos.x - tw / 2 - pad;
+    const tagY = pos.y - 50;
+
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
+    ctx.fillRect(tagX, tagY, tw + pad * 2, 20);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(tagX, tagY, tw + pad * 2, 20);
+
+    ctx.fillStyle = '#f8fafc';
+    ctx.textAlign = 'center';
+    ctx.fillText(tagText, pos.x, tagY + 14);
+
+    // 需求门槛小标
+    ctx.font = '10px sans-serif';
+    const reqText = portal.requiredTier > 0 ? `需${portal.requiredTier}转·Lv.${portal.requiredLevel}` : `需Lv.${portal.requiredLevel}`;
+    ctx.fillStyle = '#fbbf24';
+    ctx.fillText(reqText, pos.x, tagY + 32);
+    ctx.restore();
   }
 
   private renderGroundItem(ctx: CanvasRenderingContext2D, drop: GroundItem, pos: { x: number; y: number }): void {
@@ -462,6 +528,25 @@ export class IsometricRenderer {
       ctx.restore();
     }
 
+    // 全身强化共鸣神威光环 (+7/+10/+13/+15)
+    const resonance = getActiveResonance(world.slotEnhancements);
+    if (resonance) {
+      ctx.save();
+      const pulse = Math.sin(Date.now() / 150) * 4;
+      const resGrad = ctx.createRadialGradient(0, -20, 4, 0, -20, 32 + pulse);
+      resGrad.addColorStop(0, resonance.glowColor);
+      resGrad.addColorStop(1, 'transparent');
+      ctx.fillStyle = resGrad;
+      ctx.globalAlpha = 0.45;
+      ctx.beginPath();
+      ctx.arc(0, -20, 32 + pulse, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = resonance.glowColor;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.restore();
+    }
+
     // 披风
     ctx.fillStyle = '#b91c1c';
     ctx.beginPath();
@@ -496,6 +581,12 @@ export class IsometricRenderer {
     ctx.translate(6, -20);
     if (isAttacking) {
       ctx.rotate(Math.PI / 3);
+    }
+
+    const weaponLvl = world.slotEnhancements['weapon'] || 0;
+    if (weaponLvl >= 7) {
+      ctx.shadowColor = weaponLvl >= 13 ? '#ef4444' : (weaponLvl >= 10 ? '#f59e0b' : '#38bdf8');
+      ctx.shadowBlur = 8 + weaponLvl;
     }
 
     if (hasDragonBlade) {

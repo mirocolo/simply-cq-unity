@@ -1,6 +1,7 @@
 import { EntityStats, EquipSlot, ItemInstance } from '../types/game';
 import { ASCENSION_DEFINITIONS } from './definitions/ascension';
 import { SET_DEFINITIONS, SetBonus, SetDef } from './definitions/sets';
+import { getSlotEnhanceStats, getActiveResonance } from './definitions/enhancement';
 
 export interface LevelMilestone {
   title: string;
@@ -133,7 +134,8 @@ export class StatCalculator {
 
   static applyEquipment(
     baseStats: EntityStats, 
-    equipped: Partial<Record<EquipSlot, ItemInstance>>
+    equipped: Partial<Record<EquipSlot, ItemInstance>>,
+    slotEnhancements?: Partial<Record<EquipSlot, number>>
   ): EntityStats {
     let addMinDC = 0;
     let addMaxDC = 0;
@@ -169,6 +171,20 @@ export class StatCalculator {
       }
     }
 
+    // 装备部位强化加成 (部位继承、零损换装)
+    if (slotEnhancements) {
+      for (const [slotKey, level] of Object.entries(slotEnhancements)) {
+        if (!level || level <= 0) continue;
+        const enh = getSlotEnhanceStats(slotKey as EquipSlot, level);
+        addMinDC += enh.minDC;
+        addMaxDC += enh.maxDC;
+        addMinAC += enh.minAC;
+        addMaxAC += enh.maxAC;
+        addHp += enh.maxHp;
+        if (enh.critBonus) addCritBonus += enh.critBonus;
+      }
+    }
+
     // 套装羁绊加成结算
     const activeSets = this.getActiveSets(equipped);
     let setDcMult = 0;
@@ -190,6 +206,19 @@ export class StatCalculator {
         if (b.dodgeRate) setDodgeRate += b.dodgeRate;
         if (b.damageMultRatio) setDamageMultRatio += b.damageMultRatio;
         if (b.hasteBonus) setHaste += b.hasteBonus;
+      }
+    }
+
+    // 全身强化共鸣加成
+    if (slotEnhancements) {
+      const resonance = getActiveResonance(slotEnhancements);
+      if (resonance) {
+        setDcMult += resonance.dcMult;
+        setAcMult += resonance.acMult;
+        setHpMult += resonance.hpMult;
+        if (resonance.lifestealRate) setLifestealRate += resonance.lifestealRate;
+        if (resonance.defenseIgnoreRate) addDefenseIgnore += resonance.defenseIgnoreRate;
+        if (resonance.damageMultRatio) addDamageMult += resonance.damageMultRatio;
       }
     }
 
@@ -219,6 +248,13 @@ export class StatCalculator {
     const overflowHaste = Math.max(0, haste - 34);
     const phantomStrikeRate = overflowHaste > 0 ? Number((overflowHaste * 0.015).toFixed(3)) : 0;
 
+    let enhancementScore = 0;
+    if (slotEnhancements) {
+      for (const lvl of Object.values(slotEnhancements)) {
+        if (lvl) enhancementScore += lvl * 250;
+      }
+    }
+
     const midDC = (minDC + maxDC) / 2;
     const midAC = (minAC + maxAC) / 2;
     const combatPower = Math.floor(
@@ -233,6 +269,7 @@ export class StatCalculator {
       haste * 12 +
       phantomStrikeRate * 2000 +
       luck * 1500 +
+      enhancementScore +
       baseStats.level * 35) * (1 + damageMultRatio)
     );
 
