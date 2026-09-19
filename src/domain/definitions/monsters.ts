@@ -43,8 +43,8 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     haste: 0,
     baseAttackInterval: 10,
     goldDrop: [10, 30],
-    expReward: 15,
-    respawnTicks: 150, // 降低小怪刷新频率 (15秒复活)
+    expReward: 8,
+    respawnTicks: 300, // 30秒复活
     color: '#a16207',
     icon: '🌾',
     lootTable: [
@@ -68,8 +68,8 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     haste: 2,
     baseAttackInterval: 9,
     goldDrop: [25, 60],
-    expReward: 35,
-    respawnTicks: 180, // 降低小怪刷新频率 (18秒复活)
+    expReward: 18,
+    respawnTicks: 320, // 32秒复活
     color: '#ca8a04',
     icon: '🐱',
     lootTable: [
@@ -94,8 +94,8 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     haste: 5,
     baseAttackInterval: 8,
     goldDrop: [50, 120],
-    expReward: 70,
-    respawnTicks: 200, // 降低小怪刷新频率 (20秒复活)
+    expReward: 35,
+    respawnTicks: 350, // 35秒复活
     color: '#16a34a',
     icon: '🕷️',
     lootTable: [
@@ -120,8 +120,8 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     haste: 6,
     baseAttackInterval: 8,
     goldDrop: [120, 280],
-    expReward: 160,
-    respawnTicks: 220, // 降低小怪刷新频率 (22秒复活)
+    expReward: 80,
+    respawnTicks: 380, // 38秒复活
     color: '#94a3b8',
     icon: '💀',
     lootTable: [
@@ -138,7 +138,7 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     templateId: 'm_zombie',
     name: '矿区尸王',
     level: 22,
-    hp: 750,
+    hp: 850,
     mp: 0,
     minDC: 20,
     maxDC: 38,
@@ -148,8 +148,8 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     haste: 8,
     baseAttackInterval: 8,
     goldDrop: [250, 600],
-    expReward: 350,
-    respawnTicks: 240, // 降低小怪刷新频率 (24秒复活)
+    expReward: 180,
+    respawnTicks: 600, // 60秒复活
     color: '#7c3aed',
     icon: '🧟',
     lootTable: [
@@ -164,19 +164,19 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     templateId: 'm_white_pig',
     name: '★ 白野猪(精英)',
     level: 30,
-    hp: 2800, // 前期友好适度血量 (原 9500 -> 2800，动态随玩家等级成长)
+    hp: 3500,
     mp: 0,
-    minDC: 18,
-    maxDC: 32,
-    minAC: 8,
-    maxAC: 14,
+    minDC: 20,
+    maxDC: 36,
+    minAC: 9,
+    maxAC: 16,
     critRate: 0.12,
     haste: 6,
     baseAttackInterval: 8,
     goldDrop: [1200, 3000],
-    expReward: 1600,
+    expReward: 800,
     isElite: true,
-    respawnTicks: 90,
+    respawnTicks: 600, // 60秒复活 (精英稀有)
     color: '#e11d48',
     icon: '🐗',
     lootTable: [
@@ -194,19 +194,19 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     templateId: 'm_wooma_boss',
     name: '★★ 沃玛教主(首领)',
     level: 38,
-    hp: 8800, // 前期友好血量 (原 45000 -> 8800，动态随成长提升)
+    hp: 12000,
     mp: 1000,
-    minDC: 28,
-    maxDC: 52,
-    minAC: 15,
-    maxAC: 25,
+    minDC: 32,
+    maxDC: 58,
+    minAC: 16,
+    maxAC: 26,
     critRate: 0.16,
     haste: 12,
     baseAttackInterval: 7,
     goldDrop: [5000, 15000],
-    expReward: 6500,
+    expReward: 3200,
     isBoss: true,
-    respawnTicks: 160,
+    respawnTicks: 1200, // 2分钟 (120秒) 刷新一次
     color: '#dc2626',
     icon: '👹',
     lootTable: [
@@ -228,19 +228,19 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     templateId: 'm_red_moon',
     name: '★★★ 赤月恶魔(神话)',
     level: 45,
-    hp: 24000, // 前期友好神话Boss血量 (原 120000 -> 24000)
+    hp: 36000,
     mp: 3000,
-    minDC: 42,
-    maxDC: 75,
-    minAC: 24,
-    maxAC: 38,
+    minDC: 48,
+    maxDC: 85,
+    minAC: 26,
+    maxAC: 42,
     critRate: 0.22,
     haste: 16,
     baseAttackInterval: 6,
     goldDrop: [20000, 50000],
-    expReward: 20000,
+    expReward: 9800,
     isBoss: true,
-    respawnTicks: 220,
+    respawnTicks: 1800, // 3分钟 (180秒) 刷新一次
     color: '#b91c1c',
     icon: '👿',
     lootTable: [
@@ -276,8 +276,8 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     haste: 10,
     baseAttackInterval: 8,
     goldDrop: [800, 1800],
-    expReward: 1200,
-    respawnTicks: 180,
+    expReward: 600,
+    respawnTicks: 400, // 40秒复活
     color: '#d97706',
     icon: '🗿',
     lootTable: [
@@ -291,19 +291,19 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     templateId: 'm_zuma_boss',
     name: '★★ 祖玛教主(首领)',
     level: 42,
-    hp: 16000,
+    hp: 22000,
     mp: 2000,
-    minDC: 38,
-    maxDC: 68,
-    minAC: 20,
-    maxAC: 32,
+    minDC: 42,
+    maxDC: 76,
+    minAC: 24,
+    maxAC: 38,
     critRate: 0.18,
     haste: 14,
     baseAttackInterval: 7,
     goldDrop: [12000, 30000],
-    expReward: 14000,
+    expReward: 6800,
     isBoss: true,
-    respawnTicks: 180,
+    respawnTicks: 1500, // 2.5分钟 (150秒) 刷新
     color: '#b45309',
     icon: '🐂',
     lootTable: [
@@ -333,8 +333,8 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     haste: 12,
     baseAttackInterval: 8,
     goldDrop: [1500, 3500],
-    expReward: 2600,
-    respawnTicks: 190,
+    expReward: 1200,
+    respawnTicks: 420, // 42秒复活
     color: '#64748b',
     icon: '☠️',
     lootTable: [
@@ -346,19 +346,19 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     templateId: 'm_huangquan_boss',
     name: '★★★ 黄泉教主(魔王)',
     level: 50,
-    hp: 36000,
+    hp: 58000,
     mp: 4000,
-    minDC: 55,
-    maxDC: 95,
-    minAC: 28,
-    maxAC: 44,
+    minDC: 65,
+    maxDC: 110,
+    minAC: 32,
+    maxAC: 50,
     critRate: 0.22,
     haste: 16,
     baseAttackInterval: 6,
     goldDrop: [30000, 70000],
-    expReward: 35000,
+    expReward: 16000,
     isBoss: true,
-    respawnTicks: 220,
+    respawnTicks: 2000, // 3.3分钟 (200秒) 刷新
     color: '#0284c7',
     icon: '👻',
     lootTable: [
@@ -387,8 +387,8 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     haste: 14,
     baseAttackInterval: 7,
     goldDrop: [3000, 6500],
-    expReward: 5000,
-    respawnTicks: 200,
+    expReward: 2200,
+    respawnTicks: 450, // 45秒复活
     color: '#7e22ce',
     icon: '🐲',
     lootTable: [
@@ -400,19 +400,19 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     templateId: 'm_molong_boss',
     name: '★★★ 魔龙教主(神兽)',
     level: 58,
-    hp: 65000,
+    hp: 160000, // 大幅提升后期Boss血量坦度 (原65000 -> 160000)
     mp: 6000,
-    minDC: 75,
-    maxDC: 130,
-    minAC: 35,
-    maxAC: 55,
+    minDC: 110, // 提升攻击力 (原75 -> 110)
+    maxDC: 180, // (原130 -> 180)
+    minAC: 55,  // 强化防御 (原35 -> 55)
+    maxAC: 80,  // (原55 -> 80)
     critRate: 0.25,
     haste: 18,
     baseAttackInterval: 6,
     goldDrop: [50000, 120000],
-    expReward: 65000,
+    expReward: 28000,
     isBoss: true,
-    respawnTicks: 240,
+    respawnTicks: 2400, // 4分钟 (240秒) 刷新一次
     color: '#9333ea',
     icon: '🐉',
     lootTable: [
@@ -440,8 +440,8 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     haste: 15,
     baseAttackInterval: 7,
     goldDrop: [5000, 11000],
-    expReward: 8500,
-    respawnTicks: 200,
+    expReward: 3600,
+    respawnTicks: 450, // 45秒复活
     color: '#ea580c',
     icon: '👺',
     lootTable: [
@@ -453,19 +453,19 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     templateId: 'm_niumo_boss',
     name: '★★★★ 牛魔王(至尊)',
     level: 64,
-    hp: 110000,
+    hp: 320000, // 提升血量 (原110000 -> 320000)
     mp: 8000,
-    minDC: 110,
-    maxDC: 185,
-    minAC: 45,
-    maxAC: 70,
+    minDC: 160, // 提升攻击 (原110 -> 160)
+    maxDC: 260, // (原185 -> 260)
+    minAC: 80,  // 提升防御 (原45 -> 80)
+    maxAC: 120, // (原70 -> 120)
     critRate: 0.28,
     haste: 20,
     baseAttackInterval: 5,
     goldDrop: [80000, 200000],
-    expReward: 120000,
+    expReward: 45000, // 控制经验膨胀 (原120000 -> 45000)
     isBoss: true,
-    respawnTicks: 250,
+    respawnTicks: 3000, // 5分钟 (300秒) 刷新一次
     color: '#c2410c',
     icon: '👑',
     lootTable: [
@@ -492,8 +492,8 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     haste: 16,
     baseAttackInterval: 7,
     goldDrop: [8000, 18000],
-    expReward: 16000,
-    respawnTicks: 210,
+    expReward: 6500, // 控制经验 (原16000 -> 6500)
+    respawnTicks: 480, // 48秒复活
     color: '#ef4444',
     icon: '🔥',
     lootTable: [
@@ -505,19 +505,19 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     templateId: 'm_huolong_boss',
     name: '★★★★ 焚天火龙神(灭世)',
     level: 70,
-    hp: 180000,
+    hp: 650000, // 大幅提升HP (原180000 -> 650000)
     mp: 12000,
-    minDC: 150,
-    maxDC: 260,
-    minAC: 60,
-    maxAC: 90,
+    minDC: 240, // (原150 -> 240)
+    maxDC: 380, // (原260 -> 380)
+    minAC: 120, // (原60 -> 120)
+    maxAC: 170, // (原90 -> 170)
     critRate: 0.30,
     haste: 22,
     baseAttackInterval: 5,
     goldDrop: [150000, 350000],
-    expReward: 220000,
+    expReward: 75000, // (原220000 -> 75000)
     isBoss: true,
-    respawnTicks: 260,
+    respawnTicks: 3600, // 6分钟 (360秒) 刷新一次
     color: '#991b1b',
     icon: '🌋',
     lootTable: [
@@ -543,8 +543,8 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     haste: 18,
     baseAttackInterval: 6,
     goldDrop: [14000, 30000],
-    expReward: 32000,
-    respawnTicks: 220,
+    expReward: 12000, // (原32000 -> 12000)
+    respawnTicks: 500, // 50秒复活
     color: '#831843',
     icon: '🥷',
     lootTable: [
@@ -556,19 +556,19 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     templateId: 'm_shura_boss',
     name: '★★★★★ 万劫修罗皇(极恶)',
     level: 76,
-    hp: 300000,
+    hp: 1200000, // 大幅提升HP (原300000 -> 1200000)
     mp: 20000,
-    minDC: 220,
-    maxDC: 380,
-    minAC: 85,
-    maxAC: 130,
+    minDC: 350,  // (原220 -> 350)
+    maxDC: 550,  // (原380 -> 550)
+    minAC: 160,  // (原85 -> 160)
+    maxAC: 230,  // (原130 -> 230)
     critRate: 0.35,
     haste: 25,
     baseAttackInterval: 5,
     goldDrop: [250000, 600000],
-    expReward: 400000,
+    expReward: 120000, // (原400000 -> 120000)
     isBoss: true,
-    respawnTicks: 280,
+    respawnTicks: 4500, // 7.5分钟 (450秒) 刷新一次
     color: '#701a75',
     icon: '💀',
     lootTable: [
@@ -595,8 +595,8 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     haste: 20,
     baseAttackInterval: 6,
     goldDrop: [25000, 55000],
-    expReward: 60000,
-    respawnTicks: 230,
+    expReward: 22000, // (原60000 -> 22000)
+    respawnTicks: 520, // 52秒复活
     color: '#4c1d95',
     icon: '🌌',
     lootTable: [
@@ -608,19 +608,19 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     templateId: 'm_void_boss',
     name: '★★★★★★ 混元鸿蒙天尊(终极神道)',
     level: 85,
-    hp: 600000,
+    hp: 2600000, // 终极神级血量 (原600000 -> 2600000)
     mp: 50000,
-    minDC: 340,
-    maxDC: 580,
-    minAC: 120,
-    maxAC: 180,
+    minDC: 550,  // (原340 -> 550)
+    maxDC: 880,  // (原580 -> 880)
+    minAC: 220,  // (原120 -> 220)
+    maxAC: 320,  // (原180 -> 320)
     critRate: 0.40,
     haste: 30,
     baseAttackInterval: 4,
     goldDrop: [500000, 1500000],
-    expReward: 1000000,
+    expReward: 250000, // (原1000000 -> 250000)
     isBoss: true,
-    respawnTicks: 300,
+    respawnTicks: 6000, // 10分钟 (600秒) 刷新一次
     color: '#facc15',
     icon: '⚡',
     lootTable: [
@@ -646,8 +646,8 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     haste: 40,
     baseAttackInterval: 10,
     goldDrop: [50000, 150000],
-    expReward: 6000,
-    respawnTicks: 300,
+    expReward: 2500, // (原6000 -> 2500)
+    respawnTicks: 1200, // 2分钟 (120秒) 刷新一次
     color: '#f59e0b',
     icon: '💰',
     lootTable: [

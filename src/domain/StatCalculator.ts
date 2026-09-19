@@ -35,7 +35,7 @@ export class StatCalculator {
     let maxDC = 18 + Math.floor(level * 4.0);
     let minAC = 4 + Math.floor(level * 1.2);
     let maxAC = 8 + Math.floor(level * 1.8);
-    const maxExp = Math.floor(60 * Math.pow(1.22, level - 1));
+    const maxExp = Math.floor(100 * Math.pow(1.20, level - 1));
 
     const milestone = this.getLevelMilestone(level);
     let critRate = 0.08 + milestone.critRate;

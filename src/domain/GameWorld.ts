@@ -1024,7 +1024,7 @@ export class GameWorld {
             m.shieldHp = 0;
             this.screenShake = 20;
             this.onSound?.('crit');
-            const burstDmg = Math.floor(this.player.stats.maxHp * 0.35);
+            const burstDmg = Math.floor(this.player.stats.maxHp * 0.45);
             this.player.stats.hp = Math.max(0, this.player.stats.hp - burstDmg);
             this.addDamagePopup(this.player.gridPos, `💥金身引爆 -${burstDmg}!`, '#ef4444', true);
             this.addBattleLog(`【金身引爆】未能限时击破 ${m.name} 的护盾，引发爆裂冲击！受到 -${burstDmg} 伤害！`, 'system');
@@ -1692,7 +1692,7 @@ export class GameWorld {
 
   private handleEntityDeath(deadEntity: Entity, killer: Entity): void {
     deadEntity.state = 'dead';
-    deadEntity.respawnTicks = deadEntity.maxRespawnTicks || 60;
+    deadEntity.respawnTicks = deadEntity.maxRespawnTicks || 300;
 
     if (!deadEntity.isPlayer) {
       const tmpl = deadEntity.templateId 
@@ -1715,7 +1715,7 @@ export class GameWorld {
         this.autoStats.killCount++;
 
         const tier = this.player.stats.ascensionTier || 0;
-        const expReward = Math.floor(tmpl.expReward * (1 + tier * 2.0));
+        const expReward = Math.floor(tmpl.expReward * (1 + tier * 0.20));
         this.addExp(expReward);
 
         // 爆装并开启喷泉起跳动画 (智能阶数保底过滤)
@@ -2313,7 +2313,7 @@ export class GameWorld {
         }
 
         gainedGold += item.price;
-        gainedExp += Math.floor(item.price * 0.5);
+        gainedExp += Math.floor(item.price * 0.08);
         count++;
         this.inventory.splice(i, 1);
       }
@@ -2421,7 +2421,7 @@ export class GameWorld {
 
       if (!keepIndices.has(i)) {
         gainedGold += item.price;
-        gainedExp += Math.floor(item.price * 0.6);
+        gainedExp += Math.floor(item.price * 0.10);
         count++;
         this.inventory.splice(i, 1);
       }
@@ -2537,7 +2537,7 @@ export class GameWorld {
         const it = this.inventory[i];
         if (toRemoveIds.has(it.instanceId)) {
           gainedGold += it.price;
-          gainedExp += Math.floor(it.price * 0.6);
+          gainedExp += Math.floor(it.price * 0.10);
           count++;
           this.inventory.splice(i, 1);
         }
