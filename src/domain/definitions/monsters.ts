@@ -44,7 +44,7 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     baseAttackInterval: 10,
     goldDrop: [10, 30],
     expReward: 8,
-    respawnTicks: 30, // 3秒复活 (极速刷新，告别无怪可打)
+    respawnTicks: 150, // 15秒复活 (从容怪群节奏)
     color: '#a16207',
     icon: '🌾',
     lootTable: [
@@ -69,7 +69,7 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     baseAttackInterval: 9,
     goldDrop: [25, 60],
     expReward: 18,
-    respawnTicks: 30, // 3秒复活
+    respawnTicks: 150, // 15秒复活
     color: '#ca8a04',
     icon: '🐱',
     lootTable: [
@@ -77,7 +77,8 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
       { defId: 'w_bronze_sword', chance: 0.09 },
       { defId: 'h_qingtong', chance: 0.08 },
       { defId: 'b_tieshou', chance: 0.08 },
-      { defId: 'r_gutong', chance: 0.08 }
+      { defId: 'r_gutong', chance: 0.08 },
+      { defId: 'r_tanlan', chance: 0.01 } // 1% 极小概率爆贪婪特戒
     ]
   },
   'm_spider': {
@@ -95,7 +96,7 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     baseAttackInterval: 8,
     goldDrop: [50, 120],
     expReward: 35,
-    respawnTicks: 35, // 3.5秒复活
+    respawnTicks: 160, // 16秒复活
     color: '#16a34a',
     icon: '🕷️',
     lootTable: [
@@ -121,7 +122,7 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     baseAttackInterval: 8,
     goldDrop: [120, 280],
     expReward: 80,
-    respawnTicks: 35, // 3.5秒复活
+    respawnTicks: 160, // 16秒复活
     color: '#94a3b8',
     icon: '💀',
     lootTable: [
@@ -131,7 +132,8 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
       { defId: 'a_qingkai', chance: 0.08 },
       { defId: 'b_jinshou', chance: 0.07 },
       { defId: 'h_daoshi', chance: 0.06 },
-      { defId: 'n_kuangfeng', chance: 0.05 }
+      { defId: 'n_kuangfeng', chance: 0.05 },
+      { defId: 'r_tanlan', chance: 0.01 } // 1% 极小概率爆贪婪特戒
     ]
   },
   'm_zombie': {
@@ -149,7 +151,8 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     baseAttackInterval: 8,
     goldDrop: [250, 600],
     expReward: 180,
-    respawnTicks: 120, // 12秒复活
+    isBoss: true,
+    respawnTicks: 600, // 60秒刷新
     color: '#7c3aed',
     icon: '🧟',
     lootTable: [
@@ -157,7 +160,8 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
       { defId: 'w_zhanma', chance: 0.12 },
       { defId: 'n_kuangfeng', chance: 0.08 },
       { defId: 'r_shanhu', chance: 0.09 },
-      { defId: 'a_zhongkai', chance: 0.09 }
+      { defId: 'a_zhongkai', chance: 0.09 },
+      { defId: 'r_tanlan', chance: 0.08 } // 8% 爆出贪婪特戒
     ]
   },
   'm_white_pig': {
@@ -176,7 +180,7 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     goldDrop: [1200, 3000],
     expReward: 800,
     isElite: true,
-    respawnTicks: 120, // 12秒复活 (精英极速)
+    respawnTicks: 400, // 40秒复活 (精英怪)
     color: '#e11d48',
     icon: '🐗',
     lootTable: [
@@ -187,7 +191,8 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
       { defId: 'h_wooma', chance: 0.10 },
       { defId: 'n_youling', chance: 0.10 },
       { defId: 'b_yanluo', chance: 0.10 },
-      { defId: 'r_hongbaoshi', chance: 0.10 }
+      { defId: 'r_hongbaoshi', chance: 0.10 },
+      { defId: 'r_tanlan', chance: 0.10 } // 10% 爆出贪婪特戒
     ]
   },
   'm_wooma_boss': {
@@ -206,7 +211,7 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     goldDrop: [5000, 15000],
     expReward: 3200,
     isBoss: true,
-    respawnTicks: 250, // 25秒刷新一次
+    respawnTicks: 750, // 75秒刷新一次
     color: '#dc2626',
     icon: '👹',
     lootTable: [
@@ -221,7 +226,8 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
       { defId: 'b_qishi', chance: 0.14 },
       { defId: 'r_liliang', chance: 0.15 },
       { defId: 'r_mabi', chance: 0.06 },
-      { defId: 'r_kuangfeng_ring', chance: 0.06 }
+      { defId: 'r_kuangfeng_ring', chance: 0.06 },
+      { defId: 'r_tanlan', chance: 0.08 } // 8% 爆贪婪特戒
     ]
   },
   'm_red_moon': {
@@ -240,7 +246,7 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     goldDrop: [20000, 50000],
     expReward: 9800,
     isBoss: true,
-    respawnTicks: 300, // 30秒刷新一次
+    respawnTicks: 800, // 80秒刷新一次
     color: '#b91c1c',
     icon: '👿',
     lootTable: [
@@ -257,6 +263,7 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
       { defId: 'r_fuhuo', chance: 0.08 },
       { defId: 'r_hushen', chance: 0.08 },
       { defId: 'r_xingyun', chance: 0.07 },
+      { defId: 'r_tanlan', chance: 0.10 }, // 10% 爆贪婪特戒
       { defId: 'mat_pure_iron', chance: 0.35, minCount: 1, maxCount: 2 }
     ]
   },
@@ -277,7 +284,7 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     baseAttackInterval: 8,
     goldDrop: [800, 1800],
     expReward: 600,
-    respawnTicks: 40, // 4秒复活 (极速刷新)
+    respawnTicks: 180, // 18秒复活
     color: '#d97706',
     icon: '🗿',
     lootTable: [
@@ -303,7 +310,7 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     goldDrop: [12000, 30000],
     expReward: 6800,
     isBoss: true,
-    respawnTicks: 300, // 30秒刷新
+    respawnTicks: 800, // 80秒刷新
     color: '#b45309',
     icon: '🐂',
     lootTable: [
@@ -314,7 +321,8 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
       { defId: 'a_zhanshen', chance: 0.16 },
       { defId: 'r_liliang', chance: 0.15 },
       { defId: 'r_mabi', chance: 0.07 },
-      { defId: 'r_kuangfeng_ring', chance: 0.07 }
+      { defId: 'r_kuangfeng_ring', chance: 0.07 },
+      { defId: 'r_tanlan', chance: 0.10 } // 10% 爆贪婪特戒
     ]
   },
 
@@ -334,7 +342,7 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     baseAttackInterval: 8,
     goldDrop: [1500, 3500],
     expReward: 1200,
-    respawnTicks: 40, // 4秒复活
+    respawnTicks: 180, // 18秒复活
     color: '#64748b',
     icon: '☠️',
     lootTable: [
@@ -358,7 +366,7 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     goldDrop: [30000, 70000],
     expReward: 16000,
     isBoss: true,
-    respawnTicks: 350, // 35秒刷新
+    respawnTicks: 900, // 90秒刷新
     color: '#0284c7',
     icon: '👻',
     lootTable: [
@@ -368,7 +376,8 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
       { defId: 'mat_god_stone', chance: 0.15, minCount: 1, maxCount: 1 },
       { defId: 'w_tulong', chance: 0.18 },
       { defId: 'w_bazhe', chance: 0.15 },
-      { defId: 'r_xingyun', chance: 0.08 }
+      { defId: 'r_xingyun', chance: 0.08 },
+      { defId: 'r_tanlan', chance: 0.12 } // 12% 爆贪婪特戒
     ]
   },
 
@@ -388,7 +397,7 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     baseAttackInterval: 7,
     goldDrop: [3000, 6500],
     expReward: 2200,
-    respawnTicks: 45, // 4.5秒复活
+    respawnTicks: 200, // 20秒复活
     color: '#7e22ce',
     icon: '🐲',
     lootTable: [
@@ -412,7 +421,7 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     goldDrop: [50000, 120000],
     expReward: 28000,
     isBoss: true,
-    respawnTicks: 350, // 35秒刷新一次
+    respawnTicks: 1000, // 100秒刷新一次
     color: '#9333ea',
     icon: '🐉',
     lootTable: [
@@ -421,7 +430,8 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
       { defId: 'mat_god_stone', chance: 0.20, minCount: 1, maxCount: 2 },
       { defId: 'w_tulong', chance: 0.20 },
       { defId: 'r_hushen', chance: 0.09 },
-      { defId: 'r_fuhuo', chance: 0.09 }
+      { defId: 'r_fuhuo', chance: 0.09 },
+      { defId: 'r_tanlan', chance: 0.12 } // 12% 爆贪婪特戒
     ]
   },
 
@@ -441,7 +451,7 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     baseAttackInterval: 7,
     goldDrop: [5000, 11000],
     expReward: 3600,
-    respawnTicks: 45, // 4.5秒复活
+    respawnTicks: 200, // 20秒复活
     color: '#ea580c',
     icon: '👺',
     lootTable: [
@@ -465,7 +475,7 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     goldDrop: [80000, 200000],
     expReward: 45000, // 控制经验膨胀 (原120000 -> 45000)
     isBoss: true,
-    respawnTicks: 400, // 40秒刷新一次
+    respawnTicks: 1100, // 110秒刷新一次
     color: '#c2410c',
     icon: '👑',
     lootTable: [
@@ -473,7 +483,8 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
       { defId: 'mat_god_stone', chance: 0.30, minCount: 1, maxCount: 2 },
       { defId: 'r_mabi', chance: 0.10 },
       { defId: 'r_fuhuo', chance: 0.10 },
-      { defId: 'r_xingyun', chance: 0.09 }
+      { defId: 'r_xingyun', chance: 0.09 },
+      { defId: 'r_tanlan', chance: 0.12 } // 12% 爆贪婪特戒
     ]
   },
 
@@ -493,7 +504,7 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     baseAttackInterval: 7,
     goldDrop: [8000, 18000],
     expReward: 6500, // 控制经验 (原16000 -> 6500)
-    respawnTicks: 50, // 5秒复活
+    respawnTicks: 220, // 22秒复活
     color: '#ef4444',
     icon: '🔥',
     lootTable: [
@@ -517,14 +528,15 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     goldDrop: [150000, 350000],
     expReward: 75000, // (原220000 -> 75000)
     isBoss: true,
-    respawnTicks: 450, // 45秒刷新一次
+    respawnTicks: 1200, // 120秒刷新一次
     color: '#991b1b',
     icon: '🌋',
     lootTable: [
       { defId: 'pot_liaoshang', chance: 0.60, minCount: 3, maxCount: 6 },
       { defId: 'mat_god_stone', chance: 0.35, minCount: 1, maxCount: 3 },
       { defId: 'r_mabi', chance: 0.12 },
-      { defId: 'r_fuhuo', chance: 0.12 }
+      { defId: 'r_fuhuo', chance: 0.12 },
+      { defId: 'r_tanlan', chance: 0.14 } // 14% 爆贪婪特戒
     ]
   },
 
@@ -544,7 +556,7 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     baseAttackInterval: 6,
     goldDrop: [14000, 30000],
     expReward: 12000, // (原32000 -> 12000)
-    respawnTicks: 50, // 5秒复活
+    respawnTicks: 220, // 22秒复活
     color: '#831843',
     icon: '🥷',
     lootTable: [
@@ -568,7 +580,7 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     goldDrop: [250000, 600000],
     expReward: 120000, // (原400000 -> 120000)
     isBoss: true,
-    respawnTicks: 500, // 50秒刷新一次
+    respawnTicks: 1200, // 120秒刷新一次
     color: '#701a75',
     icon: '💀',
     lootTable: [
@@ -576,7 +588,8 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
       { defId: 'mat_god_stone', chance: 0.40, minCount: 2, maxCount: 4 },
       { defId: 'r_mabi', chance: 0.13 },
       { defId: 'r_fuhuo', chance: 0.13 },
-      { defId: 'r_hushen', chance: 0.13 }
+      { defId: 'r_hushen', chance: 0.13 },
+      { defId: 'r_tanlan', chance: 0.14 } // 14% 爆贪婪特戒
     ]
   },
 
@@ -596,7 +609,7 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     baseAttackInterval: 6,
     goldDrop: [25000, 55000],
     expReward: 22000, // (原60000 -> 22000)
-    respawnTicks: 50, // 5秒复活
+    respawnTicks: 220, // 22秒复活
     color: '#4c1d95',
     icon: '🌌',
     lootTable: [
@@ -620,7 +633,7 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     goldDrop: [500000, 1500000],
     expReward: 250000, // (原1000000 -> 250000)
     isBoss: true,
-    respawnTicks: 600, // 60秒刷新一次
+    respawnTicks: 1200, // 120秒刷新一次
     color: '#facc15',
     icon: '⚡',
     lootTable: [
@@ -629,7 +642,8 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
       { defId: 'r_mabi', chance: 0.15 },
       { defId: 'r_fuhuo', chance: 0.15 },
       { defId: 'r_hushen', chance: 0.15 },
-      { defId: 'r_xingyun', chance: 0.15 }
+      { defId: 'r_xingyun', chance: 0.15 },
+      { defId: 'r_tanlan', chance: 0.15 } // 15% 爆贪婪特戒
     ]
   },
   'm_treasure_goblin': {
@@ -647,7 +661,7 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     baseAttackInterval: 10,
     goldDrop: [50000, 150000],
     expReward: 2500, // (原6000 -> 2500)
-    respawnTicks: 250, // 25秒刷新一次 (快节奏遭遇)
+    respawnTicks: 450, // 45秒刷新一次 (聚宝偶遇)
     color: '#f59e0b',
     icon: '💰',
     lootTable: [
@@ -656,7 +670,8 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
       { defId: 'mat_iron_ore', chance: 0.50, minCount: 3, maxCount: 6 },
       { defId: 'mat_pure_iron', chance: 0.35, minCount: 1, maxCount: 2 },
       { defId: 'mat_god_stone', chance: 0.15, minCount: 1, maxCount: 1 },
-      { defId: 'pot_liaoshang', chance: 0.25, minCount: 1, maxCount: 1 }
+      { defId: 'pot_liaoshang', chance: 0.25, minCount: 1, maxCount: 1 },
+      { defId: 'r_tanlan', chance: 0.25 } // 25% 聚宝核心高爆贪婪特戒！
     ]
   }
 };

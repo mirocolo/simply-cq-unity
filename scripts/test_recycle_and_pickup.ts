@@ -206,9 +206,9 @@ function runTests() {
       world.inventory.push(createDummyEquip(`legend_${i}`, `传说戒指${i}`, 'ring_l', 5, 4, 100, 200));
     }
 
-    // 地面在相邻格 (10, 11) 有一件掉落物 (dist = 1)
+    // 地面在相邻格 (9, 10) 有一件掉落物 (dist = 1)
     world.groundItems = [{
-      gridPos: { x: 10, y: 11 },
+      gridPos: { x: 9, y: 10 },
       item: createDummyEquip('drop_w', '普通刀', 'weapon', 0, 0, 5, 5)
     }];
 
@@ -257,8 +257,8 @@ function runTests() {
 
     console.log(`  -> 决策动作: type=${action.type}, targetPos=${JSON.stringify(action.targetPos)}`);
 
-    // 验证挂机没有选择走向地面不可拾取的物品 (10, 11)
-    if (action.type === 'move' && action.targetPos?.x === 10 && action.targetPos?.y === 11) {
+    // 验证挂机没有选择走向地面不可拾取的物品 (9, 10)
+    if (action.type === 'move' && action.targetPos?.x === 9 && action.targetPos?.y === 10) {
       throw new Error('Test 5 失败：挂机依然在向不可拾取的地面物品寻路，会导致来回抽搐卡死！');
     }
 

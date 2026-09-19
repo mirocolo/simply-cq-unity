@@ -86,7 +86,7 @@ export class GameWorld {
     autoPickup: true,
     autoRecycleWeaker: true,
     autoRecycleMaxQuality: 2, // 默认自动熔炼蓝装及以下，确保挂机永不爆仓
-    searchRadius: 16,
+    searchRadius: 36, // 适配 48x48 大地图索敌
     progressionMode: false
   };
   autoStats: AutoPilotStats = {
@@ -345,8 +345,15 @@ export class GameWorld {
    */
   recordMonsterKill(templateId: string): void {
     this.monsterKills[templateId] = (this.monsterKills[templateId] || 0) + 1;
+    // 兼容魔龙教主别名
+    if (templateId === 'm_molong_boss') {
+      this.monsterKills['m_dragon_boss'] = (this.monsterKills['m_dragon_boss'] || 0) + 1;
+    } else if (templateId === 'm_dragon_boss') {
+      this.monsterKills['m_molong_boss'] = (this.monsterKills['m_molong_boss'] || 0) + 1;
+    }
+
     for (const b of this.activeBounties) {
-      if (b.templateId === templateId && !b.completed) {
+      if ((b.templateId === templateId || (b.templateId === 'm_molong_boss' && templateId === 'm_dragon_boss')) && !b.completed) {
         b.currentKills++;
         if (b.currentKills >= b.requiredKills) {
           b.completed = true;
@@ -811,7 +818,8 @@ export class GameWorld {
       this.addDamagePopup(this.player.gridPos, `🚫${check.reason}`, '#ef4444', true);
       this.addBattleLog(`【位面结界】阻挡前往【${portal.name}】：${check.reason}`, 'system');
       // 弹性微退避 1 格
-      const backX = Math.max(1, Math.min(this.MAP_WIDTH - 2, this.player.gridPos.x + (this.player.gridPos.x < 18 ? 1 : -1)));
+      const midX = Math.floor(this.MAP_WIDTH / 2);
+      const backX = Math.max(1, Math.min(this.MAP_WIDTH - 2, this.player.gridPos.x + (this.player.gridPos.x < midX ? 1 : -1)));
       this.player.gridPos.x = backX;
     }
   }

@@ -110,7 +110,10 @@ export class DropSystem {
 
     for (const loot of monster.lootTable) {
       if (Math.random() <= loot.chance) {
-        const quality = this.rollQuality(monster.isBoss, monster.isElite);
+        const itemDef = ITEM_DEFINITIONS[loot.defId];
+        const rolledQuality = this.rollQuality(monster.isBoss, monster.isElite);
+        // 特戒与橙色神器坚守其至高专属品质，不向下劣变
+        const quality = (itemDef ? Math.max(itemDef.baseQuality || 0, rolledQuality) : rolledQuality) as ItemQuality;
         const count = loot.minCount 
           ? Math.floor(Math.random() * (loot.maxCount! - loot.minCount + 1)) + loot.minCount 
           : 1;
