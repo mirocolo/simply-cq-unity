@@ -12,20 +12,20 @@ export class DropSystem {
   static rollQuality(isBoss = false, isElite = false): ItemQuality {
     const roll = Math.random();
     if (isBoss) {
-      if (roll < 0.45) return 4; // 45% 传说橙神装！
-      if (roll < 0.85) return 3; // 40% 史诗紫装
-      return 2; // 15% 精良蓝
+      if (roll < 0.18) return 4; // 18% 传说橙神装 (原 45%)
+      if (roll < 0.50) return 3; // 32% 史诗紫装
+      return 2; // 50% 精良蓝
     }
     if (isElite) {
-      if (roll < 0.16) return 4; // 16% 传说橙 (原 8%)
-      if (roll < 0.56) return 3; // 40% 史诗紫 (原 27%)
-      if (roll < 0.90) return 2; // 34% 精良蓝
-      return 1; // 10% 优秀绿
+      if (roll < 0.05) return 4; // 5% 传说橙 (原 16%)
+      if (roll < 0.25) return 3; // 20% 史诗紫 (原 40%)
+      if (roll < 0.70) return 2; // 45% 精良蓝
+      return 1; // 30% 优秀绿
     }
-    if (roll < 0.05) return 3; // 5% 史诗紫
-    if (roll < 0.20) return 2; // 15% 精良蓝
-    if (roll < 0.50) return 1; // 30% 优秀绿
-    return 0; // 50% 普通白
+    if (roll < 0.01) return 3; // 1% 史诗紫 (原 5%)
+    if (roll < 0.06) return 2; // 5% 精良蓝 (原 15%)
+    if (roll < 0.30) return 1; // 24% 优秀绿 (原 30%)
+    return 0; // 70% 普通白
   }
 
   static createItemInstance(defId: string, forcedQuality?: ItemQuality, count = 1): ItemInstance | null {
@@ -145,12 +145,12 @@ export class DropSystem {
     }
 
     // 高阶飞升位面专属掉落 (动态掉落不高于当前阶数的高级装备与套装)
-    if (playerTier > 0 && (monster.isBoss || monster.isElite || Math.random() < 0.25)) {
+    if (playerTier > 0 && (monster.isBoss || monster.isElite || Math.random() < 0.08)) {
       const tierEquipDefs = Object.values(ITEM_DEFINITIONS).filter(
         d => d.type === 'equipment' && d.tier <= playerTier && d.tier >= Math.max(0, playerTier - 1)
       );
       if (tierEquipDefs.length > 0) {
-        const rollChance = monster.isBoss ? 0.88 : (monster.isElite ? 0.50 : 0.25);
+        const rollChance = monster.isBoss ? 0.30 : (monster.isElite ? 0.15 : 0.05);
         if (Math.random() < rollChance) {
           const randomDef = tierEquipDefs[Math.floor(Math.random() * tierEquipDefs.length)];
           const quality = this.rollQuality(monster.isBoss, monster.isElite);

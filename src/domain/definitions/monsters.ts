@@ -44,14 +44,14 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     baseAttackInterval: 10,
     goldDrop: [10, 30],
     expReward: 8,
-    respawnTicks: 300, // 30秒复活
+    respawnTicks: 100, // 10秒复活 (快节奏刷怪)
     color: '#a16207',
     icon: '🌾',
     lootTable: [
-      { defId: 'pot_hp_large', chance: 0.8, minCount: 1, maxCount: 2 },
-      { defId: 'w_wood_sword', chance: 0.45 },
-      { defId: 'a_buyi', chance: 0.40 },
-      { defId: 'h_qingtong', chance: 0.30 }
+      { defId: 'pot_hp_large', chance: 0.35, minCount: 1, maxCount: 1 },
+      { defId: 'w_wood_sword', chance: 0.10 },
+      { defId: 'a_buyi', chance: 0.08 },
+      { defId: 'h_qingtong', chance: 0.06 }
     ]
   },
   'm_cat': {
@@ -69,15 +69,15 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     baseAttackInterval: 9,
     goldDrop: [25, 60],
     expReward: 18,
-    respawnTicks: 320, // 32秒复活
+    respawnTicks: 110, // 11秒复活
     color: '#ca8a04',
     icon: '🐱',
     lootTable: [
-      { defId: 'pot_hp_large', chance: 0.8, minCount: 1, maxCount: 2 },
-      { defId: 'w_bronze_sword', chance: 0.40 },
-      { defId: 'h_qingtong', chance: 0.35 },
-      { defId: 'b_tieshou', chance: 0.40 },
-      { defId: 'r_gutong', chance: 0.40 }
+      { defId: 'pot_hp_large', chance: 0.35, minCount: 1, maxCount: 1 },
+      { defId: 'w_bronze_sword', chance: 0.09 },
+      { defId: 'h_qingtong', chance: 0.08 },
+      { defId: 'b_tieshou', chance: 0.08 },
+      { defId: 'r_gutong', chance: 0.08 }
     ]
   },
   'm_spider': {
@@ -95,15 +95,15 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     baseAttackInterval: 8,
     goldDrop: [50, 120],
     expReward: 35,
-    respawnTicks: 350, // 35秒复活
+    respawnTicks: 120, // 12秒复活
     color: '#16a34a',
     icon: '🕷️',
     lootTable: [
-      { defId: 'pot_hp_large', chance: 0.7, minCount: 1, maxCount: 2 },
-      { defId: 'n_chuantong', chance: 0.35 },
-      { defId: 'r_gutong', chance: 0.40 },
-      { defId: 'w_bahuang', chance: 0.30 },
-      { defId: 'a_qingkai', chance: 0.30 }
+      { defId: 'pot_hp_large', chance: 0.35, minCount: 1, maxCount: 1 },
+      { defId: 'n_chuantong', chance: 0.08 },
+      { defId: 'r_gutong', chance: 0.08 },
+      { defId: 'w_bahuang', chance: 0.08 },
+      { defId: 'a_qingkai', chance: 0.07 }
     ]
   },
   'm_skeleton': {
@@ -121,17 +121,17 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     baseAttackInterval: 8,
     goldDrop: [120, 280],
     expReward: 80,
-    respawnTicks: 380, // 38秒复活
+    respawnTicks: 130, // 13秒复活
     color: '#94a3b8',
     icon: '💀',
     lootTable: [
-      { defId: 'pot_hp_large', chance: 0.8, minCount: 2, maxCount: 4 },
-      { defId: 'pot_mp_large', chance: 0.6, minCount: 1, maxCount: 3 },
-      { defId: 'w_lingfeng', chance: 0.30 },
-      { defId: 'a_qingkai', chance: 0.35 },
-      { defId: 'b_jinshou', chance: 0.30 },
-      { defId: 'h_daoshi', chance: 0.25 },
-      { defId: 'n_kuangfeng', chance: 0.20 }
+      { defId: 'pot_hp_large', chance: 0.35, minCount: 1, maxCount: 2 },
+      { defId: 'pot_mp_large', chance: 0.25, minCount: 1, maxCount: 1 },
+      { defId: 'w_lingfeng', chance: 0.08 },
+      { defId: 'a_qingkai', chance: 0.08 },
+      { defId: 'b_jinshou', chance: 0.07 },
+      { defId: 'h_daoshi', chance: 0.06 },
+      { defId: 'n_kuangfeng', chance: 0.05 }
     ]
   },
   'm_zombie': {
@@ -149,15 +149,15 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     baseAttackInterval: 8,
     goldDrop: [250, 600],
     expReward: 180,
-    respawnTicks: 600, // 60秒复活
+    respawnTicks: 450, // 45秒复活
     color: '#7c3aed',
     icon: '🧟',
     lootTable: [
-      { defId: 'pot_hp_large', chance: 0.9, minCount: 3, maxCount: 5 },
-      { defId: 'w_zhanma', chance: 0.35 },
-      { defId: 'n_kuangfeng', chance: 0.25 },
-      { defId: 'r_shanhu', chance: 0.30 },
-      { defId: 'a_zhongkai', chance: 0.30 }
+      { defId: 'pot_hp_large', chance: 0.45, minCount: 1, maxCount: 3 },
+      { defId: 'w_zhanma', chance: 0.12 },
+      { defId: 'n_kuangfeng', chance: 0.08 },
+      { defId: 'r_shanhu', chance: 0.09 },
+      { defId: 'a_zhongkai', chance: 0.09 }
     ]
   },
   'm_white_pig': {
@@ -176,18 +176,18 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     goldDrop: [1200, 3000],
     expReward: 800,
     isElite: true,
-    respawnTicks: 600, // 60秒复活 (精英稀有)
+    respawnTicks: 240, // 24秒复活 (精英高频)
     color: '#e11d48',
     icon: '🐗',
     lootTable: [
-      { defId: 'pot_sun', chance: 1.0, minCount: 3, maxCount: 6 },
-      { defId: 'w_lianyu', chance: 0.40 }, // 沃玛套装神兵
-      { defId: 'w_yinshe', chance: 0.35 },
-      { defId: 'a_youling', chance: 0.30 },
-      { defId: 'h_wooma', chance: 0.35 },
-      { defId: 'n_youling', chance: 0.30 },
-      { defId: 'b_yanluo', chance: 0.30 },
-      { defId: 'r_hongbaoshi', chance: 0.30 }
+      { defId: 'pot_sun', chance: 0.45, minCount: 1, maxCount: 3 },
+      { defId: 'w_lianyu', chance: 0.14 }, // 沃玛神兵
+      { defId: 'w_yinshe', chance: 0.12 },
+      { defId: 'a_youling', chance: 0.10 },
+      { defId: 'h_wooma', chance: 0.10 },
+      { defId: 'n_youling', chance: 0.10 },
+      { defId: 'b_yanluo', chance: 0.10 },
+      { defId: 'r_hongbaoshi', chance: 0.10 }
     ]
   },
   'm_wooma_boss': {
@@ -206,22 +206,22 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     goldDrop: [5000, 15000],
     expReward: 3200,
     isBoss: true,
-    respawnTicks: 1200, // 2分钟 (120秒) 刷新一次
+    respawnTicks: 600, // 60秒 (1分钟) 刷新一次
     color: '#dc2626',
     icon: '👹',
     lootTable: [
-      { defId: 'pot_sun', chance: 1.0, minCount: 6, maxCount: 10 },
-      { defId: 'pot_liaoshang', chance: 0.5, minCount: 1, maxCount: 3 },
-      { defId: 'w_jingzhongyue', chance: 0.50 }, // 祖玛套装
-      { defId: 'w_caijue', chance: 0.55 }, // 55% 爆裁决之杖！
-      { defId: 'a_linghun', chance: 0.45 },
-      { defId: 'a_zhanshen', chance: 0.48 },
-      { defId: 'h_heitie', chance: 0.40 },
-      { defId: 'n_lvse', chance: 0.40 },
-      { defId: 'b_qishi', chance: 0.45 },
-      { defId: 'r_liliang', chance: 0.50 },
-      { defId: 'r_mabi', chance: 0.20 }, // 20% 爆麻痹戒指
-      { defId: 'r_kuangfeng_ring', chance: 0.20 } // 20% 狂风特戒
+      { defId: 'pot_sun', chance: 0.60, minCount: 2, maxCount: 4 },
+      { defId: 'pot_liaoshang', chance: 0.25, minCount: 1, maxCount: 2 },
+      { defId: 'w_jingzhongyue', chance: 0.18 },
+      { defId: 'w_caijue', chance: 0.18 },
+      { defId: 'a_linghun', chance: 0.15 },
+      { defId: 'a_zhanshen', chance: 0.15 },
+      { defId: 'h_heitie', chance: 0.12 },
+      { defId: 'n_lvse', chance: 0.12 },
+      { defId: 'b_qishi', chance: 0.14 },
+      { defId: 'r_liliang', chance: 0.15 },
+      { defId: 'r_mabi', chance: 0.06 },
+      { defId: 'r_kuangfeng_ring', chance: 0.06 }
     ]
   },
   'm_red_moon': {
@@ -240,24 +240,24 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     goldDrop: [20000, 50000],
     expReward: 9800,
     isBoss: true,
-    respawnTicks: 1800, // 3分钟 (180秒) 刷新一次
+    respawnTicks: 800, // 80秒刷新一次
     color: '#b91c1c',
     icon: '👿',
     lootTable: [
-      { defId: 'pot_sun', chance: 1.0, minCount: 10, maxCount: 20 },
-      { defId: 'pot_liaoshang', chance: 0.8, minCount: 3, maxCount: 6 },
-      { defId: 'w_tulong', chance: 0.70 }, // 70% 爆烈焰屠龙！
-      { defId: 'w_bazhe', chance: 0.50 }, // 霸者之刃
-      { defId: 'a_shengzhan', chance: 0.75 }, // 圣战神铠
-      { defId: 'h_shengzhan', chance: 0.60 },
-      { defId: 'n_shengzhan', chance: 0.60 },
-      { defId: 'b_shengzhan', chance: 0.65 },
-      { defId: 'r_shengzhan', chance: 0.65 },
-      { defId: 'r_mabi', chance: 0.35 }, // 35% 爆特戒麻痹
-      { defId: 'r_fuhuo', chance: 0.30 }, // 30% 爆复活戒指！
-      { defId: 'r_hushen', chance: 0.30 }, // 30% 爆护身戒指！
-      { defId: 'r_xingyun', chance: 0.25 }, // 25% 幸运特戒！
-      { defId: 'mat_pure_iron', chance: 0.8, minCount: 2, maxCount: 4 }
+      { defId: 'pot_sun', chance: 0.60, minCount: 3, maxCount: 6 },
+      { defId: 'pot_liaoshang', chance: 0.35, minCount: 1, maxCount: 2 },
+      { defId: 'w_tulong', chance: 0.22 },
+      { defId: 'w_bazhe', chance: 0.18 },
+      { defId: 'a_shengzhan', chance: 0.22 },
+      { defId: 'h_shengzhan', chance: 0.18 },
+      { defId: 'n_shengzhan', chance: 0.18 },
+      { defId: 'b_shengzhan', chance: 0.18 },
+      { defId: 'r_shengzhan', chance: 0.18 },
+      { defId: 'r_mabi', chance: 0.08 },
+      { defId: 'r_fuhuo', chance: 0.08 },
+      { defId: 'r_hushen', chance: 0.08 },
+      { defId: 'r_xingyun', chance: 0.07 },
+      { defId: 'mat_pure_iron', chance: 0.35, minCount: 1, maxCount: 2 }
     ]
   },
 
@@ -277,14 +277,14 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     baseAttackInterval: 8,
     goldDrop: [800, 1800],
     expReward: 600,
-    respawnTicks: 400, // 40秒复活
+    respawnTicks: 140, // 14秒复活
     color: '#d97706',
     icon: '🗿',
     lootTable: [
-      { defId: 'pot_sun', chance: 0.8, minCount: 2, maxCount: 4 },
-      { defId: 'mat_iron_ore', chance: 0.6, minCount: 1, maxCount: 3 },
-      { defId: 'w_jingzhongyue', chance: 0.20 },
-      { defId: 'h_heitie', chance: 0.20 }
+      { defId: 'pot_sun', chance: 0.30, minCount: 1, maxCount: 2 },
+      { defId: 'mat_iron_ore', chance: 0.25, minCount: 1, maxCount: 2 },
+      { defId: 'w_jingzhongyue', chance: 0.06 },
+      { defId: 'h_heitie', chance: 0.06 }
     ]
   },
   'm_zuma_boss': {
@@ -303,18 +303,18 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     goldDrop: [12000, 30000],
     expReward: 6800,
     isBoss: true,
-    respawnTicks: 1500, // 2.5分钟 (150秒) 刷新
+    respawnTicks: 750, // 75秒 (1.25分钟) 刷新
     color: '#b45309',
     icon: '🐂',
     lootTable: [
-      { defId: 'pot_sun', chance: 1.0, minCount: 6, maxCount: 12 },
-      { defId: 'mat_iron_ore', chance: 0.9, minCount: 3, maxCount: 6 },
-      { defId: 'mat_pure_iron', chance: 0.6, minCount: 1, maxCount: 3 },
-      { defId: 'w_caijue', chance: 0.65 },
-      { defId: 'a_zhanshen', chance: 0.55 },
-      { defId: 'r_liliang', chance: 0.50 },
-      { defId: 'r_mabi', chance: 0.25 },
-      { defId: 'r_kuangfeng_ring', chance: 0.25 }
+      { defId: 'pot_sun', chance: 0.60, minCount: 2, maxCount: 5 },
+      { defId: 'mat_iron_ore', chance: 0.45, minCount: 1, maxCount: 3 },
+      { defId: 'mat_pure_iron', chance: 0.25, minCount: 1, maxCount: 2 },
+      { defId: 'w_caijue', chance: 0.20 },
+      { defId: 'a_zhanshen', chance: 0.16 },
+      { defId: 'r_liliang', chance: 0.15 },
+      { defId: 'r_mabi', chance: 0.07 },
+      { defId: 'r_kuangfeng_ring', chance: 0.07 }
     ]
   },
 
@@ -334,12 +334,12 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     baseAttackInterval: 8,
     goldDrop: [1500, 3500],
     expReward: 1200,
-    respawnTicks: 420, // 42秒复活
+    respawnTicks: 140, // 14秒复活
     color: '#64748b',
     icon: '☠️',
     lootTable: [
-      { defId: 'pot_sun', chance: 0.9, minCount: 3, maxCount: 6 },
-      { defId: 'mat_pure_iron', chance: 0.5, minCount: 1, maxCount: 2 }
+      { defId: 'pot_sun', chance: 0.30, minCount: 1, maxCount: 2 },
+      { defId: 'mat_pure_iron', chance: 0.20, minCount: 1, maxCount: 1 }
     ]
   },
   'm_huangquan_boss': {
@@ -358,17 +358,17 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     goldDrop: [30000, 70000],
     expReward: 16000,
     isBoss: true,
-    respawnTicks: 2000, // 3.3分钟 (200秒) 刷新
+    respawnTicks: 900, // 90秒 (1.5分钟) 刷新
     color: '#0284c7',
     icon: '👻',
     lootTable: [
-      { defId: 'pot_sun', chance: 1.0, minCount: 8, maxCount: 16 },
-      { defId: 'pot_liaoshang', chance: 0.8, minCount: 2, maxCount: 4 },
-      { defId: 'mat_pure_iron', chance: 0.9, minCount: 2, maxCount: 5 },
-      { defId: 'mat_god_stone', chance: 0.3, minCount: 1, maxCount: 2 },
-      { defId: 'w_tulong', chance: 0.50 },
-      { defId: 'w_bazhe', chance: 0.40 },
-      { defId: 'r_xingyun', chance: 0.30 }
+      { defId: 'pot_sun', chance: 0.60, minCount: 2, maxCount: 5 },
+      { defId: 'pot_liaoshang', chance: 0.35, minCount: 1, maxCount: 2 },
+      { defId: 'mat_pure_iron', chance: 0.40, minCount: 1, maxCount: 2 },
+      { defId: 'mat_god_stone', chance: 0.15, minCount: 1, maxCount: 1 },
+      { defId: 'w_tulong', chance: 0.18 },
+      { defId: 'w_bazhe', chance: 0.15 },
+      { defId: 'r_xingyun', chance: 0.08 }
     ]
   },
 
@@ -388,12 +388,12 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     baseAttackInterval: 7,
     goldDrop: [3000, 6500],
     expReward: 2200,
-    respawnTicks: 450, // 45秒复活
+    respawnTicks: 150, // 15秒复活
     color: '#7e22ce',
     icon: '🐲',
     lootTable: [
-      { defId: 'pot_sun', chance: 1.0, minCount: 4, maxCount: 8 },
-      { defId: 'mat_pure_iron', chance: 0.7, minCount: 1, maxCount: 3 }
+      { defId: 'pot_sun', chance: 0.35, minCount: 1, maxCount: 3 },
+      { defId: 'mat_pure_iron', chance: 0.25, minCount: 1, maxCount: 1 }
     ]
   },
   'm_molong_boss': {
@@ -412,16 +412,16 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     goldDrop: [50000, 120000],
     expReward: 28000,
     isBoss: true,
-    respawnTicks: 2400, // 4分钟 (240秒) 刷新一次
+    respawnTicks: 1000, // 100秒 (1.67分钟) 刷新一次
     color: '#9333ea',
     icon: '🐉',
     lootTable: [
-      { defId: 'pot_liaoshang', chance: 1.0, minCount: 4, maxCount: 8 },
-      { defId: 'mat_pure_iron', chance: 1.0, minCount: 3, maxCount: 6 },
-      { defId: 'mat_god_stone', chance: 0.5, minCount: 1, maxCount: 3 },
-      { defId: 'w_tulong', chance: 0.60 },
-      { defId: 'r_hushen', chance: 0.35 },
-      { defId: 'r_fuhuo', chance: 0.35 }
+      { defId: 'pot_liaoshang', chance: 0.50, minCount: 2, maxCount: 4 },
+      { defId: 'mat_pure_iron', chance: 0.45, minCount: 1, maxCount: 3 },
+      { defId: 'mat_god_stone', chance: 0.20, minCount: 1, maxCount: 2 },
+      { defId: 'w_tulong', chance: 0.20 },
+      { defId: 'r_hushen', chance: 0.09 },
+      { defId: 'r_fuhuo', chance: 0.09 }
     ]
   },
 
@@ -441,12 +441,12 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     baseAttackInterval: 7,
     goldDrop: [5000, 11000],
     expReward: 3600,
-    respawnTicks: 450, // 45秒复活
+    respawnTicks: 150, // 15秒复活
     color: '#ea580c',
     icon: '👺',
     lootTable: [
-      { defId: 'pot_liaoshang', chance: 0.8, minCount: 2, maxCount: 5 },
-      { defId: 'mat_god_stone', chance: 0.4, minCount: 1, maxCount: 2 }
+      { defId: 'pot_liaoshang', chance: 0.35, minCount: 1, maxCount: 2 },
+      { defId: 'mat_god_stone', chance: 0.18, minCount: 1, maxCount: 1 }
     ]
   },
   'm_niumo_boss': {
@@ -465,15 +465,15 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     goldDrop: [80000, 200000],
     expReward: 45000, // 控制经验膨胀 (原120000 -> 45000)
     isBoss: true,
-    respawnTicks: 3000, // 5分钟 (300秒) 刷新一次
+    respawnTicks: 1200, // 120秒 (2分钟) 刷新一次
     color: '#c2410c',
     icon: '👑',
     lootTable: [
-      { defId: 'pot_liaoshang', chance: 1.0, minCount: 6, maxCount: 12 },
-      { defId: 'mat_god_stone', chance: 0.8, minCount: 2, maxCount: 5 },
-      { defId: 'r_mabi', chance: 0.40 },
-      { defId: 'r_fuhuo', chance: 0.40 },
-      { defId: 'r_xingyun', chance: 0.35 }
+      { defId: 'pot_liaoshang', chance: 0.55, minCount: 2, maxCount: 5 },
+      { defId: 'mat_god_stone', chance: 0.30, minCount: 1, maxCount: 2 },
+      { defId: 'r_mabi', chance: 0.10 },
+      { defId: 'r_fuhuo', chance: 0.10 },
+      { defId: 'r_xingyun', chance: 0.09 }
     ]
   },
 
@@ -493,12 +493,12 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     baseAttackInterval: 7,
     goldDrop: [8000, 18000],
     expReward: 6500, // 控制经验 (原16000 -> 6500)
-    respawnTicks: 480, // 48秒复活
+    respawnTicks: 160, // 16秒复活
     color: '#ef4444',
     icon: '🔥',
     lootTable: [
-      { defId: 'pot_liaoshang', chance: 0.9, minCount: 3, maxCount: 6 },
-      { defId: 'mat_god_stone', chance: 0.6, minCount: 1, maxCount: 3 }
+      { defId: 'pot_liaoshang', chance: 0.35, minCount: 1, maxCount: 2 },
+      { defId: 'mat_god_stone', chance: 0.22, minCount: 1, maxCount: 1 }
     ]
   },
   'm_huolong_boss': {
@@ -517,14 +517,14 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     goldDrop: [150000, 350000],
     expReward: 75000, // (原220000 -> 75000)
     isBoss: true,
-    respawnTicks: 3600, // 6分钟 (360秒) 刷新一次
+    respawnTicks: 1400, // 140秒 (2.33分钟) 刷新一次
     color: '#991b1b',
     icon: '🌋',
     lootTable: [
-      { defId: 'pot_liaoshang', chance: 1.0, minCount: 8, maxCount: 16 },
-      { defId: 'mat_god_stone', chance: 1.0, minCount: 3, maxCount: 8 },
-      { defId: 'r_mabi', chance: 0.45 },
-      { defId: 'r_fuhuo', chance: 0.45 }
+      { defId: 'pot_liaoshang', chance: 0.60, minCount: 3, maxCount: 6 },
+      { defId: 'mat_god_stone', chance: 0.35, minCount: 1, maxCount: 3 },
+      { defId: 'r_mabi', chance: 0.12 },
+      { defId: 'r_fuhuo', chance: 0.12 }
     ]
   },
 
@@ -544,12 +544,12 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     baseAttackInterval: 6,
     goldDrop: [14000, 30000],
     expReward: 12000, // (原32000 -> 12000)
-    respawnTicks: 500, // 50秒复活
+    respawnTicks: 160, // 16秒复活
     color: '#831843',
     icon: '🥷',
     lootTable: [
-      { defId: 'pot_liaoshang', chance: 1.0, minCount: 4, maxCount: 8 },
-      { defId: 'mat_god_stone', chance: 0.8, minCount: 2, maxCount: 4 }
+      { defId: 'pot_liaoshang', chance: 0.40, minCount: 1, maxCount: 2 },
+      { defId: 'mat_god_stone', chance: 0.25, minCount: 1, maxCount: 1 }
     ]
   },
   'm_shura_boss': {
@@ -568,15 +568,15 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     goldDrop: [250000, 600000],
     expReward: 120000, // (原400000 -> 120000)
     isBoss: true,
-    respawnTicks: 4500, // 7.5分钟 (450秒) 刷新一次
+    respawnTicks: 1600, // 160秒 (2.67分钟) 刷新一次
     color: '#701a75',
     icon: '💀',
     lootTable: [
-      { defId: 'pot_liaoshang', chance: 1.0, minCount: 10, maxCount: 20 },
-      { defId: 'mat_god_stone', chance: 1.0, minCount: 5, maxCount: 12 },
-      { defId: 'r_mabi', chance: 0.50 },
-      { defId: 'r_fuhuo', chance: 0.50 },
-      { defId: 'r_hushen', chance: 0.50 }
+      { defId: 'pot_liaoshang', chance: 0.60, minCount: 3, maxCount: 8 },
+      { defId: 'mat_god_stone', chance: 0.40, minCount: 2, maxCount: 4 },
+      { defId: 'r_mabi', chance: 0.13 },
+      { defId: 'r_fuhuo', chance: 0.13 },
+      { defId: 'r_hushen', chance: 0.13 }
     ]
   },
 
@@ -596,12 +596,12 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     baseAttackInterval: 6,
     goldDrop: [25000, 55000],
     expReward: 22000, // (原60000 -> 22000)
-    respawnTicks: 520, // 52秒复活
+    respawnTicks: 160, // 16秒复活
     color: '#4c1d95',
     icon: '🌌',
     lootTable: [
-      { defId: 'pot_liaoshang', chance: 1.0, minCount: 5, maxCount: 10 },
-      { defId: 'mat_god_stone', chance: 1.0, minCount: 3, maxCount: 6 }
+      { defId: 'pot_liaoshang', chance: 0.40, minCount: 1, maxCount: 2 },
+      { defId: 'mat_god_stone', chance: 0.30, minCount: 1, maxCount: 2 }
     ]
   },
   'm_void_boss': {
@@ -620,16 +620,16 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     goldDrop: [500000, 1500000],
     expReward: 250000, // (原1000000 -> 250000)
     isBoss: true,
-    respawnTicks: 6000, // 10分钟 (600秒) 刷新一次
+    respawnTicks: 1800, // 180秒 (3分钟) 刷新一次
     color: '#facc15',
     icon: '⚡',
     lootTable: [
-      { defId: 'pot_liaoshang', chance: 1.0, minCount: 15, maxCount: 30 },
-      { defId: 'mat_god_stone', chance: 1.0, minCount: 10, maxCount: 25 },
-      { defId: 'r_mabi', chance: 0.60 },
-      { defId: 'r_fuhuo', chance: 0.60 },
-      { defId: 'r_hushen', chance: 0.60 },
-      { defId: 'r_xingyun', chance: 0.60 }
+      { defId: 'pot_liaoshang', chance: 0.65, minCount: 4, maxCount: 10 },
+      { defId: 'mat_god_stone', chance: 0.45, minCount: 2, maxCount: 6 },
+      { defId: 'r_mabi', chance: 0.15 },
+      { defId: 'r_fuhuo', chance: 0.15 },
+      { defId: 'r_hushen', chance: 0.15 },
+      { defId: 'r_xingyun', chance: 0.15 }
     ]
   },
   'm_treasure_goblin': {
@@ -647,16 +647,16 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     baseAttackInterval: 10,
     goldDrop: [50000, 150000],
     expReward: 2500, // (原6000 -> 2500)
-    respawnTicks: 1200, // 2分钟 (120秒) 刷新一次
+    respawnTicks: 450, // 45秒刷新一次 (快节奏遭遇)
     color: '#f59e0b',
     icon: '💰',
     lootTable: [
-      { defId: 'pot_hp_large', chance: 1.0, minCount: 3, maxCount: 6 },
-      { defId: 'pot_mp_large', chance: 1.0, minCount: 3, maxCount: 6 },
-      { defId: 'mat_iron_ore', chance: 1.0, minCount: 8, maxCount: 16 },
-      { defId: 'mat_pure_iron', chance: 0.8, minCount: 2, maxCount: 5 },
-      { defId: 'mat_god_stone', chance: 0.35, minCount: 1, maxCount: 2 },
-      { defId: 'pot_liaoshang', chance: 0.5, minCount: 1, maxCount: 2 }
+      { defId: 'pot_hp_large', chance: 0.50, minCount: 1, maxCount: 3 },
+      { defId: 'pot_mp_large', chance: 0.50, minCount: 1, maxCount: 3 },
+      { defId: 'mat_iron_ore', chance: 0.50, minCount: 3, maxCount: 6 },
+      { defId: 'mat_pure_iron', chance: 0.35, minCount: 1, maxCount: 2 },
+      { defId: 'mat_god_stone', chance: 0.15, minCount: 1, maxCount: 1 },
+      { defId: 'pot_liaoshang', chance: 0.25, minCount: 1, maxCount: 1 }
     ]
   }
 };

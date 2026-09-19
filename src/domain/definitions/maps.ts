@@ -54,11 +54,11 @@ export const MAP_DEFINITIONS: Record<string, MapDefinition> = {
       }
     ],
     spawns: [
-      { templateId: 'm_scarecrow', count: 6, center: { x: 12, y: 12 }, radius: 6, respawnTicks: 300 },
-      { templateId: 'm_cat', count: 6, center: { x: 24, y: 12 }, radius: 6, respawnTicks: 320 },
-      { templateId: 'm_spider', count: 5, center: { x: 12, y: 24 }, radius: 6, respawnTicks: 350 },
-      { templateId: 'm_skeleton', count: 5, center: { x: 24, y: 24 }, radius: 6, respawnTicks: 380 },
-      { templateId: 'm_zombie', count: 1, center: { x: 28, y: 28 }, radius: 4, respawnTicks: 600, isGuaranteedBoss: true }
+      { templateId: 'm_scarecrow', count: 6, center: { x: 12, y: 12 }, radius: 6, respawnTicks: 100 },
+      { templateId: 'm_cat', count: 6, center: { x: 24, y: 12 }, radius: 6, respawnTicks: 110 },
+      { templateId: 'm_spider', count: 5, center: { x: 12, y: 24 }, radius: 6, respawnTicks: 120 },
+      { templateId: 'm_skeleton', count: 5, center: { x: 24, y: 24 }, radius: 6, respawnTicks: 130 },
+      { templateId: 'm_zombie', count: 1, center: { x: 28, y: 28 }, radius: 4, respawnTicks: 450, isGuaranteedBoss: true }
     ]
   },
 
@@ -113,10 +113,10 @@ export const MAP_DEFINITIONS: Record<string, MapDefinition> = {
       }
     ],
     spawns: [
-      { templateId: 'm_skeleton', count: 6, center: { x: 12, y: 18 }, radius: 5, respawnTicks: 380 },
-      { templateId: 'm_zombie', count: 6, center: { x: 18, y: 12 }, radius: 5, respawnTicks: 600 },
-      { templateId: 'm_white_pig', count: 2, center: { x: 20, y: 24 }, radius: 4, respawnTicks: 600 },
-      { templateId: 'm_wooma_boss', count: 1, center: { x: 28, y: 18 }, radius: 3, respawnTicks: 1200, isGuaranteedBoss: true }
+      { templateId: 'm_skeleton', count: 6, center: { x: 12, y: 18 }, radius: 5, respawnTicks: 130 },
+      { templateId: 'm_zombie', count: 6, center: { x: 18, y: 12 }, radius: 5, respawnTicks: 450 },
+      { templateId: 'm_white_pig', count: 2, center: { x: 20, y: 24 }, radius: 4, respawnTicks: 240 },
+      { templateId: 'm_wooma_boss', count: 1, center: { x: 28, y: 18 }, radius: 3, respawnTicks: 600, isGuaranteedBoss: true }
     ]
   },
 
@@ -170,9 +170,9 @@ export const MAP_DEFINITIONS: Record<string, MapDefinition> = {
       }
     ],
     spawns: [
-      { templateId: 'm_zuma_statue', count: 8, center: { x: 16, y: 18 }, radius: 6, respawnTicks: 400 },
-      { templateId: 'm_white_pig', count: 3, center: { x: 22, y: 12 }, radius: 5, respawnTicks: 600 },
-      { templateId: 'm_zuma_boss', count: 1, center: { x: 28, y: 18 }, radius: 3, respawnTicks: 1500, isGuaranteedBoss: true }
+      { templateId: 'm_zuma_statue', count: 8, center: { x: 16, y: 18 }, radius: 6, respawnTicks: 140 },
+      { templateId: 'm_white_pig', count: 3, center: { x: 22, y: 12 }, radius: 5, respawnTicks: 240 },
+      { templateId: 'm_zuma_boss', count: 1, center: { x: 28, y: 18 }, radius: 3, respawnTicks: 750, isGuaranteedBoss: true }
     ]
   },
 
@@ -225,9 +225,9 @@ export const MAP_DEFINITIONS: Record<string, MapDefinition> = {
       }
     ],
     spawns: [
-      { templateId: 'm_zuma_statue', count: 6, center: { x: 14, y: 18 }, radius: 5, respawnTicks: 400 },
-      { templateId: 'm_white_pig', count: 4, center: { x: 20, y: 12 }, radius: 5, respawnTicks: 600 },
-      { templateId: 'm_red_moon', count: 1, center: { x: 28, y: 18 }, radius: 3, respawnTicks: 1800, isGuaranteedBoss: true }
+      { templateId: 'm_zuma_statue', count: 6, center: { x: 14, y: 18 }, radius: 5, respawnTicks: 140 },
+      { templateId: 'm_white_pig', count: 4, center: { x: 20, y: 12 }, radius: 5, respawnTicks: 240 },
+      { templateId: 'm_red_moon', count: 1, center: { x: 28, y: 18 }, radius: 3, respawnTicks: 800, isGuaranteedBoss: true }
     ]
   },
 
@@ -279,8 +279,8 @@ export const MAP_DEFINITIONS: Record<string, MapDefinition> = {
       }
     ],
     spawns: [
-      { templateId: 'm_cangyue_skeleton', count: 8, center: { x: 16, y: 18 }, radius: 6, respawnTicks: 420 },
-      { templateId: 'm_huangquan_boss', count: 1, center: { x: 28, y: 18 }, radius: 3, respawnTicks: 2000, isGuaranteedBoss: true }
+      { templateId: 'm_cangyue_skeleton', count: 8, center: { x: 16, y: 18 }, radius: 6, respawnTicks: 140 },
+      { templateId: 'm_huangquan_boss', count: 1, center: { x: 28, y: 18 }, radius: 3, respawnTicks: 900, isGuaranteedBoss: true }
     ]
   },
 
@@ -332,8 +332,8 @@ export const MAP_DEFINITIONS: Record<string, MapDefinition> = {
       }
     ],
     spawns: [
-      { templateId: 'm_molong_blade', count: 8, center: { x: 16, y: 18 }, radius: 6, respawnTicks: 450 },
-      { templateId: 'm_molong_boss', count: 1, center: { x: 28, y: 18 }, radius: 3, respawnTicks: 2400, isGuaranteedBoss: true }
+      { templateId: 'm_molong_blade', count: 8, center: { x: 16, y: 18 }, radius: 6, respawnTicks: 150 },
+      { templateId: 'm_molong_boss', count: 1, center: { x: 28, y: 18 }, radius: 3, respawnTicks: 1000, isGuaranteedBoss: true }
     ]
   },
 
@@ -385,8 +385,8 @@ export const MAP_DEFINITIONS: Record<string, MapDefinition> = {
       }
     ],
     spawns: [
-      { templateId: 'm_niumo_general', count: 8, center: { x: 16, y: 18 }, radius: 6, respawnTicks: 450 },
-      { templateId: 'm_niumo_boss', count: 1, center: { x: 28, y: 18 }, radius: 3, respawnTicks: 3000, isGuaranteedBoss: true }
+      { templateId: 'm_niumo_general', count: 8, center: { x: 16, y: 18 }, radius: 6, respawnTicks: 150 },
+      { templateId: 'm_niumo_boss', count: 1, center: { x: 28, y: 18 }, radius: 3, respawnTicks: 1200, isGuaranteedBoss: true }
     ]
   },
 
@@ -438,8 +438,8 @@ export const MAP_DEFINITIONS: Record<string, MapDefinition> = {
       }
     ],
     spawns: [
-      { templateId: 'm_huolong_beast', count: 8, center: { x: 16, y: 18 }, radius: 6, respawnTicks: 480 },
-      { templateId: 'm_huolong_boss', count: 1, center: { x: 28, y: 18 }, radius: 3, respawnTicks: 3600, isGuaranteedBoss: true }
+      { templateId: 'm_huolong_beast', count: 8, center: { x: 16, y: 18 }, radius: 6, respawnTicks: 160 },
+      { templateId: 'm_huolong_boss', count: 1, center: { x: 28, y: 18 }, radius: 3, respawnTicks: 1400, isGuaranteedBoss: true }
     ]
   },
 
@@ -491,8 +491,8 @@ export const MAP_DEFINITIONS: Record<string, MapDefinition> = {
       }
     ],
     spawns: [
-      { templateId: 'm_shura_warrior', count: 8, center: { x: 16, y: 18 }, radius: 6, respawnTicks: 500 },
-      { templateId: 'm_shura_boss', count: 1, center: { x: 28, y: 18 }, radius: 3, respawnTicks: 4500, isGuaranteedBoss: true }
+      { templateId: 'm_shura_warrior', count: 8, center: { x: 16, y: 18 }, radius: 6, respawnTicks: 160 },
+      { templateId: 'm_shura_boss', count: 1, center: { x: 28, y: 18 }, radius: 3, respawnTicks: 1600, isGuaranteedBoss: true }
     ]
   },
 
@@ -534,8 +534,8 @@ export const MAP_DEFINITIONS: Record<string, MapDefinition> = {
       }
     ],
     spawns: [
-      { templateId: 'm_void_beast', count: 10, center: { x: 16, y: 18 }, radius: 6, respawnTicks: 520 },
-      { templateId: 'm_void_boss', count: 1, center: { x: 28, y: 18 }, radius: 3, respawnTicks: 6000, isGuaranteedBoss: true }
+      { templateId: 'm_void_beast', count: 10, center: { x: 16, y: 18 }, radius: 6, respawnTicks: 160 },
+      { templateId: 'm_void_boss', count: 1, center: { x: 28, y: 18 }, radius: 3, respawnTicks: 1800, isGuaranteedBoss: true }
     ]
   }
 };

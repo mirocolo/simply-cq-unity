@@ -1692,7 +1692,7 @@ export class GameWorld {
 
   private handleEntityDeath(deadEntity: Entity, killer: Entity): void {
     deadEntity.state = 'dead';
-    deadEntity.respawnTicks = deadEntity.maxRespawnTicks || 300;
+    deadEntity.respawnTicks = deadEntity.maxRespawnTicks || 100;
 
     if (!deadEntity.isPlayer) {
       const tmpl = deadEntity.templateId 
@@ -1700,7 +1700,7 @@ export class GameWorld {
         : Object.values(MONSTER_TEMPLATES).find(t => t.name === deadEntity.name);
       if (tmpl) {
         if (tmpl.isBoss) {
-          this.mapManager.recordBossDeath(tmpl.templateId, tmpl.respawnTicks || 300, this.currentTick);
+          this.mapManager.recordBossDeath(tmpl.templateId, tmpl.respawnTicks || 600, this.currentTick);
         }
         this.recordMonsterKill(tmpl.templateId);
 
