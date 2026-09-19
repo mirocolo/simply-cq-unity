@@ -931,7 +931,24 @@ export class GameWorld {
       this.player.state = 'idle';
     }
 
-    // 怪物状态与受击硬直消退
+    // 怪物状态与受击硬直消退及极速刷新追赶
+    const aliveMonsters = this.monsters.filter(m => m.state !== 'dead');
+    if (aliveMonsters.length === 0) {
+      // 场上无怪可打时，普通怪瞬间复活！
+      for (const m of this.monsters) {
+        if (m.state === 'dead' && !m.isBoss) {
+          m.respawnTicks = 0;
+        }
+      }
+    } else if (aliveMonsters.length < 4) {
+      // 场上怪不足4只时，加速4倍扣减普通怪复活CD
+      for (const m of this.monsters) {
+        if (m.state === 'dead' && !m.isBoss && m.respawnTicks !== undefined && m.respawnTicks > 0) {
+          m.respawnTicks = Math.max(0, m.respawnTicks - 4);
+        }
+      }
+    }
+
     for (const m of this.monsters) {
       if (m.state === 'attacking' && this.currentTick - m.lastAttackTick >= 2) {
         m.state = 'idle';
@@ -945,8 +962,10 @@ export class GameWorld {
       }
 
       if (m.state === 'dead') {
-        if (m.respawnTicks !== undefined && m.respawnTicks > 0) {
-          m.respawnTicks--;
+        if (m.respawnTicks !== undefined) {
+          if (m.respawnTicks > 0) {
+            m.respawnTicks--;
+          }
           if (m.respawnTicks <= 0) {
             const tmpl = m.templateId ? MONSTER_TEMPLATES[m.templateId] : Object.values(MONSTER_TEMPLATES).find(t => t.name === m.name);
             if (tmpl && tmpl.isBoss && !this.mapManager.isBossReady(tmpl.templateId, this.currentTick)) {
@@ -1692,7 +1711,7 @@ export class GameWorld {
 
   private handleEntityDeath(deadEntity: Entity, killer: Entity): void {
     deadEntity.state = 'dead';
-    deadEntity.respawnTicks = deadEntity.maxRespawnTicks || 100;
+    deadEntity.respawnTicks = deadEntity.maxRespawnTicks || 40;
 
     if (!deadEntity.isPlayer) {
       const tmpl = deadEntity.templateId 
@@ -2387,8 +2406,8 @@ export class GameWorld {
           if (check.can) {
             equippableCandidates.push({ index: i, power });
           } else {
-            // 超出当前阶数 2 阶及以上（如玩家 0 阶，掉落 2 阶及以上装备），背包仅 40 格，不予保留避免爆仓
-            if (it.tier <= playerTier + 1) {
+            // 超出当前阶数 2 阶及以上且非橙装（如玩家 0 阶，掉落 2 阶及以上装备），背包格数有限不予保留避免爆仓；橙装极品神装予以保留评估
+            if (it.tier <= playerTier + 1 || it.quality >= 4) {
               futureCandidates.push({ index: i, power });
             }
           }
@@ -2467,7 +2486,7 @@ export class GameWorld {
         if (check.can) {
           equippableCandidates.push({ index: i, power });
         } else {
-          if (it.tier <= playerTier + 1) {
+          if (it.tier <= playerTier + 1 || it.quality >= 4) {
             futureCandidates.push({ index: i, power });
           }
         }

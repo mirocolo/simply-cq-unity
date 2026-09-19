@@ -54,7 +54,7 @@ function runTests() {
       world.inventory.push(createDummyEquip(`sword_${i}`, `宝剑${i}`, 'weapon', 0, 1, 10 + i * 5, 15 + i * 5));
     }
 
-    const result = world.recycleWeakerOrEqualItems();
+    const result = world.recycleWeakerOrEqualItems(false);
     console.log(`  -> 回收了 ${result.count} 件，获得金币 ${result.gold}，经验 ${result.exp}`);
 
     if (result.count !== 9) {
@@ -120,10 +120,10 @@ function runTests() {
     world.inventory.push(dragonBlade);
     world.inventory.push(weakTrash);
 
-    world.recycleWeakerOrEqualItems();
+    world.recycleWeakerOrEqualItems(false);
     world.recycleLowQualityItems();
 
-    if (!world.inventory.find(i => i.name === '麻痹特戒')) {
+    if (!world.inventory.find(i => i.name === '麻痹特戒') && world.equipped.special_paralyze?.name !== '麻痹特戒') {
       throw new Error('Test 3 失败：麻痹特戒被误熔！');
     }
     if (!world.inventory.find(i => i.name === '屠龙宝刀')) {
@@ -144,20 +144,23 @@ function runTests() {
     world.inventory = [];
     world.equipped.weapon = createDummyEquip('eq_w', '青铜剑', 'weapon', 0, 1, 15, 20);
 
-    // 把背包塞满 40 件次级武器与铠甲 (40/40)
-    for (let i = 0; i < 20; i++) {
+    world.player.stats.ascensionTier = 2;
+    const maxSlots = world.getMaxInventorySlots();
+
+    // 把背包塞满 maxSlots 件次级武器与铠甲
+    const half = Math.floor(maxSlots / 2);
+    for (let i = 0; i < half; i++) {
       world.inventory.push(createDummyEquip(`sub_w_${i}`, `次级剑${i}`, 'weapon', 0, 1, 10, 12));
     }
-    for (let i = 0; i < 20; i++) {
+    for (let i = 0; i < maxSlots - half; i++) {
       world.inventory.push(createDummyEquip(`sub_a_${i}`, `次级甲${i}`, 'armor', 0, 0, 1, 2));
     }
 
-    if (world.inventory.length !== 40) {
-      throw new Error('Test 4 初始化错误：背包未达到 40 格');
+    if (world.inventory.length !== maxSlots) {
+      throw new Error(`Test 4 初始化错误：背包未达到 ${maxSlots} 格`);
     }
 
     // 地面掉落一把极品裁决之杖 (DC 200~350, 需2阶飞升驾驭)
-    world.player.stats.ascensionTier = 2;
     const godWeapon = createDummyEquip('god_sword', '裁决之杖', 'weapon', 2, 3, 200, 350);
     world.groundItems.push({
       gridPos: { ...world.player.gridPos },
@@ -178,9 +181,9 @@ function runTests() {
     }
 
     // 检查背包容量是否已大幅降低（冗余次级装被熔炼）
-    console.log(`  -> 拾取与紧急腾挪后背包数量: ${world.inventory.length} / 40`);
-    if (world.inventory.length >= 40) {
-      throw new Error('Test 4 失败：背包依然为 40/40，紧急腾挪未能释放空间！');
+    console.log(`  -> 拾取与紧急腾挪后背包数量: ${world.inventory.length} / ${maxSlots}`);
+    if (world.inventory.length >= maxSlots) {
+      throw new Error(`Test 4 失败：背包依然为 ${maxSlots}/${maxSlots}，紧急腾挪未能释放空间！`);
     }
 
     console.log('  ✓ Test 4 通过：40/40 满包成功自动腾挪，极品裁决秒穿戴，背包恢复充裕空间！\n');
@@ -194,6 +197,7 @@ function runTests() {
     const world = new GameWorld();
     world.autoConfig.enabled = true;
     world.autoConfig.autoPickup = true;
+    world.autoConfig.autoRecycleWeaker = false; // 明确关闭自动回收，测试满包无法吸附时绝不抽搐卡死
     world.player.gridPos = { x: 10, y: 10 };
 
     // 制造 40 件无法回收的极品/特戒把背包填死 (40/40)
@@ -269,6 +273,7 @@ function runTests() {
     const world = new GameWorld();
     world.inventory = [];
     world.player.stats.ascensionTier = 1;
+    world.equipped.helmet = createDummyEquip('strong_helm', '强力头盔', 'helmet', 0, 2, 50, 50);
     // 身上有2个戒指
     const oldRing1 = createDummyEquip('old_r1', '旧戒指1', 'ring_l', 0, 1, 10, 20);
     const oldRing2 = createDummyEquip('old_r2', '旧戒指2', 'ring_r', 0, 1, 10, 20);

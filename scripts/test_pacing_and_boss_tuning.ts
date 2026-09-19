@@ -15,25 +15,29 @@ function assert(condition: boolean, msg: string) {
 
 console.log('=== 增加刷新频率与降低爆率 综合平衡验证 ===\n');
 
-console.log('▶ Test 1: 怪物与Boss刷新频率合理加快 (快节奏战斗体验)');
-// 小怪 respawnTicks: 10~16s (100~160 ticks)
-assert(MONSTER_TEMPLATES['m_scarecrow'].respawnTicks <= 120, `稻草人复活时间 ${MONSTER_TEMPLATES['m_scarecrow'].respawnTicks} <= 120 ticks (10s~12s)`);
-assert(MONSTER_TEMPLATES['m_skeleton'].respawnTicks <= 150, `骷髅战士复活时间 ${MONSTER_TEMPLATES['m_skeleton'].respawnTicks} <= 150 ticks (13s~15s)`);
-assert(MONSTER_TEMPLATES['m_niumo_general'].respawnTicks <= 180, `牛魔祭司复活时间 ${MONSTER_TEMPLATES['m_niumo_general'].respawnTicks} <= 180 ticks (15s~18s)`);
+console.log('▶ Test 1: 怪物与Boss刷新频率全面极速化 (告别无怪可打，3~5秒极速复活)');
+// 普通怪 respawnTicks: 3~5s (30~50 ticks)
+assert(MONSTER_TEMPLATES['m_scarecrow'].respawnTicks <= 35, `稻草人复活时间 ${MONSTER_TEMPLATES['m_scarecrow'].respawnTicks} <= 35 ticks (3s~3.5s)`);
+assert(MONSTER_TEMPLATES['m_skeleton'].respawnTicks <= 35, `骷髅战士复活时间 ${MONSTER_TEMPLATES['m_skeleton'].respawnTicks} <= 35 ticks (3.5s)`);
+assert(MONSTER_TEMPLATES['m_zuma_statue'].respawnTicks <= 40, `祖玛雕像复活时间 ${MONSTER_TEMPLATES['m_zuma_statue'].respawnTicks} <= 40 ticks (4s)`);
+assert(MONSTER_TEMPLATES['m_cangyue_skeleton'].respawnTicks <= 40, `骨魔恶灵复活时间 ${MONSTER_TEMPLATES['m_cangyue_skeleton'].respawnTicks} <= 40 ticks (4s)`);
+assert(MONSTER_TEMPLATES['m_molong_blade'].respawnTicks <= 45, `魔龙战将复活时间 ${MONSTER_TEMPLATES['m_molong_blade'].respawnTicks} <= 45 ticks (4.5s)`);
+assert(MONSTER_TEMPLATES['m_niumo_general'].respawnTicks <= 45, `牛魔祭司复活时间 ${MONSTER_TEMPLATES['m_niumo_general'].respawnTicks} <= 45 ticks (4.5s)`);
+assert(MONSTER_TEMPLATES['m_void_beast'].respawnTicks <= 50, `混沌虚空兽复活时间 ${MONSTER_TEMPLATES['m_void_beast'].respawnTicks} <= 50 ticks (5s)`);
 
-// 精英怪与 Boss 刷新时间分层加快：
-// 精英怪 (24秒)
-assert(MONSTER_TEMPLATES['m_white_pig'].respawnTicks <= 250, `白野猪精英刷新时间 ${MONSTER_TEMPLATES['m_white_pig'].respawnTicks} <= 250 ticks (24s)`);
-// 低阶 Boss (1分钟左右)
-assert(MONSTER_TEMPLATES['m_wooma_boss'].respawnTicks <= 650, `沃玛教主刷新时间 ${MONSTER_TEMPLATES['m_wooma_boss'].respawnTicks} <= 650 ticks (1分钟)`);
-// 中阶 Boss (1.25~1.67 分钟)
-assert(MONSTER_TEMPLATES['m_zuma_boss'].respawnTicks <= 800, `祖玛教主刷新时间 ${MONSTER_TEMPLATES['m_zuma_boss'].respawnTicks} <= 800 ticks (1.25分钟)`);
-assert(MONSTER_TEMPLATES['m_molong_boss'].respawnTicks <= 1100, `魔龙教主刷新时间 ${MONSTER_TEMPLATES['m_molong_boss'].respawnTicks} <= 1100 ticks (1.67分钟)`);
-// 高阶/极境 Boss (2~3 分钟)
-assert(MONSTER_TEMPLATES['m_niumo_boss'].respawnTicks <= 1300, `牛魔王刷新时间 ${MONSTER_TEMPLATES['m_niumo_boss'].respawnTicks} <= 1300 ticks (2分钟)`);
-assert(MONSTER_TEMPLATES['m_huolong_boss'].respawnTicks <= 1500, `焚天火龙神刷新时间 ${MONSTER_TEMPLATES['m_huolong_boss'].respawnTicks} <= 1500 ticks (2.33分钟)`);
-assert(MONSTER_TEMPLATES['m_shura_boss'].respawnTicks <= 1700, `万劫修罗皇刷新时间 ${MONSTER_TEMPLATES['m_shura_boss'].respawnTicks} <= 1700 ticks (2.67分钟)`);
-assert(MONSTER_TEMPLATES['m_void_boss'].respawnTicks <= 1900, `混元鸿蒙天尊刷新时间 ${MONSTER_TEMPLATES['m_void_boss'].respawnTicks} <= 1900 ticks (3分钟)`);
+// 精英怪与 Boss 刷新时间分层极速加快：
+// 精英怪 (12秒)
+assert(MONSTER_TEMPLATES['m_white_pig'].respawnTicks <= 120, `白野猪精英刷新时间 ${MONSTER_TEMPLATES['m_white_pig'].respawnTicks} <= 120 ticks (12s)`);
+// 低阶 Boss (25秒左右)
+assert(MONSTER_TEMPLATES['m_wooma_boss'].respawnTicks <= 250, `沃玛教主刷新时间 ${MONSTER_TEMPLATES['m_wooma_boss'].respawnTicks} <= 250 ticks (25s)`);
+// 中阶 Boss (30~35秒)
+assert(MONSTER_TEMPLATES['m_zuma_boss'].respawnTicks <= 300, `祖玛教主刷新时间 ${MONSTER_TEMPLATES['m_zuma_boss'].respawnTicks} <= 300 ticks (30s)`);
+assert(MONSTER_TEMPLATES['m_molong_boss'].respawnTicks <= 350, `魔龙教主刷新时间 ${MONSTER_TEMPLATES['m_molong_boss'].respawnTicks} <= 350 ticks (35s)`);
+// 高阶/极境 Boss (40~60秒)
+assert(MONSTER_TEMPLATES['m_niumo_boss'].respawnTicks <= 400, `牛魔王刷新时间 ${MONSTER_TEMPLATES['m_niumo_boss'].respawnTicks} <= 400 ticks (40s)`);
+assert(MONSTER_TEMPLATES['m_huolong_boss'].respawnTicks <= 450, `焚天火龙神刷新时间 ${MONSTER_TEMPLATES['m_huolong_boss'].respawnTicks} <= 450 ticks (45s)`);
+assert(MONSTER_TEMPLATES['m_shura_boss'].respawnTicks <= 500, `万劫修罗皇刷新时间 ${MONSTER_TEMPLATES['m_shura_boss'].respawnTicks} <= 500 ticks (50s)`);
+assert(MONSTER_TEMPLATES['m_void_boss'].respawnTicks <= 600, `混元鸿蒙天尊刷新时间 ${MONSTER_TEMPLATES['m_void_boss'].respawnTicks} <= 600 ticks (60s)`);
 
 console.log('\n▶ Test 2: 地图 Spawn 规则与怪物模板刷新时间全量一致性');
 for (const [mapId, map] of Object.entries(MAP_DEFINITIONS)) {
@@ -110,5 +114,23 @@ const recycleRes = world.recycleLowQualityItems(3);
 assert(recycleRes.count === 1, `成功回收 1 件测试装备`);
 assert(recycleRes.exp === 800, `回收经验比例为价格的 8% (10000 * 0.08 = 800)`);
 
+console.log('\n▶ Test 7: 动态极速追赶刷新保障 (场上空怪瞬间复活机制)');
+// 模拟全场怪全部死亡场景
+for (const m of world.monsters) {
+  m.state = 'dead';
+  m.respawnTicks = 100;
+}
+const aliveBefore = world.monsters.filter(m => m.state !== 'dead').length;
+assert(aliveBefore === 0, `测试前置：场上怪物全部死亡 (alive = 0)`);
+
+// 触发一次 tick
+world.tick();
+
+// 判定普通怪物是否瞬间复活
+const aliveAfter = world.monsters.filter(m => m.state !== 'dead').length;
+const regularMonsters = world.monsters.filter(m => !m.isBoss);
+assert(aliveAfter > 0, `单次 tick 后动态追赶生效，场上立即复活 ${aliveAfter} 只怪`);
+assert(regularMonsters.every(m => m.state !== 'dead'), `所有普通怪物已瞬间完成复活，彻底告别无怪可打状态！`);
+
 console.log('\n==================================================');
-console.log('✅ 刷新频率加快与爆率合理降低指标全部通过！\n');
+console.log('✅ 刷新频率极速化、怪物密度倍增与追赶复活指标全部通过！\n');

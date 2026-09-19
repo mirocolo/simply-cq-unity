@@ -44,7 +44,7 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     baseAttackInterval: 10,
     goldDrop: [10, 30],
     expReward: 8,
-    respawnTicks: 100, // 10秒复活 (快节奏刷怪)
+    respawnTicks: 30, // 3秒复活 (极速刷新，告别无怪可打)
     color: '#a16207',
     icon: '🌾',
     lootTable: [
@@ -69,7 +69,7 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     baseAttackInterval: 9,
     goldDrop: [25, 60],
     expReward: 18,
-    respawnTicks: 110, // 11秒复活
+    respawnTicks: 30, // 3秒复活
     color: '#ca8a04',
     icon: '🐱',
     lootTable: [
@@ -95,7 +95,7 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     baseAttackInterval: 8,
     goldDrop: [50, 120],
     expReward: 35,
-    respawnTicks: 120, // 12秒复活
+    respawnTicks: 35, // 3.5秒复活
     color: '#16a34a',
     icon: '🕷️',
     lootTable: [
@@ -121,7 +121,7 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     baseAttackInterval: 8,
     goldDrop: [120, 280],
     expReward: 80,
-    respawnTicks: 130, // 13秒复活
+    respawnTicks: 35, // 3.5秒复活
     color: '#94a3b8',
     icon: '💀',
     lootTable: [
@@ -149,7 +149,7 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     baseAttackInterval: 8,
     goldDrop: [250, 600],
     expReward: 180,
-    respawnTicks: 450, // 45秒复活
+    respawnTicks: 120, // 12秒复活
     color: '#7c3aed',
     icon: '🧟',
     lootTable: [
@@ -176,7 +176,7 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     goldDrop: [1200, 3000],
     expReward: 800,
     isElite: true,
-    respawnTicks: 240, // 24秒复活 (精英高频)
+    respawnTicks: 120, // 12秒复活 (精英极速)
     color: '#e11d48',
     icon: '🐗',
     lootTable: [
@@ -206,7 +206,7 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     goldDrop: [5000, 15000],
     expReward: 3200,
     isBoss: true,
-    respawnTicks: 600, // 60秒 (1分钟) 刷新一次
+    respawnTicks: 250, // 25秒刷新一次
     color: '#dc2626',
     icon: '👹',
     lootTable: [
@@ -240,7 +240,7 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     goldDrop: [20000, 50000],
     expReward: 9800,
     isBoss: true,
-    respawnTicks: 800, // 80秒刷新一次
+    respawnTicks: 300, // 30秒刷新一次
     color: '#b91c1c',
     icon: '👿',
     lootTable: [
@@ -277,7 +277,7 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     baseAttackInterval: 8,
     goldDrop: [800, 1800],
     expReward: 600,
-    respawnTicks: 140, // 14秒复活
+    respawnTicks: 40, // 4秒复活 (极速刷新)
     color: '#d97706',
     icon: '🗿',
     lootTable: [
@@ -303,7 +303,7 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     goldDrop: [12000, 30000],
     expReward: 6800,
     isBoss: true,
-    respawnTicks: 750, // 75秒 (1.25分钟) 刷新
+    respawnTicks: 300, // 30秒刷新
     color: '#b45309',
     icon: '🐂',
     lootTable: [
@@ -334,7 +334,7 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     baseAttackInterval: 8,
     goldDrop: [1500, 3500],
     expReward: 1200,
-    respawnTicks: 140, // 14秒复活
+    respawnTicks: 40, // 4秒复活
     color: '#64748b',
     icon: '☠️',
     lootTable: [
@@ -358,7 +358,7 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     goldDrop: [30000, 70000],
     expReward: 16000,
     isBoss: true,
-    respawnTicks: 900, // 90秒 (1.5分钟) 刷新
+    respawnTicks: 350, // 35秒刷新
     color: '#0284c7',
     icon: '👻',
     lootTable: [
@@ -388,7 +388,7 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     baseAttackInterval: 7,
     goldDrop: [3000, 6500],
     expReward: 2200,
-    respawnTicks: 150, // 15秒复活
+    respawnTicks: 45, // 4.5秒复活
     color: '#7e22ce',
     icon: '🐲',
     lootTable: [
@@ -412,7 +412,7 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     goldDrop: [50000, 120000],
     expReward: 28000,
     isBoss: true,
-    respawnTicks: 1000, // 100秒 (1.67分钟) 刷新一次
+    respawnTicks: 350, // 35秒刷新一次
     color: '#9333ea',
     icon: '🐉',
     lootTable: [
@@ -441,7 +441,7 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     baseAttackInterval: 7,
     goldDrop: [5000, 11000],
     expReward: 3600,
-    respawnTicks: 150, // 15秒复活
+    respawnTicks: 45, // 4.5秒复活
     color: '#ea580c',
     icon: '👺',
     lootTable: [
@@ -465,7 +465,7 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     goldDrop: [80000, 200000],
     expReward: 45000, // 控制经验膨胀 (原120000 -> 45000)
     isBoss: true,
-    respawnTicks: 1200, // 120秒 (2分钟) 刷新一次
+    respawnTicks: 400, // 40秒刷新一次
     color: '#c2410c',
     icon: '👑',
     lootTable: [
@@ -493,7 +493,7 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     baseAttackInterval: 7,
     goldDrop: [8000, 18000],
     expReward: 6500, // 控制经验 (原16000 -> 6500)
-    respawnTicks: 160, // 16秒复活
+    respawnTicks: 50, // 5秒复活
     color: '#ef4444',
     icon: '🔥',
     lootTable: [
@@ -517,7 +517,7 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     goldDrop: [150000, 350000],
     expReward: 75000, // (原220000 -> 75000)
     isBoss: true,
-    respawnTicks: 1400, // 140秒 (2.33分钟) 刷新一次
+    respawnTicks: 450, // 45秒刷新一次
     color: '#991b1b',
     icon: '🌋',
     lootTable: [
@@ -544,7 +544,7 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     baseAttackInterval: 6,
     goldDrop: [14000, 30000],
     expReward: 12000, // (原32000 -> 12000)
-    respawnTicks: 160, // 16秒复活
+    respawnTicks: 50, // 5秒复活
     color: '#831843',
     icon: '🥷',
     lootTable: [
@@ -568,7 +568,7 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     goldDrop: [250000, 600000],
     expReward: 120000, // (原400000 -> 120000)
     isBoss: true,
-    respawnTicks: 1600, // 160秒 (2.67分钟) 刷新一次
+    respawnTicks: 500, // 50秒刷新一次
     color: '#701a75',
     icon: '💀',
     lootTable: [
@@ -596,7 +596,7 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     baseAttackInterval: 6,
     goldDrop: [25000, 55000],
     expReward: 22000, // (原60000 -> 22000)
-    respawnTicks: 160, // 16秒复活
+    respawnTicks: 50, // 5秒复活
     color: '#4c1d95',
     icon: '🌌',
     lootTable: [
@@ -620,7 +620,7 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     goldDrop: [500000, 1500000],
     expReward: 250000, // (原1000000 -> 250000)
     isBoss: true,
-    respawnTicks: 1800, // 180秒 (3分钟) 刷新一次
+    respawnTicks: 600, // 60秒刷新一次
     color: '#facc15',
     icon: '⚡',
     lootTable: [
@@ -647,7 +647,7 @@ export const MONSTER_TEMPLATES: Record<string, MonsterTemplate> = {
     baseAttackInterval: 10,
     goldDrop: [50000, 150000],
     expReward: 2500, // (原6000 -> 2500)
-    respawnTicks: 450, // 45秒刷新一次 (快节奏遭遇)
+    respawnTicks: 250, // 25秒刷新一次 (快节奏遭遇)
     color: '#f59e0b',
     icon: '💰',
     lootTable: [
