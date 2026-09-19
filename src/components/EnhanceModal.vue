@@ -88,6 +88,20 @@
                 <span class="text-[10px]">{{ minSlotLevel >= res.reqLevel ? '已激活' : `需全身+${res.reqLevel}` }}</span>
               </div>
             </div>
+
+            <!-- 一键强化全身 (均衡共鸣) 按钮 -->
+            <button
+              @click="handleEnhanceAll"
+              :disabled="!canEnhanceAny"
+              class="w-full mt-1.5 py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5"
+              :class="canEnhanceAny
+                ? 'bg-gradient-to-r from-amber-600 via-yellow-500 to-amber-600 hover:from-amber-500 hover:to-yellow-400 text-zinc-950 shadow-md shadow-amber-950/60 animate-pulse cursor-pointer'
+                : 'bg-zinc-900 text-zinc-500 border border-zinc-800 cursor-not-allowed opacity-60'"
+              title="优先强化等级最低的部位，以最低消耗均衡冲刺全身共鸣等级"
+            >
+              <span>🌟</span>
+              <span>一键强化全身 (均衡共鸣)</span>
+            </button>
           </div>
         </div>
 
@@ -217,18 +231,32 @@
               {{ lastMessage }}
             </div>
 
-            <button
-              v-if="currentLevel < MAX_ENHANCE_LEVEL"
-              @click="handleEnhance"
-              :disabled="!canEnhance"
-              class="w-full py-2.5 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2"
-              :class="canEnhance 
-                ? 'bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-zinc-950 shadow-lg hover:shadow-amber-500/20 active:scale-98' 
-                : 'bg-zinc-900 text-zinc-500 border border-zinc-800 cursor-not-allowed'"
-            >
-              <span>⚒️</span>
-              <span>太古淬火·强化 (+{{ currentLevel }} ➔ +{{ currentLevel + 1 }})</span>
-            </button>
+            <div v-if="currentLevel < MAX_ENHANCE_LEVEL" class="grid grid-cols-2 gap-2.5">
+              <button
+                @click="handleEnhance"
+                :disabled="!canEnhance"
+                class="py-2.5 px-2 rounded-lg text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1.5"
+                :class="canEnhance 
+                  ? 'bg-zinc-850 hover:bg-zinc-750 text-amber-300 border border-amber-600/50 shadow active:scale-98 cursor-pointer' 
+                  : 'bg-zinc-900 text-zinc-500 border border-zinc-800 cursor-not-allowed opacity-60'"
+              >
+                <span>⚒️</span>
+                <span>单次淬炼 (+{{ currentLevel }}➔+{{ currentLevel + 1 }})</span>
+              </button>
+
+              <button
+                @click="handleEnhanceOneKey"
+                :disabled="!canEnhance"
+                class="py-2.5 px-2 rounded-lg text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1.5"
+                :class="canEnhance 
+                  ? 'bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-zinc-950 shadow-lg hover:shadow-amber-500/20 active:scale-98 cursor-pointer' 
+                  : 'bg-zinc-900 text-zinc-500 border border-zinc-800 cursor-not-allowed opacity-60'"
+                title="连续自动淬火直到当前部位升级成功或材料金币耗尽"
+              >
+                <span>⚡</span>
+                <span>一键淬炼此部位</span>
+              </button>
+            </div>
 
             <div class="text-[11px] text-zinc-500 text-center leading-relaxed">
               强化等级永久绑定于部位，随时更换新装备自动无损生效
@@ -320,6 +348,10 @@ const canEnhance = computed(() => {
   return true;
 });
 
+const canEnhanceAny = computed(() => {
+  return ENHANCEABLE_SLOTS.some(slot => props.world.canAffordEnhance(slot).can);
+});
+
 const currentStatText = computed(() => {
   if (currentLevel.value <= 0) return '无加成';
   const cur = getSlotEnhanceStats(selectedSlot.value, currentLevel.value);
@@ -345,6 +377,18 @@ function handleEnhance() {
   const res = props.world.enhanceSlot(selectedSlot.value);
   lastMessage.value = res.message;
   lastSuccess.value = res.success;
+}
+
+function handleEnhanceOneKey() {
+  const res = props.world.enhanceSlotOneKey(selectedSlot.value);
+  lastMessage.value = res.message;
+  lastSuccess.value = res.successCount > 0;
+}
+
+function handleEnhanceAll() {
+  const res = props.world.enhanceAllSlotsOneKey();
+  lastMessage.value = res.message;
+  lastSuccess.value = res.totalSuccess > 0;
 }
 
 function getLevelBadgeClass(level: number): string {

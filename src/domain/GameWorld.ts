@@ -194,6 +194,51 @@ export class GameWorld {
   }
 
   /**
+   * 一键领取所有已达成的百妖封魔录里程碑
+   */
+  claimAllCodexRewards(): { count: number; statsGain: string } {
+    let totalClaimed = 0;
+    const oldBonus = this.getCodexStatsBonus();
+
+    for (const [templateId, codex] of Object.entries(MONSTER_CODEX_DEFINITIONS)) {
+      const kills = this.monsterKills[templateId] || 0;
+      if (!this.codexClaimedTiers[templateId]) {
+        this.codexClaimedTiers[templateId] = [];
+      }
+      const claimed = this.codexClaimedTiers[templateId];
+
+      for (let idx = 0; idx < codex.milestones.length; idx++) {
+        const ms = codex.milestones[idx];
+        if (kills >= ms.kills && !claimed.includes(idx)) {
+          claimed.push(idx);
+          totalClaimed++;
+        }
+      }
+    }
+
+    if (totalClaimed > 0) {
+      this.recalculatePlayerStats();
+      const newBonus = this.getCodexStatsBonus();
+      this.onSound?.('levelup');
+      this.addDamagePopup(this.player.gridPos, `📖一键参悟 x${totalClaimed}!`, '#fbbf24', true);
+      const hpDiff = newBonus.maxHp - oldBonus.maxHp;
+      const dcDiff = newBonus.maxDC - oldBonus.maxDC;
+      const acDiff = newBonus.maxAC - oldBonus.maxAC;
+      const critDiff = (newBonus.critRate - oldBonus.critRate) * 100;
+      const summaryParts = [];
+      if (hpDiff > 0) summaryParts.push(`生命+${hpDiff}`);
+      if (dcDiff > 0) summaryParts.push(`攻击+${dcDiff}`);
+      if (acDiff > 0) summaryParts.push(`防御+${acDiff}`);
+      if (critDiff > 0) summaryParts.push(`暴击+${critDiff.toFixed(1)}%`);
+      const statsGain = summaryParts.join('，') || '全属性飞跃';
+      this.addBattleLog(`【百妖封魔录】一键参悟了 ${totalClaimed} 阶魔物神髓！获得永久属性提升：${statsGain}！`, 'system');
+      return { count: totalClaimed, statsGain };
+    }
+
+    return { count: 0, statsGain: '' };
+  }
+
+  /**
    * 领取悬赏令奖励
    */
   claimBounty(bountyId: string): boolean {
@@ -218,6 +263,73 @@ export class GameWorld {
     this.addDamagePopup(this.player.gridPos, `💰悬赏金 +${bounty.rewardGold}!`, '#facc15', true);
     this.addBattleLog(`【悬赏交令】除魔大捷！完成 [${bounty.targetName}]，领取奖励：金币 +${bounty.rewardGold}，强化玄铁神石已存入背包！`, 'system');
     return true;
+  }
+
+  /**
+   * 一键领取所有已完成的悬赏令
+   */
+  claimAllBounties(): { count: number; gold: number; iron: number; pureIron: number; godStone: number } {
+    let count = 0;
+    let gold = 0;
+    let iron = 0;
+    let pureIron = 0;
+    let godStone = 0;
+
+    for (const bounty of this.activeBounties) {
+      if (bounty.completed && !bounty.claimed) {
+        bounty.claimed = true;
+        count++;
+        gold += bounty.rewardGold;
+        iron += bounty.rewardIronOre || 0;
+        pureIron += bounty.rewardPureIron || 0;
+        godStone += bounty.rewardGodStone || 0;
+      }
+    }
+
+    if (count > 0) {
+      this.player.stats.gold += gold;
+      this.autoStats.goldGained += gold;
+      if (iron > 0) {
+        const it = DropSystem.createItemInstance('mat_iron_ore', undefined, iron);
+        if (it) this.addItemToInventory(it);
+      }
+      if (pureIron > 0) {
+        const it = DropSystem.createItemInstance('mat_pure_iron', undefined, pureIron);
+        if (it) this.addItemToInventory(it);
+      }
+      if (godStone > 0) {
+        const it = DropSystem.createItemInstance('mat_god_stone', undefined, godStone);
+        if (it) this.addItemToInventory(it);
+      }
+
+      this.onSound?.('coin');
+      this.addDamagePopup(this.player.gridPos, `💰悬赏一键结赏 x${count}!`, '#facc15', true);
+      this.addBattleLog(
+        `【万象悬赏令】一键交令 ${count} 项除魔委派！领取赏金 +${gold.toLocaleString()}，强化矿石玄铁已存入随身包裹！`,
+        'system'
+      );
+    }
+
+    return { count, gold, iron, pureIron, godStone };
+  }
+
+  /**
+   * 一键全部领取封魔录与悬赏令
+   */
+  claimAllCodexAndBounties(): { codexCount: number; bountyCount: number; gold: number; message: string } {
+    const codexRes = this.claimAllCodexRewards();
+    const bountyRes = this.claimAllBounties();
+    const totalCount = codexRes.count + bountyRes.count;
+    if (totalCount === 0) {
+      return { codexCount: 0, bountyCount: 0, gold: 0, message: '暂无可领取的封魔神髓或悬赏奖励！' };
+    }
+    const msg = `一键领取成功！参悟 ${codexRes.count} 阶神髓，交令 ${bountyRes.count} 项悬赏，赏金 +${bountyRes.gold.toLocaleString()}！`;
+    return {
+      codexCount: codexRes.count,
+      bountyCount: bountyRes.count,
+      gold: bountyRes.gold,
+      message: msg
+    };
   }
 
   /**
@@ -721,23 +833,26 @@ export class GameWorld {
     return true;
   }
 
-  enhanceSlot(slot: EquipSlot): { success: boolean; message: string; newLevel: number } {
+  /**
+   * 检查某个部位是否能够支付下一次强化消耗
+   */
+  canAffordEnhance(slot: EquipSlot): { can: boolean; reason?: string; cost?: (typeof ENHANCE_COSTS)[number] } {
     if (!ENHANCEABLE_SLOTS.includes(slot)) {
-      return { success: false, message: '该部位不支持强化！', newLevel: 0 };
+      return { can: false, reason: '该部位不支持强化！' };
     }
 
     const currentLevel = this.slotEnhancements[slot] || 0;
     if (currentLevel >= MAX_ENHANCE_LEVEL) {
-      return { success: false, message: '该部位已达到当前最高强化等级(+15)！', newLevel: currentLevel };
+      return { can: false, reason: '该部位已达到当前最高强化等级(+15)！' };
     }
 
     const cost = ENHANCE_COSTS[currentLevel];
     if (!cost) {
-      return { success: false, message: '未找到强化消耗配置', newLevel: currentLevel };
+      return { can: false, reason: '未找到强化消耗配置' };
     }
 
     if (this.player.stats.gold < cost.gold) {
-      return { success: false, message: `金币不足！需要 ${cost.gold.toLocaleString()} 金币`, newLevel: currentLevel };
+      return { can: false, reason: `金币不足！需要 ${cost.gold.toLocaleString()} 金币`, cost };
     }
 
     const ironCount = this.getMaterialCount('mat_iron_ore');
@@ -745,16 +860,22 @@ export class GameWorld {
     const godCount = this.getMaterialCount('mat_god_stone');
 
     if (cost.ironOre > 0 && ironCount < cost.ironOre) {
-      return { success: false, message: `黑铁矿石不足！需要 ${cost.ironOre} 个（当前持有 ${ironCount} 个）`, newLevel: currentLevel };
+      return { can: false, reason: `黑铁矿石不足！需要 ${cost.ironOre} 个（当前持有 ${ironCount} 个）`, cost };
     }
     if (cost.pureIron > 0 && pureCount < cost.pureIron) {
-      return { success: false, message: `纯黑玄铁不足！需要 ${cost.pureIron} 个（当前持有 ${pureCount} 个）`, newLevel: currentLevel };
+      return { can: false, reason: `纯黑玄铁不足！需要 ${cost.pureIron} 个（当前持有 ${pureCount} 个）`, cost };
     }
     if (cost.godStone > 0 && godCount < cost.godStone) {
-      return { success: false, message: `天工神石不足！需要 ${cost.godStone} 个（当前持有 ${godCount} 个）`, newLevel: currentLevel };
+      return { can: false, reason: `天工神石不足！需要 ${cost.godStone} 个（当前持有 ${godCount} 个）`, cost };
     }
 
-    // 扣除金币与材料
+    return { can: true, cost };
+  }
+
+  /**
+   * 执行一次纯粹的扣费与成功率掷骰
+   */
+  private executeSingleEnhanceStep(slot: EquipSlot, cost: (typeof ENHANCE_COSTS)[number]): boolean {
     this.player.stats.gold -= cost.gold;
     if (cost.ironOre > 0) this.consumeMaterial('mat_iron_ore', cost.ironOre);
     if (cost.pureIron > 0) this.consumeMaterial('mat_pure_iron', cost.pureIron);
@@ -764,31 +885,186 @@ export class GameWorld {
     const finalRate = Math.min(1.0, cost.baseSuccessRate + pity * 0.05);
     const isSuccess = Math.random() < finalRate;
 
+    if (isSuccess) {
+      this.slotEnhancements[slot] = (this.slotEnhancements[slot] || 0) + 1;
+      this.slotEnhancePity[slot] = 0;
+      return true;
+    } else {
+      this.slotEnhancePity[slot] = pity + 1;
+      return false;
+    }
+  }
+
+  enhanceSlot(slot: EquipSlot): { success: boolean; message: string; newLevel: number } {
+    const check = this.canAffordEnhance(slot);
+    const currentLevel = this.slotEnhancements[slot] || 0;
+    if (!check.can || !check.cost) {
+      return { success: false, message: check.reason || '无法强化', newLevel: currentLevel };
+    }
+
     const slotNames: Record<string, string> = {
       weapon: '武器', armor: '衣服', helmet: '头盔', necklace: '项链',
       bracelet_l: '左手镯', bracelet_r: '右手镯', ring_l: '左戒指', ring_r: '右戒指'
     };
     const sName = slotNames[slot] || slot;
 
+    const isSuccess = this.executeSingleEnhanceStep(slot, check.cost);
+    const newLevel = this.slotEnhancements[slot] || 0;
+
     if (isSuccess) {
-      const nextLevel = currentLevel + 1;
-      this.slotEnhancements[slot] = nextLevel;
-      this.slotEnhancePity[slot] = 0;
       this.recalculatePlayerStats();
       this.onSound?.('crit');
       this.screenShake = 12;
 
-      this.addDamagePopup(this.player.gridPos, `✨强化+${nextLevel}!`, '#facc15', true);
-      this.addBattleLog(`【锻造成功】乾坤炉火纯青！部位【${sName}】淬炼升华至 +${nextLevel}！战力大幅飙升！`, 'system');
-      return { success: true, message: `强化成功！【${sName}】升至 +${nextLevel}！`, newLevel: nextLevel };
+      this.addDamagePopup(this.player.gridPos, `✨强化+${newLevel}!`, '#facc15', true);
+      this.addBattleLog(`【锻造成功】乾坤炉火纯青！部位【${sName}】淬炼升华至 +${newLevel}！战力大幅飙升！`, 'system');
+      return { success: true, message: `强化成功！【${sName}】升至 +${newLevel}！`, newLevel };
     } else {
-      const nextPity = pity + 1;
-      this.slotEnhancePity[slot] = nextPity;
+      const nextPity = this.slotEnhancePity[slot] || 0;
       this.onSound?.('hit');
       this.addDamagePopup(this.player.gridPos, '💨淬火未成', '#94a3b8');
       this.addBattleLog(`【锻造未成】部位【${sName}】淬炼失手，等级保留不降！保底概率累加 +5%（当前保底: +${nextPity * 5}%）！`, 'system');
-      return { success: false, message: `强化未成！保底累加 +5%（当前保底: +${nextPity * 5}%）`, newLevel: currentLevel };
+      return { success: false, message: `强化未成！保底累加 +5%（当前保底: +${nextPity * 5}%）`, newLevel };
     }
+  }
+
+  /**
+   * 一键强化指定部位 (持续淬火直到升级成功或材料/金币耗尽)
+   */
+  enhanceSlotOneKey(slot: EquipSlot, maxTries: number = 30): {
+    successCount: number;
+    failCount: number;
+    startLevel: number;
+    newLevel: number;
+    message: string;
+  } {
+    const slotNames: Record<string, string> = {
+      weapon: '武器', armor: '衣服', helmet: '头盔', necklace: '项链',
+      bracelet_l: '左手镯', bracelet_r: '右手镯', ring_l: '左戒指', ring_r: '右戒指'
+    };
+    const sName = slotNames[slot] || slot;
+    const startLevel = this.slotEnhancements[slot] || 0;
+
+    let successCount = 0;
+    let failCount = 0;
+    let stopReason = '';
+
+    for (let i = 0; i < maxTries; i++) {
+      const check = this.canAffordEnhance(slot);
+      if (!check.can || !check.cost) {
+        stopReason = check.reason || '材料不足';
+        break;
+      }
+
+      const success = this.executeSingleEnhanceStep(slot, check.cost);
+      if (success) {
+        successCount++;
+        // 成功升级后即刻完成本轮一键提升
+        break;
+      } else {
+        failCount++;
+      }
+    }
+
+    const newLevel = this.slotEnhancements[slot] || 0;
+    if (successCount > 0) {
+      this.recalculatePlayerStats();
+      this.onSound?.('crit');
+      this.screenShake = 12;
+      this.addDamagePopup(this.player.gridPos, `✨强化+${newLevel}!`, '#facc15', true);
+      const failText = failCount > 0 ? `（经历 ${failCount} 次淬炼失手）` : '';
+      const msg = `【${sName}】一键淬火成功升至 +${newLevel}！${failText}`;
+      this.addBattleLog(`【锻造大成】${msg}`, 'system');
+      return { successCount, failCount, startLevel, newLevel, message: msg };
+    } else {
+      const pity = this.slotEnhancePity[slot] || 0;
+      const msg = failCount > 0 
+        ? `【${sName}】一键强化尝试 ${failCount} 次未成，${stopReason}，累计保底率 +${pity * 5}%！`
+        : `【${sName}】无法进行强化：${stopReason}`;
+      return { successCount: 0, failCount, startLevel, newLevel, message: msg };
+    }
+  }
+
+  /**
+   * 一键强化全身八大部位 (基于全身强化共鸣最优解：总是优先强化等级最低的部位)
+   */
+  enhanceAllSlotsOneKey(maxTries: number = 100): {
+    totalSuccess: number;
+    totalFails: number;
+    upgradedSlots: Partial<Record<EquipSlot, number>>;
+    minLevelBefore: number;
+    minLevelAfter: number;
+    combatPowerDiff: number;
+    message: string;
+  } {
+    const oldCp = this.player.stats.combatPower;
+    const minLevelBefore = Math.min(...ENHANCEABLE_SLOTS.map(s => this.slotEnhancements[s] || 0));
+
+    let totalSuccess = 0;
+    let totalFails = 0;
+    const upgradedSlots: Partial<Record<EquipSlot, number>> = {};
+
+    for (let step = 0; step < maxTries; step++) {
+      // 找出所有当前可负担强化的部位
+      const affordableSlots: { slot: EquipSlot; level: number; cost: (typeof ENHANCE_COSTS)[number] }[] = [];
+      for (const s of ENHANCEABLE_SLOTS) {
+        const check = this.canAffordEnhance(s);
+        if (check.can && check.cost) {
+          affordableSlots.push({
+            slot: s,
+            level: this.slotEnhancements[s] || 0,
+            cost: check.cost
+          });
+        }
+      }
+
+      if (affordableSlots.length === 0) {
+        // 没有任何部位可以强化（材料/金币耗尽或全部满级）
+        break;
+      }
+
+      // 核心算法：优先挑选当前等级最低的部位进行淬火（同等级按部位自然顺序）
+      affordableSlots.sort((a, b) => a.level - b.level);
+      const target = affordableSlots[0];
+
+      const success = this.executeSingleEnhanceStep(target.slot, target.cost);
+      if (success) {
+        totalSuccess++;
+        upgradedSlots[target.slot] = this.slotEnhancements[target.slot];
+      } else {
+        totalFails++;
+      }
+    }
+
+    const minLevelAfter = Math.min(...ENHANCEABLE_SLOTS.map(s => this.slotEnhancements[s] || 0));
+    this.recalculatePlayerStats();
+    const combatPowerDiff = this.player.stats.combatPower - oldCp;
+
+    let message = '';
+    if (totalSuccess > 0) {
+      this.onSound?.('levelup');
+      this.screenShake = 10;
+      this.addDamagePopup(this.player.gridPos, `🌟全套强化+${totalSuccess}!`, '#38bdf8', true);
+      const resonanceText = minLevelAfter > minLevelBefore ? `，全套共鸣突破至 +${minLevelAfter}` : '';
+      message = `一键全身强化完成：成功 ${totalSuccess} 次，失败 ${totalFails} 次${resonanceText}，战力提升 +${combatPowerDiff}！`;
+      this.addBattleLog(`【太古天工】${message}`, 'system');
+    } else if (totalFails > 0) {
+      this.onSound?.('hit');
+      message = `一键全身强化尝试 ${totalFails} 次均未成功，已积累大量幸运保底概率！`;
+      this.addBattleLog(`【太古天工】${message}`, 'system');
+    } else {
+      message = '当前金币或矿石材料不足，无法进行一键强化！请先通过悬赏或刷怪获取材料。';
+    }
+
+    return {
+      totalSuccess,
+      totalFails,
+      upgradedSlots,
+      minLevelBefore,
+      minLevelAfter,
+      combatPowerDiff,
+      message
+    };
   }
 
   tick(): void {

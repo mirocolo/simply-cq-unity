@@ -19,14 +19,32 @@
         </div>
 
         <div class="flex items-center gap-3">
+          <!-- 一键全部领取总览 -->
+          <button
+            v-if="totalClaimableCount > 0"
+            @click="handleClaimAll"
+            class="px-3 py-1.5 rounded-lg text-xs font-bold bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 hover:from-amber-400 hover:to-yellow-300 text-zinc-950 shadow-lg shadow-amber-950/60 flex items-center gap-1.5 animate-pulse transition-all cursor-pointer"
+            title="一键参悟所有已达成的魔物里程碑并交令所有悬赏"
+          >
+            <span>⚡</span>
+            <span>一键全部领取</span>
+            <span class="px-1.5 py-0.2 rounded-full bg-red-600 text-white text-[10px] font-black">
+              {{ totalClaimableCount }}
+            </span>
+          </button>
+
           <!-- Tab 切换按钮 -->
           <div class="flex bg-zinc-950/80 p-1 rounded-lg border border-zinc-800">
             <button
               @click="activeTab = 'codex'"
-              class="px-3 py-1 rounded text-xs font-bold transition-all"
+              class="px-3 py-1 rounded text-xs font-bold transition-all relative"
               :class="activeTab === 'codex' ? 'bg-amber-600 text-white shadow' : 'text-zinc-400 hover:text-zinc-200'"
             >
               📖 百妖封魔录
+              <span 
+                v-if="claimableCodexCount > 0" 
+                class="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-400 rounded-full animate-ping"
+              />
             </button>
             <button
               @click="activeTab = 'bounty'"
@@ -35,7 +53,7 @@
             >
               📜 万象悬赏令
               <span 
-                v-if="hasClaimableBounty" 
+                v-if="claimableBountyCount > 0" 
                 class="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full animate-ping"
               />
             </button>
@@ -43,7 +61,7 @@
 
           <button 
             @click="$emit('close')"
-            class="text-zinc-400 hover:text-white px-2.5 py-1 rounded bg-zinc-900/80 hover:bg-zinc-800 border border-zinc-700/50 text-base font-bold transition-all"
+            class="text-zinc-400 hover:text-white px-2.5 py-1 rounded bg-zinc-900/80 hover:bg-zinc-800 border border-zinc-700/50 text-base font-bold transition-all cursor-pointer"
           >
             ✕
           </button>
@@ -74,8 +92,19 @@
         <!-- 左侧魔物列表 (5列) -->
         <div class="md:col-span-5 flex flex-col gap-2">
           <div class="text-xs font-bold text-amber-400/90 mb-1 flex items-center justify-between">
-            <span>【妖魔谱系】</span>
-            <span class="text-[11px] text-zinc-500">共 {{ codexList.length }} 尊魔物</span>
+            <div class="flex items-center gap-2">
+              <span>【妖魔谱系】</span>
+              <span class="text-[11px] text-zinc-500">共 {{ codexList.length }} 尊魔物</span>
+            </div>
+            <button
+              v-if="claimableCodexCount > 0"
+              @click="handleClaimAllCodex"
+              class="text-[11px] px-2.5 py-0.5 rounded bg-amber-600 hover:bg-amber-500 text-white font-bold transition-all shadow shadow-amber-950/50 animate-pulse flex items-center gap-1 cursor-pointer"
+              title="一键参悟所有已达标的魔物里程碑神髓"
+            >
+              <span>✨</span>
+              <span>一键领悟全部 ({{ claimableCodexCount }})</span>
+            </button>
           </div>
 
           <div class="flex flex-col gap-1.5 overflow-y-auto max-h-[56vh] custom-scrollbar pr-1">
@@ -226,12 +255,23 @@
           <div class="text-xs text-zinc-400">
             每日完成除魔悬赏，可源源不断获得海量金币与强化所急需的【黑铁矿石】、【纯黑玄铁】与【天工神石】！
           </div>
-          <button
-            @click="refreshBounties"
-            class="px-2.5 py-1 rounded text-xs bg-zinc-800 hover:bg-zinc-700 border border-zinc-600 text-zinc-300 hover:text-white transition-all"
-          >
-            🔄 换一批悬赏
-          </button>
+          <div class="flex items-center gap-2">
+            <button
+              v-if="claimableBountyCount > 0"
+              @click="handleClaimAllBounties"
+              class="px-3 py-1 rounded text-xs bg-amber-600 hover:bg-amber-500 text-white font-bold transition-all shadow-md shadow-amber-950/60 animate-pulse flex items-center gap-1 cursor-pointer"
+              title="一键交令并领取所有已完成的悬赏奖励"
+            >
+              <span>📜</span>
+              <span>一键交令领赏 ({{ claimableBountyCount }})</span>
+            </button>
+            <button
+              @click="refreshBounties"
+              class="px-2.5 py-1 rounded text-xs bg-zinc-800 hover:bg-zinc-700 border border-zinc-600 text-zinc-300 hover:text-white transition-all cursor-pointer"
+            >
+              🔄 换一批悬赏
+            </button>
+          </div>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -385,6 +425,38 @@ const totalBonus = computed(() => {
 const hasClaimableBounty = computed(() => {
   return props.world.activeBounties.some(b => b.completed && !b.claimed);
 });
+
+const claimableCodexCount = computed(() => {
+  let count = 0;
+  for (const def of codexList) {
+    const kills = getKills(def.templateId);
+    const claimed = props.world.codexClaimedTiers[def.templateId] || [];
+    for (let i = 0; i < def.milestones.length; i++) {
+      if (!claimed.includes(i) && kills >= def.milestones[i].kills) {
+        count++;
+      }
+    }
+  }
+  return count;
+});
+
+const claimableBountyCount = computed(() => {
+  return props.world.activeBounties.filter(b => b.completed && !b.claimed).length;
+});
+
+const totalClaimableCount = computed(() => claimableCodexCount.value + claimableBountyCount.value);
+
+function handleClaimAll() {
+  props.world.claimAllCodexAndBounties();
+}
+
+function handleClaimAllCodex() {
+  props.world.claimAllCodexRewards();
+}
+
+function handleClaimAllBounties() {
+  props.world.claimAllBounties();
+}
 
 function claimMilestone(templateId: string, milestoneIdx: number) {
   props.world.claimCodexReward(templateId, milestoneIdx);
