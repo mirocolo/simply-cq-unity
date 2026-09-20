@@ -7,7 +7,7 @@
         :style="{ width: `${expPercent}%` }"
       ></div>
       <span class="absolute inset-0 flex items-center justify-center text-[10px] text-amber-200 font-mono leading-none drop-shadow">
-        【经验】 {{ expPercent.toFixed(1) }}% ({{ player.stats.exp }} / {{ player.stats.maxExp }})
+        {{ expText }}
       </span>
     </div>
 
@@ -74,8 +74,8 @@
 
           <!-- 球心金色太极徽标与数字 -->
           <div class="absolute inset-0 flex flex-col items-center justify-center text-[10px] font-mono font-bold leading-tight pointer-events-none text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
-            <span class="text-rose-200">{{ player.stats.hp }}</span>
-            <span class="text-cyan-200">{{ player.stats.mp }}</span>
+            <span class="text-rose-200">{{ hpText }}</span>
+            <span class="text-cyan-200">{{ mpText }}</span>
           </div>
 
           <!-- 玻璃反光弧形罩 -->
@@ -283,6 +283,7 @@ const props = defineProps<{
   inventory: ItemInstance[];
   logs: BattleLog[];
   isSoundOn: boolean;
+  uiTick?: number;
 }>();
 
 defineEmits<{
@@ -315,25 +316,45 @@ const getLogClass = (log: BattleLog) => {
 };
 
 const expPercent = computed(() => {
+  const _ = props.uiTick;
   if (!props.player.stats.maxExp) return 0;
   return Math.min(100, (props.player.stats.exp / props.player.stats.maxExp) * 100);
 });
 
+const expText = computed(() => {
+  const _ = props.uiTick;
+  return `【经验】 ${expPercent.value.toFixed(1)}% (${props.player.stats.exp} / ${props.player.stats.maxExp})`;
+});
+
 const hpPercent = computed(() => {
+  const _ = props.uiTick;
   return Math.max(0, Math.min(100, (props.player.stats.hp / props.player.stats.maxHp) * 100));
 });
 
 const mpPercent = computed(() => {
+  const _ = props.uiTick;
   return Math.max(0, Math.min(100, (props.player.stats.mp / props.player.stats.maxMp) * 100));
 });
 
+const hpText = computed(() => {
+  const _ = props.uiTick;
+  return props.player.stats.hp;
+});
+
+const mpText = computed(() => {
+  const _ = props.uiTick;
+  return props.player.stats.mp;
+});
+
 const hpPotionCount = computed(() => {
+  const _ = props.uiTick;
   return props.inventory
     .filter(i => i.type === 'potion' && (i.recoverHp || 0) > 0)
     .reduce((sum, i) => sum + (i.count || 1), 0);
 });
 
 const mpPotionCount = computed(() => {
+  const _ = props.uiTick;
   return props.inventory
     .filter(i => i.type === 'potion' && (i.recoverMp || 0) > 0)
     .reduce((sum, i) => sum + (i.count || 1), 0);

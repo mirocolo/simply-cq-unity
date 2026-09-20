@@ -123,6 +123,7 @@ const props = defineProps<{
   selectedMonster: Entity | null;
   isAutoEnabled: boolean;
   currentMapName?: string;
+  uiTick?: number;
 }>();
 
 defineEmits<{
@@ -131,6 +132,7 @@ defineEmits<{
 
 // 雷达上只显示离玩家 12 格以内的怪物
 const radarMonsters = computed(() => {
+  const _ = props.uiTick;
   if (!props.monsters) return [];
   const px = props.player.gridPos.x;
   const py = props.player.gridPos.y;

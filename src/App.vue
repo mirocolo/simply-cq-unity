@@ -14,6 +14,7 @@
       :selectedMonster="selectedMonster"
       :isAutoEnabled="world.autoConfig.enabled"
       :currentMapName="world.currentMap.name"
+      :uiTick="uiTick"
       @toggleAuto="toggleAutoPilot"
     />
 
@@ -24,6 +25,7 @@
       :inventory="world.inventory"
       :logs="world.battleLogs"
       :isSoundOn="isSoundOn"
+      :uiTick="uiTick"
       @castSkill="handleCastSkill"
       @useHpPotion="handleUseHpPotion"
       @useMpPotion="handleUseMpPotion"
@@ -124,7 +126,9 @@
       <MonsterCodexModal 
         v-if="activeModal === 'codex'"
         :world="world"
+        :uiTick="uiTick"
         @close="activeModal = null"
+        @claim="syncUI"
       />
     </Transition>
 
@@ -180,7 +184,11 @@ const world = shallowRef(rawWorld);
 const renderer = markRaw(new IsometricRenderer());
 const sound = markRaw(new SoundEffects());
 
-const syncUI = () => triggerRef(world);
+const uiTick = ref(0);
+const syncUI = () => {
+  uiTick.value++;
+  triggerRef(world);
+};
 
 const selectedTargetId = ref<string | null>(null);
 const activeModal = ref<'character' | 'inventory' | 'autopilot' | 'settings' | 'special_ring' | 'world_map' | 'enhance' | 'codex' | 'talent' | null>(null);
@@ -451,6 +459,7 @@ onMounted(() => {
 
   tickTimer = window.setInterval(() => {
     rawWorld.tick();
+    uiTick.value++;
     triggerRef(world);
   }, 100);
 

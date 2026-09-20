@@ -961,14 +961,14 @@ export class IsometricRenderer {
     ctx.fillRect(-0.8, -4, 1.6, 8);
     ctx.restore();
 
-    // 7. 右手佩戴神兵利器 (Mainhand Weapon)
+    // 7. 右手佩戴神兵利器 (Mainhand Weapon - 昂扬外指持刃，彻底消除对胸甲与面甲遮挡)
     ctx.save();
-    ctx.translate(7, -18 + bobY);
+    ctx.translate(9, -15 + bobY);
 
     if (isAttacking) {
       ctx.rotate(Math.PI / 2.6);
     } else {
-      ctx.rotate(-Math.PI * 0.18 + Math.sin(this.animFrame * 0.08) * 0.04);
+      ctx.rotate(Math.PI * 0.22 + Math.sin(this.animFrame * 0.08) * 0.04);
     }
 
     const weaponLvl = world.slotEnhancements['weapon'] || 0;

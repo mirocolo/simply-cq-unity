@@ -2081,6 +2081,10 @@ export class GameWorld {
     this.player.stats.exp += amount;
     this.autoStats.expGained += amount;
 
+    if (amount > 0) {
+      this.addDamagePopup(this.player.gridPos, `+${amount} 经验`, '#34d399');
+    }
+
     const oldMaxSlots = this.getMaxInventorySlots();
 
     while (this.player.stats.exp >= this.player.stats.maxExp) {
