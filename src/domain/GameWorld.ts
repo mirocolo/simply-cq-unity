@@ -1078,9 +1078,9 @@ export class GameWorld {
   tick(): void {
     this.currentTick++;
 
-    // 震屏衰减
+    // 震屏衰减 (快速衰减，杜绝持续晃动)
     if (this.screenShake > 0) {
-      this.screenShake = Math.max(0, this.screenShake - 1.5);
+      this.screenShake = Math.max(0, this.screenShake - 3.0);
     }
 
     // 连斩连击倒计时 (4秒内未出刀连击断开)
@@ -1747,7 +1747,6 @@ export class GameWorld {
     // 播放残影剑鸣音效与青金残影刀光
     this.onSound?.('phantom');
     this.onSlashVFX?.(attacker.gridPos, attacker.direction, false, attacker.stats.haste, true);
-    this.screenShake = Math.max(this.screenShake, 5);
 
     // 飘字：金色高亮 ⚡连击 / ⚡残影暴击
     const text = result.isCrit ? `⚡残影暴击 -${phantomDamage}!` : `⚡连击 -${phantomDamage}!`;
@@ -1946,18 +1945,16 @@ export class GameWorld {
     const ky = Math.sign(target.gridPos.y - attacker.gridPos.y) * (isHeaven ? 8 : 4);
     target.knockbackOffset = { x: kx, y: ky };
 
-    // 震屏力度 (逐日 18px, 开天 15px, 烈火 14px, 暴击 8px, 普通 3px)
+    // 震屏力度：仅在大招重击时微幅震动，普通平砍不震屏，彻底根除画面晃动感
     if (attacker.isPlayer) {
       if (isSun) {
-        this.screenShake = 18;
-      } else if (isHeaven) {
-        this.screenShake = 15;
-      } else if (isFire) {
-        this.screenShake = 14;
+        this.screenShake = 6;
+      } else if (isHeaven || isFire) {
+        this.screenShake = 4;
       } else if (result.isCrit || target.isWeakened) {
-        this.screenShake = 8;
+        this.screenShake = 2;
       } else {
-        this.screenShake = Math.max(this.screenShake, 3);
+        this.screenShake = 0;
       }
       this.onSound?.((isFire || isSun || isHeaven || result.isCrit || target.isWeakened) ? 'crit' : 'hit');
     }

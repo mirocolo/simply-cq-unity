@@ -46,17 +46,11 @@ const handleCanvasClick = (event: MouseEvent) => {
   const clickX = (event.clientX - rect.left) * dpr;
   const clickY = (event.clientY - rect.top) * dpr;
 
-  // 计算相机偏移
+  // 计算相机偏移 (直接使用渲染器平滑跟随后的实际屏幕相机坐标，保证点击拾取与画面完全一致)
+  const camPos = props.renderer.getCamPos();
+  const camX = camPos.x;
+  const camY = camPos.y;
   const p = props.world.player;
-  let pInterpX = p.gridPos.x;
-  let pInterpY = p.gridPos.y;
-  if (p.targetGridPos) {
-    pInterpX += (p.targetGridPos.x - p.gridPos.x) * p.moveProgress;
-    pInterpY += (p.targetGridPos.y - p.gridPos.y) * p.moveProgress;
-  }
-  const playerScreen = props.renderer.gridToScreen(pInterpX, pInterpY);
-  const camX = playerScreen.x - canvasRef.value.width / 2;
-  const camY = playerScreen.y - canvasRef.value.height / 2;
 
   // 检查是否点中了某个活着的怪物
   let clickedMonsterId: string | null = null;
