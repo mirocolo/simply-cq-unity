@@ -42,6 +42,7 @@ import { TALENT_DEFINITIONS } from './definitions/talents';
 import { CodexManager } from './managers/CodexManager';
 import { EconomyManager } from './managers/EconomyManager';
 import { InventoryManager } from './managers/InventoryManager';
+import { EnhancementManager } from './managers/EnhancementManager';
 
 const DIR_OFFSETS: Record<Direction8, { x: number; y: number }> = {
   0: { x: 0, y: -1 },
@@ -54,10 +55,25 @@ const DIR_OFFSETS: Record<Direction8, { x: number; y: number }> = {
   7: { x: -1, y: -1 }
 };
 
+export type GameWorldSaveData = {
+  player: Entity;
+  inventory: ItemInstance[];
+  equipped: Partial<Record<EquipSlot, ItemInstance>>;
+  skills: SkillDef[];
+  autoConfig: AutoPilotConfig;
+  autoStats: AutoPilotStats;
+  currentMapId: string;
+  slotEnhancements?: Partial<Record<EquipSlot, number>>;
+  slotEnhancePity?: Partial<Record<EquipSlot, number>>;
+  monsterKills?: Record<string, number>;
+  codexClaimedTiers?: Record<string, number[]>;
+  activeBounties?: BountyTask[];
+  bountyRefreshCost?: number;
+  talentAllocations?: Record<string, number>;
+};
+
 export class GameWorld {
   mapManager = new MapManager('map_biqi_0');
-  slotEnhancements: Partial<Record<EquipSlot, number>> = {};
-  slotEnhancePity: Partial<Record<EquipSlot, number>> = {};
 
   get currentMap(): MapDefinition {
     return this.mapManager.currentMap;
@@ -74,11 +90,18 @@ export class GameWorld {
   readonly codexManager: CodexManager;
   readonly economyManager: EconomyManager;
   readonly inventoryManager: InventoryManager;
+  readonly enhancementManager: EnhancementManager;
 
   player: Entity;
   monsters: Entity[] = [];
   groundItems: GroundItem[] = [];
   skills: SkillDef[] = [];
+
+  get slotEnhancements(): Partial<Record<EquipSlot, number>> { return this.enhancementManager.slotEnhancements; }
+  set slotEnhancements(val: Partial<Record<EquipSlot, number>>) { this.enhancementManager.slotEnhancements = val; }
+
+  get slotEnhancePity(): Partial<Record<EquipSlot, number>> { return this.enhancementManager.slotEnhancePity; }
+  set slotEnhancePity(val: Partial<Record<EquipSlot, number>>) { this.enhancementManager.slotEnhancePity = val; }
 
   get inventory(): ItemInstance[] { return this.inventoryManager.inventory; }
   set inventory(val: ItemInstance[]) { this.inventoryManager.inventory = val; }
@@ -139,6 +162,15 @@ export class GameWorld {
     this.codexManager = new CodexManager(this);
     this.economyManager = new EconomyManager(this);
     this.inventoryManager = new InventoryManager(this);
+    this.enhancementManager = new EnhancementManager({
+      getPlayer: () => this.player,
+      getInventory: () => this.inventory,
+      recalculatePlayerStats: () => this.recalculatePlayerStats(),
+      onSound: (name: 'hit' | 'crit' | 'levelup') => this.onSound?.(name as any),
+      setScreenShake: (val: number) => { this.screenShake = val; },
+      addDamagePopup: (pos: { x: number; y: number }, text: string, color: string, isCrit?: boolean) => this.addDamagePopup(pos, text, color, isCrit),
+      addBattleLog: (text: string, type: 'kill' | 'drop' | 'system' | 'damage') => this.addBattleLog(text, type)
+    });
     this.player = this.createPlayer();
     this.skills = Object.values(SKILL_DEFINITIONS).map(s => ({ ...s }));
     this.initStartingInventory();
@@ -647,254 +679,27 @@ export class GameWorld {
   }
 
   getMaterialCount(defId: string): number {
-    const it = this.inventory.find(i => i.defId === defId);
-    return it ? (it.count || 1) : 0;
+    return this.enhancementManager.getMaterialCount(defId);
   }
 
   consumeMaterial(defId: string, count: number): boolean {
-    if (count <= 0) return true;
-    const it = this.inventory.find(i => i.defId === defId);
-    if (!it || (it.count || 1) < count) return false;
-    it.count = (it.count || 1) - count;
-    if (it.count <= 0) {
-      const idx = this.inventory.indexOf(it);
-      if (idx !== -1) this.inventory.splice(idx, 1);
-    }
-    return true;
+    return this.enhancementManager.consumeMaterial(defId, count);
   }
 
-  /**
-   * 检查某个部位是否能够支付下一次强化消耗
-   */
-  canAffordEnhance(slot: EquipSlot): { can: boolean; reason?: string; cost?: (typeof ENHANCE_COSTS)[number] } {
-    if (!ENHANCEABLE_SLOTS.includes(slot)) {
-      return { can: false, reason: '该部位不支持强化！' };
-    }
-
-    const currentLevel = this.slotEnhancements[slot] || 0;
-    if (currentLevel >= MAX_ENHANCE_LEVEL) {
-      return { can: false, reason: '该部位已达到当前最高强化等级(+15)！' };
-    }
-
-    const cost = ENHANCE_COSTS[currentLevel];
-    if (!cost) {
-      return { can: false, reason: '未找到强化消耗配置' };
-    }
-
-    if (this.player.stats.gold < cost.gold) {
-      return { can: false, reason: `金币不足！需要 ${cost.gold.toLocaleString()} 金币`, cost };
-    }
-
-    const ironCount = this.getMaterialCount('mat_iron_ore');
-    const pureCount = this.getMaterialCount('mat_pure_iron');
-    const godCount = this.getMaterialCount('mat_god_stone');
-
-    if (cost.ironOre > 0 && ironCount < cost.ironOre) {
-      return { can: false, reason: `黑铁矿石不足！需要 ${cost.ironOre} 个（当前持有 ${ironCount} 个）`, cost };
-    }
-    if (cost.pureIron > 0 && pureCount < cost.pureIron) {
-      return { can: false, reason: `纯黑玄铁不足！需要 ${cost.pureIron} 个（当前持有 ${pureCount} 个）`, cost };
-    }
-    if (cost.godStone > 0 && godCount < cost.godStone) {
-      return { can: false, reason: `天工神石不足！需要 ${cost.godStone} 个（当前持有 ${godCount} 个）`, cost };
-    }
-
-    return { can: true, cost };
+  canAffordEnhance(slot: EquipSlot) {
+    return this.enhancementManager.canAffordEnhance(slot);
   }
 
-  /**
-   * 执行一次纯粹的扣费与成功率掷骰
-   */
-  private executeSingleEnhanceStep(slot: EquipSlot, cost: (typeof ENHANCE_COSTS)[number]): boolean {
-    this.player.stats.gold -= cost.gold;
-    if (cost.ironOre > 0) this.consumeMaterial('mat_iron_ore', cost.ironOre);
-    if (cost.pureIron > 0) this.consumeMaterial('mat_pure_iron', cost.pureIron);
-    if (cost.godStone > 0) this.consumeMaterial('mat_god_stone', cost.godStone);
-
-    const pity = this.slotEnhancePity[slot] || 0;
-    const finalRate = Math.min(1.0, cost.baseSuccessRate + pity * 0.05);
-    const isSuccess = Math.random() < finalRate;
-
-    if (isSuccess) {
-      this.slotEnhancements[slot] = (this.slotEnhancements[slot] || 0) + 1;
-      this.slotEnhancePity[slot] = 0;
-      return true;
-    } else {
-      this.slotEnhancePity[slot] = pity + 1;
-      return false;
-    }
+  enhanceSlot(slot: EquipSlot) {
+    return this.enhancementManager.enhanceSlot(slot);
   }
 
-  enhanceSlot(slot: EquipSlot): { success: boolean; message: string; newLevel: number } {
-    const check = this.canAffordEnhance(slot);
-    const currentLevel = this.slotEnhancements[slot] || 0;
-    if (!check.can || !check.cost) {
-      return { success: false, message: check.reason || '无法强化', newLevel: currentLevel };
-    }
-
-    const slotNames: Record<string, string> = {
-      weapon: '武器', armor: '衣服', helmet: '头盔', necklace: '项链',
-      bracelet_l: '左手镯', bracelet_r: '右手镯', ring_l: '左戒指', ring_r: '右戒指'
-    };
-    const sName = slotNames[slot] || slot;
-
-    const isSuccess = this.executeSingleEnhanceStep(slot, check.cost);
-    const newLevel = this.slotEnhancements[slot] || 0;
-
-    if (isSuccess) {
-      this.recalculatePlayerStats();
-      this.onSound?.('crit');
-      this.screenShake = 12;
-
-      this.addDamagePopup(this.player.gridPos, `✨强化+${newLevel}!`, '#facc15', true);
-      this.addBattleLog(`【锻造成功】乾坤炉火纯青！部位【${sName}】淬炼升华至 +${newLevel}！战力大幅飙升！`, 'system');
-      return { success: true, message: `强化成功！【${sName}】升至 +${newLevel}！`, newLevel };
-    } else {
-      const nextPity = this.slotEnhancePity[slot] || 0;
-      this.onSound?.('hit');
-      this.addDamagePopup(this.player.gridPos, '💨淬火未成', '#94a3b8');
-      this.addBattleLog(`【锻造未成】部位【${sName}】淬炼失手，等级保留不降！保底概率累加 +5%（当前保底: +${nextPity * 5}%）！`, 'system');
-      return { success: false, message: `强化未成！保底累加 +5%（当前保底: +${nextPity * 5}%）`, newLevel };
-    }
+  enhanceSlotOneKey(slot: EquipSlot, maxTries: number = 30) {
+    return this.enhancementManager.enhanceSlotOneKey(slot, maxTries);
   }
 
-  /**
-   * 一键强化指定部位 (持续淬火直到升级成功或材料/金币耗尽)
-   */
-  enhanceSlotOneKey(slot: EquipSlot, maxTries: number = 30): {
-    successCount: number;
-    failCount: number;
-    startLevel: number;
-    newLevel: number;
-    message: string;
-  } {
-    const slotNames: Record<string, string> = {
-      weapon: '武器', armor: '衣服', helmet: '头盔', necklace: '项链',
-      bracelet_l: '左手镯', bracelet_r: '右手镯', ring_l: '左戒指', ring_r: '右戒指'
-    };
-    const sName = slotNames[slot] || slot;
-    const startLevel = this.slotEnhancements[slot] || 0;
-
-    let successCount = 0;
-    let failCount = 0;
-    let stopReason = '';
-
-    for (let i = 0; i < maxTries; i++) {
-      const check = this.canAffordEnhance(slot);
-      if (!check.can || !check.cost) {
-        stopReason = check.reason || '材料不足';
-        break;
-      }
-
-      const success = this.executeSingleEnhanceStep(slot, check.cost);
-      if (success) {
-        successCount++;
-        // 成功升级后即刻完成本轮一键提升
-        break;
-      } else {
-        failCount++;
-      }
-    }
-
-    const newLevel = this.slotEnhancements[slot] || 0;
-    if (successCount > 0) {
-      this.recalculatePlayerStats();
-      this.onSound?.('crit');
-      this.screenShake = 12;
-      this.addDamagePopup(this.player.gridPos, `✨强化+${newLevel}!`, '#facc15', true);
-      const failText = failCount > 0 ? `（经历 ${failCount} 次淬炼失手）` : '';
-      const msg = `【${sName}】一键淬火成功升至 +${newLevel}！${failText}`;
-      this.addBattleLog(`【锻造大成】${msg}`, 'system');
-      return { successCount, failCount, startLevel, newLevel, message: msg };
-    } else {
-      const pity = this.slotEnhancePity[slot] || 0;
-      const msg = failCount > 0 
-        ? `【${sName}】一键强化尝试 ${failCount} 次未成，${stopReason}，累计保底率 +${pity * 5}%！`
-        : `【${sName}】无法进行强化：${stopReason}`;
-      return { successCount: 0, failCount, startLevel, newLevel, message: msg };
-    }
-  }
-
-  /**
-   * 一键强化全身八大部位 (基于全身强化共鸣最优解：总是优先强化等级最低的部位)
-   */
-  enhanceAllSlotsOneKey(maxTries: number = 100): {
-    totalSuccess: number;
-    totalFails: number;
-    upgradedSlots: Partial<Record<EquipSlot, number>>;
-    minLevelBefore: number;
-    minLevelAfter: number;
-    combatPowerDiff: number;
-    message: string;
-  } {
-    const oldCp = this.player.stats.combatPower;
-    const minLevelBefore = Math.min(...ENHANCEABLE_SLOTS.map(s => this.slotEnhancements[s] || 0));
-
-    let totalSuccess = 0;
-    let totalFails = 0;
-    const upgradedSlots: Partial<Record<EquipSlot, number>> = {};
-
-    for (let step = 0; step < maxTries; step++) {
-      // 找出所有当前可负担强化的部位
-      const affordableSlots: { slot: EquipSlot; level: number; cost: (typeof ENHANCE_COSTS)[number] }[] = [];
-      for (const s of ENHANCEABLE_SLOTS) {
-        const check = this.canAffordEnhance(s);
-        if (check.can && check.cost) {
-          affordableSlots.push({
-            slot: s,
-            level: this.slotEnhancements[s] || 0,
-            cost: check.cost
-          });
-        }
-      }
-
-      if (affordableSlots.length === 0) {
-        // 没有任何部位可以强化（材料/金币耗尽或全部满级）
-        break;
-      }
-
-      // 核心算法：优先挑选当前等级最低的部位进行淬火（同等级按部位自然顺序）
-      affordableSlots.sort((a, b) => a.level - b.level);
-      const target = affordableSlots[0];
-
-      const success = this.executeSingleEnhanceStep(target.slot, target.cost);
-      if (success) {
-        totalSuccess++;
-        upgradedSlots[target.slot] = this.slotEnhancements[target.slot];
-      } else {
-        totalFails++;
-      }
-    }
-
-    const minLevelAfter = Math.min(...ENHANCEABLE_SLOTS.map(s => this.slotEnhancements[s] || 0));
-    this.recalculatePlayerStats();
-    const combatPowerDiff = this.player.stats.combatPower - oldCp;
-
-    let message = '';
-    if (totalSuccess > 0) {
-      this.onSound?.('levelup');
-      this.screenShake = 10;
-      this.addDamagePopup(this.player.gridPos, `🌟全套强化+${totalSuccess}!`, '#38bdf8', true);
-      const resonanceText = minLevelAfter > minLevelBefore ? `，全套共鸣突破至 +${minLevelAfter}` : '';
-      message = `一键全身强化完成：成功 ${totalSuccess} 次，失败 ${totalFails} 次${resonanceText}，战力提升 +${combatPowerDiff}！`;
-      this.addBattleLog(`【太古天工】${message}`, 'system');
-    } else if (totalFails > 0) {
-      this.onSound?.('hit');
-      message = `一键全身强化尝试 ${totalFails} 次均未成功，已积累大量幸运保底概率！`;
-      this.addBattleLog(`【太古天工】${message}`, 'system');
-    } else {
-      message = '当前金币或矿石材料不足，无法进行一键强化！请先通过悬赏或刷怪获取材料。';
-    }
-
-    return {
-      totalSuccess,
-      totalFails,
-      upgradedSlots,
-      minLevelBefore,
-      minLevelAfter,
-      combatPowerDiff,
-      message
-    };
+  enhanceAllSlotsOneKey(maxTries: number = 100) {
+    return this.enhancementManager.enhanceAllSlotsOneKey(maxTries);
   }
 
   tick(): void {

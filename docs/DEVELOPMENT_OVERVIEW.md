@@ -395,6 +395,9 @@ npm run build
 
 ## 八、未来版本演进路线图 (Roadmap)
 
+> 本节保留技术演进背景。后续版本的产品优先级、玩法范围与验收标准，以
+> [`GAMEPLAY_DESIGN_ROADMAP.md`](./GAMEPLAY_DESIGN_ROADMAP.md) 为准。
+
 1. **多位面多层推图系统 (Multi-Plane Dynamic Dungeons)**：
    - 将当前单张 36x36 地图扩展为具备动态无缝切换的多层地宫与野外森林；
    - 接入传送门（Portal）动态判定与飞升阶数门槛限制；
