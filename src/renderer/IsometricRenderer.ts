@@ -413,7 +413,7 @@ export class IsometricRenderer {
     ctx.save();
     ctx.font = 'bold 12px "SimSun", "Songti SC", sans-serif';
     const tagText = portal.name;
-    const tw = ctx.measureText(tagText).width;
+    const tw = (ctx.measureText && ctx.measureText(tagText)?.width) || 60;
     const pad = 6;
     const tagX = pos.x - tw / 2 - pad;
     const tagY = pos.y - 50;
@@ -571,7 +571,7 @@ export class IsometricRenderer {
     ctx.save();
     ctx.translate(sx, sy);
 
-    const scale = ent.isBoss ? 1.7 : (ent.isElite ? 1.25 : 1.0);
+    const scale = ent.isPlayer ? 1.85 : (ent.isBoss ? 3.0 : (ent.isElite ? 2.25 : 1.65));
     const shadowGrad = ctx.createRadialGradient(0, 0, 2 * scale, 0, 0, 16 * scale);
     shadowGrad.addColorStop(0, 'rgba(0, 0, 0, 0.65)');
     shadowGrad.addColorStop(0.7, 'rgba(0, 0, 0, 0.28)');
@@ -618,13 +618,13 @@ export class IsometricRenderer {
     }
 
     if (ent.isPlayer) {
-      this.drawPlayerWarrior(ctx, ent, world);
+      this.drawPlayerWarrior(ctx, ent, world, scale);
     } else {
       this.drawMonster(ctx, ent, scale);
     }
 
     const barW = Math.floor(34 * scale);
-    const barH = 4;
+    const barH = Math.max(4, Math.floor(2.4 * scale));
     const barY = -42 * scale;
 
     // 首领限时玄金护盾条
@@ -653,7 +653,7 @@ export class IsometricRenderer {
     // 破盾瘫痪虚弱旋转晕眩星标
     if (ent.isWeakened) {
       ctx.save();
-      ctx.font = '14px sans-serif';
+      ctx.font = '16px sans-serif';
       ctx.textAlign = 'center';
       const starAngle = (this.animFrame * 0.12) % (Math.PI * 2);
       const offX = Math.cos(starAngle) * 16 * scale;
@@ -662,11 +662,11 @@ export class IsometricRenderer {
       ctx.restore();
     }
 
-    ctx.font = ent.isBoss ? 'bold 12px "SimSun", "Songti SC", serif' : '11px "SimSun", "Songti SC", serif';
+    ctx.font = ent.isBoss ? 'bold 15px "SimSun", "Songti SC", serif' : (ent.isElite || ent.isPlayer ? 'bold 13px "SimSun", "Songti SC", serif' : 'bold 12px "SimSun", "Songti SC", serif');
     ctx.textAlign = 'center';
     ctx.fillStyle = ent.invincibleTicks && ent.invincibleTicks > 0 ? '#38bdf8' : (ent.isPlayer ? '#fef08a' : (ent.isBoss ? '#f87171' : (ent.isElite ? '#fde047' : '#e2e8f0')));
     ctx.shadowColor = '#000000';
-    ctx.shadowBlur = 3;
+    ctx.shadowBlur = 4;
     const displayName = ent.invincibleTicks && ent.invincibleTicks > 0 
       ? `🛡️[无敌] ${ent.name}` 
       : (ent.shieldHp && ent.shieldHp > 0 ? `🛡️[金身] ${ent.name}` : (ent.isWeakened ? `💫[瘫痪] ${ent.name}` : ent.name));
@@ -676,7 +676,10 @@ export class IsometricRenderer {
     ctx.restore();
   }
 
-  private drawPlayerWarrior(ctx: CanvasRenderingContext2D, p: Entity, world: GameWorld): void {
+  private drawPlayerWarrior(ctx: CanvasRenderingContext2D, p: Entity, world: GameWorld, scale: number = 1.85): void {
+    ctx.save();
+    ctx.scale(scale, scale);
+
     const isAttacking = p.state === 'attacking';
     const isWalking = p.state === 'walking';
     const hasDragonBlade = p.stats.maxDC >= 35;
@@ -1068,6 +1071,7 @@ export class IsometricRenderer {
     ctx.restore();
 
     ctx.restore(); // 恢复镜像与朝向
+    ctx.restore(); // 恢复人物全身缩放
   }
 
   private drawMonster(ctx: CanvasRenderingContext2D, m: Entity, scale: number): void {

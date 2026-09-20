@@ -52,13 +52,15 @@ const handleCanvasClick = (event: MouseEvent) => {
   const camY = camPos.y;
   const p = props.world.player;
 
-  // 检查是否点中了某个活着的怪物
+  // 检查是否点中了某个活着的怪物 (精准适配放大后的怪物碰撞体积)
   let clickedMonsterId: string | null = null;
   for (const m of props.world.monsters) {
     if (m.state === 'dead') continue;
+    const mScale = m.isBoss ? 3.0 : (m.isElite ? 2.25 : 1.65);
     const mScr = props.renderer.gridToScreen(m.gridPos.x, m.gridPos.y);
-    const dist = Math.hypot(clickX - (mScr.x - camX), clickY - (mScr.y - camY - 20));
-    if (dist < 32) {
+    const hitRadius = Math.max(38, 24 * mScale);
+    const dist = Math.hypot(clickX - (mScr.x - camX), clickY - (mScr.y - camY - 18 * mScale));
+    if (dist < hitRadius) {
       clickedMonsterId = m.id;
       break;
     }
