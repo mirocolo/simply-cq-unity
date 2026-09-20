@@ -123,9 +123,10 @@ const highHasteStats = StatCalculator.applyEquipment(
 assert((highHasteStats.hasteCdr || 0) > 0, `急速转化为技能冷却 CDR: +${((highHasteStats.hasteCdr || 0) * 100).toFixed(1)}%`);
 assert((highHasteStats.phantomStrikeRate || 0) > 0, `急速溢出转化为风雷残影率: +${((highHasteStats.phantomStrikeRate || 0) * 100).toFixed(1)}%`);
 
+const targetMonster = { ...mockMonster, stats: { ...mockMonster.stats, dodgeRate: 0 } };
 const attackWithHaste = CombatSystem.calculateAttack(
   { ...mockPlayer, stats: { ...mockPlayer.stats, haste: 75, luck: 9 } },
-  mockMonster
+  targetMonster
 );
 assert(attackWithHaste.extraTrueDamage! > 0, `急速溢出附带风雷真伤: +${attackWithHaste.extraTrueDamage}`);
 assert(attackWithHaste.isHit, '命中有效');

@@ -36,7 +36,10 @@ export class CombatSystem {
         isHit: false,
         isDodge: true,
         skillUsed: skill,
-        isCleave: isSecondaryCleave
+        isCleave: isSecondaryCleave,
+        phantomStrikes: 0,
+        extraTrueDamage: 0,
+        reflectedDamage: 0
       };
     }
 

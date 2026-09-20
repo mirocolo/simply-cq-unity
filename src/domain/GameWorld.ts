@@ -39,6 +39,9 @@ import { TelegraphedAOE, MonsterAffixType } from '../types/affix';
 import { BountyTask, MonsterCodexDef } from '../types/codex';
 import { MONSTER_CODEX_DEFINITIONS, generateBounties } from './definitions/codex';
 import { TALENT_DEFINITIONS } from './definitions/talents';
+import { CodexManager } from './managers/CodexManager';
+import { EconomyManager } from './managers/EconomyManager';
+import { InventoryManager } from './managers/InventoryManager';
 
 const DIR_OFFSETS: Record<Direction8, { x: number; y: number }> = {
   0: { x: 0, y: -1 },
@@ -66,28 +69,44 @@ export class GameWorld {
     return this.mapManager.currentMap.height;
   }
 
-  private lastFullBagWarnTick = 0;
-  private isEmergencyCleaning = false;
+  lastFullBagWarnTick = 0;
+
+  readonly codexManager: CodexManager;
+  readonly economyManager: EconomyManager;
+  readonly inventoryManager: InventoryManager;
 
   player: Entity;
   monsters: Entity[] = [];
   groundItems: GroundItem[] = [];
-  inventory: ItemInstance[] = [];
-  equipped: Partial<Record<EquipSlot, ItemInstance>> = {};
   skills: SkillDef[] = [];
-  
+
+  get inventory(): ItemInstance[] { return this.inventoryManager.inventory; }
+  set inventory(val: ItemInstance[]) { this.inventoryManager.inventory = val; }
+
+  get equipped(): Partial<Record<EquipSlot, ItemInstance>> { return this.inventoryManager.equipped; }
+  set equipped(val: Partial<Record<EquipSlot, ItemInstance>>) { this.inventoryManager.equipped = val; }
+
+  get codexClaimedTiers(): Record<string, number[]> { return this.codexManager.codexClaimedTiers; }
+  set codexClaimedTiers(val: Record<string, number[]>) { this.codexManager.codexClaimedTiers = val; }
+
+  get activeBounties(): BountyTask[] { return this.codexManager.activeBounties; }
+  set activeBounties(val: BountyTask[]) { this.codexManager.activeBounties = val; }
+
+  get bountyRefreshCost(): number { return this.codexManager.bountyRefreshCost; }
+  set bountyRefreshCost(val: number) { this.codexManager.bountyRefreshCost = val; }
+
   autoPilot = new AutoPilot();
   autoConfig: AutoPilotConfig = {
     enabled: true,
     autoHpPotion: true,
-    autoPotionHpPercent: 75, // 默认75%血线智能喝药，保障新手生存
+    autoPotionHpPercent: 75,
     autoMpPotion: true,
     autoPotionMpPercent: 35,
     autoSkill: true,
     autoPickup: true,
     autoRecycleWeaker: true,
-    autoRecycleMaxQuality: 2, // 默认自动熔炼蓝装及以下，确保挂机永不爆仓
-    searchRadius: 36, // 适配 48x48 大地图索敌
+    autoRecycleMaxQuality: 2,
+    searchRadius: 36,
     progressionMode: false
   };
   autoStats: AutoPilotStats = {
@@ -100,19 +119,13 @@ export class GameWorld {
     orangeDrops: 0
   };
 
-  // 战斗快感增强：震屏、连斩数与狂暴怒气
   screenShake = 0;
   comboCount = 0;
   comboTimer = 0;
   isBerserk = false;
 
-  // 首领技能 AOE 预警圈
   aoeWarnings: TelegraphedAOE[] = [];
-  // 百妖封魔录与悬赏令
   monsterKills: Record<string, number> = {};
-  codexClaimedTiers: Record<string, number[]> = {};
-  activeBounties: BountyTask[] = [];
-  // 战士三大变异流派天赋配置
   talentAllocations: Record<string, number> = {};
 
   damagePopups: DamagePopup[] = [];
@@ -123,10 +136,12 @@ export class GameWorld {
   onSlashVFX?: (gridPos: GridCoord, dir: Direction8, isFire: boolean, haste: number, isPhantom?: boolean) => void;
 
   constructor() {
+    this.codexManager = new CodexManager(this);
+    this.economyManager = new EconomyManager(this);
+    this.inventoryManager = new InventoryManager(this);
     this.player = this.createPlayer();
     this.skills = Object.values(SKILL_DEFINITIONS).map(s => ({ ...s }));
     this.initStartingInventory();
-    this.activeBounties = generateBounties();
     this.spawnMonstersForMap();
   }
 
@@ -135,233 +150,39 @@ export class GameWorld {
   };
 
   hasSpecialEffect(effect: string): boolean {
-    for (const it of Object.values(this.equipped)) {
-      if (it && it.specialEffect === effect) return true;
-    }
-    return false;
+    return this.inventoryManager.hasSpecialEffect(effect);
   }
 
-  /**
-   * 汇总所有已激活的百妖封魔录里程碑全属性加成
-   */
   getCodexStatsBonus(): { minDC: number; maxDC: number; minAC: number; maxAC: number; maxHp: number; critRate: number } {
-    let minDC = 0;
-    let maxDC = 0;
-    let minAC = 0;
-    let maxAC = 0;
-    let maxHp = 0;
-    let critRate = 0;
-
-    for (const [tmplId, tiers] of Object.entries(this.codexClaimedTiers)) {
-      const def = MONSTER_CODEX_DEFINITIONS[tmplId];
-      if (!def) continue;
-      for (const idx of tiers) {
-        const ms = def.milestones[idx];
-        if (ms) {
-          minDC += ms.minDC || 0;
-          maxDC += ms.maxDC || 0;
-          minAC += ms.minAC || 0;
-          maxAC += ms.maxAC || 0;
-          maxHp += ms.maxHp || 0;
-          critRate += ms.critRate || 0;
-        }
-      }
-    }
-    return { minDC, maxDC, minAC, maxAC, maxHp, critRate };
+    return this.codexManager.getCodexStatsBonus();
   }
 
-  /**
-   * 领取百妖封魔录里程碑成就奖励
-   */
   claimCodexReward(templateId: string, milestoneIdx: number): boolean {
-    const codex = MONSTER_CODEX_DEFINITIONS[templateId];
-    if (!codex) return false;
-    const milestone = codex.milestones[milestoneIdx];
-    if (!milestone) return false;
-    const kills = this.monsterKills[templateId] || 0;
-    if (kills < milestone.kills) return false;
-
-    if (!this.codexClaimedTiers[templateId]) {
-      this.codexClaimedTiers[templateId] = [];
-    }
-    if (this.codexClaimedTiers[templateId].includes(milestoneIdx)) return false;
-
-    this.codexClaimedTiers[templateId].push(milestoneIdx);
-    this.recalculatePlayerStats();
-    this.onSound?.('levelup');
-    this.addDamagePopup(this.player.gridPos, `📖封魔突破·${milestone.label}!`, '#fbbf24', true);
-    this.addBattleLog(`【百妖封魔录】成功达成 [${codex.name}·${milestone.label}]！获得全属性永久飞跃！`, 'system');
-    return true;
+    return this.codexManager.claimCodexReward(templateId, milestoneIdx);
   }
 
-  /**
-   * 一键领取所有已达成的百妖封魔录里程碑
-   */
   claimAllCodexRewards(): { count: number; statsGain: string } {
-    let totalClaimed = 0;
-    const oldBonus = this.getCodexStatsBonus();
-
-    for (const [templateId, codex] of Object.entries(MONSTER_CODEX_DEFINITIONS)) {
-      const kills = this.monsterKills[templateId] || 0;
-      if (!this.codexClaimedTiers[templateId]) {
-        this.codexClaimedTiers[templateId] = [];
-      }
-      const claimed = this.codexClaimedTiers[templateId];
-
-      for (let idx = 0; idx < codex.milestones.length; idx++) {
-        const ms = codex.milestones[idx];
-        if (kills >= ms.kills && !claimed.includes(idx)) {
-          claimed.push(idx);
-          totalClaimed++;
-        }
-      }
-    }
-
-    if (totalClaimed > 0) {
-      this.recalculatePlayerStats();
-      const newBonus = this.getCodexStatsBonus();
-      this.onSound?.('levelup');
-      this.addDamagePopup(this.player.gridPos, `📖一键参悟 x${totalClaimed}!`, '#fbbf24', true);
-      const hpDiff = newBonus.maxHp - oldBonus.maxHp;
-      const dcDiff = newBonus.maxDC - oldBonus.maxDC;
-      const acDiff = newBonus.maxAC - oldBonus.maxAC;
-      const critDiff = (newBonus.critRate - oldBonus.critRate) * 100;
-      const summaryParts = [];
-      if (hpDiff > 0) summaryParts.push(`生命+${hpDiff}`);
-      if (dcDiff > 0) summaryParts.push(`攻击+${dcDiff}`);
-      if (acDiff > 0) summaryParts.push(`防御+${acDiff}`);
-      if (critDiff > 0) summaryParts.push(`暴击+${critDiff.toFixed(1)}%`);
-      const statsGain = summaryParts.join('，') || '全属性飞跃';
-      this.addBattleLog(`【百妖封魔录】一键参悟了 ${totalClaimed} 阶魔物神髓！获得永久属性提升：${statsGain}！`, 'system');
-      return { count: totalClaimed, statsGain };
-    }
-
-    return { count: 0, statsGain: '' };
+    return this.codexManager.claimAllCodexRewards();
   }
 
-  /**
-   * 领取悬赏令奖励
-   */
   claimBounty(bountyId: string): boolean {
-    const bounty = this.activeBounties.find(b => b.id === bountyId);
-    if (!bounty || !bounty.completed || bounty.claimed) return false;
-    bounty.claimed = true;
-    this.player.stats.gold += bounty.rewardGold;
-    this.autoStats.goldGained += bounty.rewardGold;
-    if (bounty.rewardIronOre > 0) {
-      const it = DropSystem.createItemInstance('mat_iron_ore', undefined, bounty.rewardIronOre);
-      if (it) this.addItemToInventory(it);
-    }
-    if (bounty.rewardPureIron > 0) {
-      const it = DropSystem.createItemInstance('mat_pure_iron', undefined, bounty.rewardPureIron);
-      if (it) this.addItemToInventory(it);
-    }
-    if (bounty.rewardGodStone > 0) {
-      const it = DropSystem.createItemInstance('mat_god_stone', undefined, bounty.rewardGodStone);
-      if (it) this.addItemToInventory(it);
-    }
-    this.onSound?.('coin');
-    this.addDamagePopup(this.player.gridPos, `💰悬赏金 +${bounty.rewardGold}!`, '#facc15', true);
-    this.addBattleLog(`【悬赏交令】除魔大捷！完成 [${bounty.targetName}]，领取奖励：金币 +${bounty.rewardGold}，强化玄铁神石已存入背包！`, 'system');
-    return true;
+    return this.codexManager.claimBounty(bountyId);
   }
 
-  /**
-   * 一键领取所有已完成的悬赏令
-   */
   claimAllBounties(): { count: number; gold: number; iron: number; pureIron: number; godStone: number } {
-    let count = 0;
-    let gold = 0;
-    let iron = 0;
-    let pureIron = 0;
-    let godStone = 0;
-
-    for (const bounty of this.activeBounties) {
-      if (bounty.completed && !bounty.claimed) {
-        bounty.claimed = true;
-        count++;
-        gold += bounty.rewardGold;
-        iron += bounty.rewardIronOre || 0;
-        pureIron += bounty.rewardPureIron || 0;
-        godStone += bounty.rewardGodStone || 0;
-      }
-    }
-
-    if (count > 0) {
-      this.player.stats.gold += gold;
-      this.autoStats.goldGained += gold;
-      if (iron > 0) {
-        const it = DropSystem.createItemInstance('mat_iron_ore', undefined, iron);
-        if (it) this.addItemToInventory(it);
-      }
-      if (pureIron > 0) {
-        const it = DropSystem.createItemInstance('mat_pure_iron', undefined, pureIron);
-        if (it) this.addItemToInventory(it);
-      }
-      if (godStone > 0) {
-        const it = DropSystem.createItemInstance('mat_god_stone', undefined, godStone);
-        if (it) this.addItemToInventory(it);
-      }
-
-      this.onSound?.('coin');
-      this.addDamagePopup(this.player.gridPos, `💰悬赏一键结赏 x${count}!`, '#facc15', true);
-      this.addBattleLog(
-        `【万象悬赏令】一键交令 ${count} 项除魔委派！领取赏金 +${gold.toLocaleString()}，强化矿石玄铁已存入随身包裹！`,
-        'system'
-      );
-    }
-
-    return { count, gold, iron, pureIron, godStone };
+    return this.codexManager.claimAllBounties();
   }
 
-  /**
-   * 一键全部领取封魔录与悬赏令
-   */
   claimAllCodexAndBounties(): { codexCount: number; bountyCount: number; gold: number; message: string } {
-    const codexRes = this.claimAllCodexRewards();
-    const bountyRes = this.claimAllBounties();
-    const totalCount = codexRes.count + bountyRes.count;
-    if (totalCount === 0) {
-      return { codexCount: 0, bountyCount: 0, gold: 0, message: '暂无可领取的封魔神髓或悬赏奖励！' };
-    }
-    const msg = `一键领取成功！参悟 ${codexRes.count} 阶神髓，交令 ${bountyRes.count} 项悬赏，赏金 +${bountyRes.gold.toLocaleString()}！`;
-    return {
-      codexCount: codexRes.count,
-      bountyCount: bountyRes.count,
-      gold: bountyRes.gold,
-      message: msg
-    };
+    return this.codexManager.claimAllCodexAndBounties();
   }
 
-  /**
-   * 刷新悬赏令任务
-   */
   refreshBounties(): void {
-    this.activeBounties = generateBounties();
-    this.addBattleLog('【悬赏令刷新】万象除魔悬赏令已发布新委派，勇士速速前往封魔录(K)查验！', 'system');
+    this.codexManager.refreshBounties();
   }
 
-  /**
-   * 累积怪物击杀数并推进悬赏任务进度
-   */
   recordMonsterKill(templateId: string): void {
-    this.monsterKills[templateId] = (this.monsterKills[templateId] || 0) + 1;
-    // 兼容魔龙教主别名
-    if (templateId === 'm_molong_boss') {
-      this.monsterKills['m_dragon_boss'] = (this.monsterKills['m_dragon_boss'] || 0) + 1;
-    } else if (templateId === 'm_dragon_boss') {
-      this.monsterKills['m_molong_boss'] = (this.monsterKills['m_molong_boss'] || 0) + 1;
-    }
-
-    for (const b of this.activeBounties) {
-      if ((b.templateId === templateId || (b.templateId === 'm_molong_boss' && templateId === 'm_dragon_boss')) && !b.completed) {
-        b.currentKills++;
-        if (b.currentKills >= b.requiredKills) {
-          b.completed = true;
-          this.addBattleLog(`【悬赏达成】[${b.targetName}] 目标数已达成！速在封魔录(K)中领取赏金与矿石！`, 'system');
-        }
-      }
-    }
+    this.codexManager.recordMonsterKill(templateId);
   }
 
   /**
@@ -2124,12 +1945,7 @@ export class GameWorld {
    * 基础 40 格，随等级提升 (每 10 级扩展整整 1 行即 8 格) 与飞升境界突破 (每 2 阶扩展 1 行 8 格) 持续扩容，最高可达 96 格
    */
   getMaxInventorySlots(): number {
-    const level = this.player?.stats?.level || 1;
-    const tier = this.player?.stats?.ascensionTier || 0;
-    const levelRows = Math.floor(level / 10);
-    const tierRows = Math.floor(tier / 2);
-    const totalSlots = 40 + (levelRows + tierRows) * 8;
-    return Math.min(96, Math.max(40, totalSlots));
+    return this.inventoryManager.getMaxInventorySlots();
   }
 
   addExp(amount: number): void {
@@ -2177,956 +1993,64 @@ export class GameWorld {
     }
   }
 
-  /**
-   * 添加物品到背包 (同类药品与矿石材料无限堆叠合并，装备按槽位独立存放；满包时启动紧急智能腾挪清理)
-   */
   addItemToInventory(item: ItemInstance): boolean {
-    if (item.type === 'potion' || item.type === 'material') {
-      const existing = this.inventory.find(i => i.defId === item.defId);
-      if (existing) {
-        existing.count = (existing.count || 1) + (item.count || 1);
-        return true;
-      }
-    }
-
-    const maxSlots = this.getMaxInventorySlots();
-
-    // 若背包容量达到或接近上限 (>= maxSlots - 2 格)，预先启动紧急智能腾挪
-    if (this.inventory.length >= maxSlots - 2 && !this.isEmergencyCleaning) {
-      this.isEmergencyCleaning = true;
-      try {
-        this.emergencyPruneInventory(2);
-      } finally {
-        this.isEmergencyCleaning = false;
-      }
-    }
-
-    // 若依然达到或超过上限格数，进行最终强力腾挪兜底
-    if (this.inventory.length >= maxSlots) {
-      this.emergencyPruneInventory(2);
-      if (this.inventory.length >= maxSlots) {
-        return false;
-      }
-    }
-
-    this.inventory.push(item);
-    return true;
+    return this.inventoryManager.addItemToInventory(item);
   }
 
-  private checkPlayerLootPickup(): void {
-    const maxSlots = this.getMaxInventorySlots();
-
-    // 拾取前预检：若背包容量已达 80% 以上，预先自动清理防爆仓
-    if (this.inventory.length >= maxSlots - 7) {
-      this.recycleWeakerOrEqualItems();
-      const maxQ = this.autoConfig.autoRecycleMaxQuality ?? 2;
-      if (this.inventory.length >= maxSlots - 5) {
-        this.recycleLowQualityItems(maxQ);
-      }
-    }
-
-    let hasFullBagWarning = false;
-
-    // 自动吸附 (九宫格贴脸及附近 1 格范围内直接吸附入包)
-    for (let i = this.groundItems.length - 1; i >= 0; i--) {
-      const drop = this.groundItems[i];
-      const dist = PathFinder.chebyshevDistance(this.player.gridPos, drop.gridPos);
-      if (dist <= 1) {
-        const success = this.addItemToInventory(drop.item);
-        if (success) {
-          this.groundItems.splice(i, 1);
-          this.onSound?.('coin');
-          const countText = drop.item.count > 1 ? ` x${drop.item.count}` : '';
-          this.addBattleLog(`拾取战利品 [${drop.item.name}]${countText}`, 'drop', drop.item.quality);
-
-          // 拾取后自动穿戴最适合自己的装备 (即刻智能换装)
-          if (drop.item.type === 'equipment' && drop.item.slot) {
-            this.tryAutoEquipIfBetter(drop.item);
-          }
-
-          // 拾取后若背包容量再次接近上限，顺手维护清理
-          if (this.inventory.length >= maxSlots - 5) {
-            this.recycleWeakerOrEqualItems();
-            const maxQ = this.autoConfig.autoRecycleMaxQuality ?? 2;
-            if (this.inventory.length >= maxSlots - 4) {
-              this.recycleLowQualityItems(maxQ);
-            }
-          }
-        } else {
-          hasFullBagWarning = true;
-        }
-      }
-    }
-
-    // 背包已满且无法腾挪时的节流提示 (每 3 秒最多提示一次，避免刷屏)
-    if (hasFullBagWarning && (!this.lastFullBagWarnTick || this.currentTick - this.lastFullBagWarnTick >= 30)) {
-      this.lastFullBagWarnTick = this.currentTick;
-      this.addBattleLog(`【背包已满】随身包裹已达到 ${maxSlots}/${maxSlots} 上限且无法自动腾挪，无法吸附拾取战利品！`, 'system');
-      this.addDamagePopup(this.player.gridPos, '包裹已满!', '#ef4444', true);
-    }
+  checkPlayerLootPickup(): void {
+    this.inventoryManager.checkPlayerLootPickup();
   }
 
-  /**
-   * 判定某件装备当前是否满足穿戴条件
-   */
   canEquipItem(item: ItemInstance): { can: boolean; reason?: string } {
-    if (item.type !== 'equipment' || !item.slot) {
-      return { can: false, reason: '非可穿戴装备' };
-    }
-    const playerTier = this.player.stats.ascensionTier || 0;
-    // 飞升位面阶数限制：不可越阶穿戴超出当前飞升境界的神装
-    if (item.tier > playerTier) {
-      return { can: false, reason: `需达到 [${item.tier}阶飞升] 方可驾驭` };
-    }
-    // 等级要求限制 (0阶装备凡体皆可驾驭，无需等级限制)
-    if (item.tier > 0 && item.levelReq && item.levelReq > this.player.stats.level) {
-      return { can: false, reason: `等级不足，需达到 Lv.${item.levelReq}` };
-    }
-    return { can: true };
+    return this.inventoryManager.canEquipItem(item);
   }
 
-  /**
-   * 拾取后自动穿戴最适合自己的装备 (智能即刻替换)
-   */
   tryAutoEquipIfBetter(item: ItemInstance): boolean {
-    if (item.type !== 'equipment' || !item.slot) return false;
-    const check = this.canEquipItem(item);
-    if (!check.can) return false;
-
-    const itemPower = StatCalculator.getItemCombatPower(item);
-
-    // 1. 双槽位手镯比对
-    if (item.slot === 'bracelet_l' || item.slot === 'bracelet_r') {
-      const p1 = this.equipped['bracelet_l'] ? StatCalculator.getItemCombatPower(this.equipped['bracelet_l']!) : -1;
-      const p2 = this.equipped['bracelet_r'] ? StatCalculator.getItemCombatPower(this.equipped['bracelet_r']!) : -1;
-      const weakerPower = Math.min(p1, p2);
-      if (itemPower > weakerPower) {
-        this.equipItem(item);
-        this.onSound?.('levelup');
-        this.addBattleLog(`【神装自动换装】拾获更优手镯 [${item.name}]，已自动替换穿戴！`, 'system');
-        return true;
-      }
-      return false;
-    }
-
-    // 2. 双槽位常规戒指比对
-    if (item.slot === 'ring_l' || item.slot === 'ring_r') {
-      const p1 = this.equipped['ring_l'] ? StatCalculator.getItemCombatPower(this.equipped['ring_l']!) : -1;
-      const p2 = this.equipped['ring_r'] ? StatCalculator.getItemCombatPower(this.equipped['ring_r']!) : -1;
-      const weakerPower = Math.min(p1, p2);
-      if (itemPower > weakerPower) {
-        this.equipItem(item);
-        this.onSound?.('levelup');
-        this.addBattleLog(`【神装自动换装】拾获更优戒指 [${item.name}]，已自动替换穿戴！`, 'system');
-        return true;
-      }
-      return false;
-    }
-
-    // 3. 单槽位 (武器、衣服、头盔、项链、以及6大特戒)
-    const currentEquip = this.equipped[item.slot];
-    const currentPower = currentEquip ? StatCalculator.getItemCombatPower(currentEquip) : -1;
-    if (itemPower > currentPower) {
-      this.equipItem(item);
-      this.onSound?.('levelup');
-      const prefix = item.slot.startsWith('special_') ? '【特戒觉醒】' : '【神装自动换装】';
-      this.addBattleLog(`${prefix}拾获更优装备 [${item.name}]，已自动替换穿戴！`, 'system');
-      return true;
-    }
-
-    return false;
+    return this.inventoryManager.tryAutoEquipIfBetter(item);
   }
 
   useItem(item: ItemInstance): boolean {
-    if (item.defId === 'pot_blessing_oil' || item.defId === 'pot_super_blessing_oil') {
-      return this.useBlessingOil(item.defId === 'pot_super_blessing_oil');
-    }
-    if (item.defId === 'pot_luosha_water') {
-      return this.useLuoshaWater();
-    }
-    if (item.defId === 'mat_reforge_stone') {
-      const target = this.equipped.weapon || this.inventory.find(i => i.type === 'equipment' && i.quality >= 2);
-      if (!target) {
-        this.addBattleLog('【洗炼提示】请在角色或装备详情中点击【乾坤洗炼】选择指定装备！', 'system');
-        return false;
-      }
-      return this.reforgeEquipment(target.instanceId);
-    }
-
-    if (item.type === 'potion') {
-      if (item.recoverHp) {
-        this.player.stats.hp = Math.min(this.player.stats.maxHp, this.player.stats.hp + item.recoverHp);
-        this.addDamagePopup(this.player.gridPos, `+${item.recoverHp}`, '#22c55e', false, true);
-      }
-      if (item.recoverMp) {
-        this.player.stats.mp = Math.min(this.player.stats.maxMp, this.player.stats.mp + item.recoverMp);
-      }
-      this.onSound?.('potion');
-
-      item.count--;
-      if (item.count <= 0) {
-        const idx = this.inventory.indexOf(item);
-        if (idx !== -1) this.inventory.splice(idx, 1);
-      }
-      return true;
-    }
-
-    if (item.type === 'equipment' && item.slot) {
-      return this.equipItem(item);
-    }
-
-    return false;
+    return this.economyManager.useItem(item);
   }
 
   useBlessingOil(isSuper = false): boolean {
-    const weapon = this.equipped.weapon;
-    if (!weapon) {
-      this.addBattleLog('【祝福油】请先穿戴武器，方可使用祝福油进行开光涂抹！', 'system');
-      return false;
-    }
-
-    const oilDefId = isSuper ? 'pot_super_blessing_oil' : 'pot_blessing_oil';
-    const oilItem = this.inventory.find(i => i.defId === oilDefId);
-    if (!oilItem) {
-      this.addBattleLog(`【祝福油】背包中没有【${isSuper ? '超级祝福油' : '祝福油'}】！`, 'system');
-      return false;
-    }
-
-    oilItem.count--;
-    if (oilItem.count <= 0) {
-      const idx = this.inventory.indexOf(oilItem);
-      if (idx !== -1) this.inventory.splice(idx, 1);
-    }
-
-    this.onSound?.('potion');
-
-    if (isSuper) {
-      if (weapon.curse && weapon.curse > 0) {
-        weapon.curse = 0;
-        this.onSound?.('crit');
-        this.addDamagePopup(this.player.gridPos, '✨煞气消散·诅咒净化!', '#38bdf8', true);
-        this.addBattleLog(`【超级祝福油】金光灌注，[${weapon.name}] 所有的血煞诅咒尽数消散！`, 'system');
-      } else {
-        const curLuck = weapon.luck || 0;
-        if (curLuck < 7) {
-          weapon.luck = curLuck + 1;
-          this.onSound?.('crit');
-          this.addDamagePopup(this.player.gridPos, `🌟幸运+1 (当前运${weapon.luck})!`, '#facc15', true);
-          this.addBattleLog(`【超级祝福油】天道法则降临，[${weapon.name}] 幸运提升至 +${weapon.luck}！`, 'system');
-        } else {
-          this.addBattleLog(`【超级祝福油】[${weapon.name}] 幸运已达巅峰 +7，无需再饮用！`, 'system');
-        }
-      }
-    } else {
-      if (weapon.curse && weapon.curse > 0) {
-        if (Math.random() < 0.65) {
-          weapon.curse--;
-          this.addDamagePopup(this.player.gridPos, `✨诅咒减轻 (余${weapon.curse})`, '#38bdf8', true);
-          this.addBattleLog(`【祝福油】圣水微光闪烁，[${weapon.name}] 的诅咒减轻了！`, 'system');
-        } else {
-          this.addBattleLog(`【祝福油】[${weapon.name}] 煞气顽固，未能洗去诅咒。`, 'system');
-        }
-      } else {
-        const curLuck = weapon.luck || 0;
-        if (curLuck >= 7) {
-          this.addBattleLog(`【祝福油】[${weapon.name}] 幸运已达普通祝福油上限 +7，无法继续提升！`, 'system');
-        } else if (curLuck < 3) {
-          if (Math.random() < 0.70) {
-            weapon.luck = curLuck + 1;
-            this.onSound?.('crit');
-            this.addDamagePopup(this.player.gridPos, `🌟幸运+1 (当前运${weapon.luck})!`, '#facc15', true);
-            this.addBattleLog(`【祝福油】神油开光，[${weapon.name}] 幸运升至 +${weapon.luck}！`, 'system');
-          } else {
-            this.addBattleLog('【祝福油】神油挥发，没有任何事情发生。', 'system');
-          }
-        } else {
-          const successRate = (7 - curLuck) * 0.10;
-          const roll = Math.random();
-          if (roll < successRate) {
-            weapon.luck = curLuck + 1;
-            this.onSound?.('crit');
-            this.addDamagePopup(this.player.gridPos, `🌟幸运+1 (当前运${weapon.luck})!`, '#facc15', true);
-            this.addBattleLog(`【祝福油】极运眷顾！[${weapon.name}] 幸运升至 +${weapon.luck}！`, 'system');
-          } else if (roll < successRate + 0.35) {
-            if (curLuck > 0) {
-              weapon.luck = curLuck - 1;
-              this.addDamagePopup(this.player.gridPos, `⚠️幸运下降 (当前运${weapon.luck})`, '#ef4444', true);
-              this.addBattleLog(`【祝福油】厄运侵染！[${weapon.name}] 幸运降至 +${weapon.luck}！`, 'system');
-            } else {
-              weapon.curse = (weapon.curse || 0) + 1;
-              this.addDamagePopup(this.player.gridPos, `💀武器遭诅咒 (诅${weapon.curse})`, '#ef4444', true);
-              this.addBattleLog(`【祝福油】煞气反噬！[${weapon.name}] 被诅咒了！`, 'system');
-            }
-          } else {
-            this.addBattleLog('【祝福油】神油挥发，没有任何事情发生。', 'system');
-          }
-        }
-      }
-    }
-
-    this.recalculatePlayerStats();
-    return true;
+    return this.economyManager.useBlessingOil(isSuper);
   }
 
   useLuoshaWater(): boolean {
-    const weapon = this.equipped.weapon;
-    if (!weapon) {
-      this.addBattleLog('【罗刹神水】请先穿戴武器！', 'system');
-      return false;
-    }
-    const luosha = this.inventory.find(i => i.defId === 'pot_luosha_water');
-    if (!luosha) {
-      this.addBattleLog('【罗刹神水】背包中没有罗刹神水！', 'system');
-      return false;
-    }
-
-    luosha.count--;
-    if (luosha.count <= 0) {
-      const idx = this.inventory.indexOf(luosha);
-      if (idx !== -1) this.inventory.splice(idx, 1);
-    }
-
-    weapon.curse = 0;
-    this.onSound?.('crit');
-    this.addDamagePopup(this.player.gridPos, '🌊诅咒彻底净化!', '#38bdf8', true);
-    this.addBattleLog(`【罗刹神水】九幽神泉洗练，[${weapon.name}] 的诅咒完全消弭！`, 'system');
-    this.recalculatePlayerStats();
-    return true;
+    return this.economyManager.useLuoshaWater();
   }
 
   reforgeEquipment(instanceId: string): boolean {
-    let item: ItemInstance | undefined = Object.values(this.equipped).find(i => i?.instanceId === instanceId);
-    if (!item) {
-      item = this.inventory.find(i => i.instanceId === instanceId);
-    }
-    if (!item || item.type !== 'equipment') {
-      this.addBattleLog('【乾坤洗炼】未找到指定装备！', 'system');
-      return false;
-    }
-
-    const reforgeStone = this.inventory.find(i => i.defId === 'mat_reforge_stone');
-    if (!reforgeStone) {
-      this.addBattleLog('【乾坤洗炼】背包中缺少【乾坤洗炼石】！可击败Boss或在神秘黑市行商处购得！', 'system');
-      return false;
-    }
-
-    const costGold = 50000;
-    if (this.player.stats.gold < costGold) {
-      this.addBattleLog(`【乾坤洗炼】金币不足！每次洗炼需消耗 50,000 金币！`, 'system');
-      return false;
-    }
-
-    this.player.stats.gold -= costGold;
-    reforgeStone.count--;
-    if (reforgeStone.count <= 0) {
-      const idx = this.inventory.indexOf(reforgeStone);
-      if (idx !== -1) this.inventory.splice(idx, 1);
-    }
-
-    DropSystem.reforgeItem(item);
-    this.onSound?.('crit');
-    this.addDamagePopup(this.player.gridPos, '✨装备洗炼成功!', '#a855f7', true);
-    const affixSummary = item.affixes?.map(a => a.name).join('、') || '无特殊词缀';
-    this.addBattleLog(`【乾坤洗炼】[${item.name}] 洗炼重铸完毕！获得全新词缀：【${affixSummary}】！`, 'system');
-
-    this.recalculatePlayerStats();
-    return true;
+    return this.economyManager.reforgeEquipment(instanceId);
   }
 
   buyShopItem(defId: string, count = 1): boolean {
-    const shopPrices: Record<string, number> = {
-      'mat_reforge_stone': 100000,
-      'pot_blessing_oil': 150000,
-      'pot_luosha_water': 500000,
-      'pot_sun': 5000,
-      'pot_liaoshang': 25000,
-      'mat_iron_ore': 50000,
-      'mat_pure_iron': 200000,
-      'mat_god_stone': 1000000,
-      'pot_super_blessing_oil': 10000000
-    };
-
-    const pricePerUnit = shopPrices[defId];
-    if (!pricePerUnit) {
-      this.addBattleLog('【黑市商人】行商货架上暂无此物！', 'system');
-      return false;
-    }
-
-    const totalCost = pricePerUnit * count;
-    if (this.player.stats.gold < totalCost) {
-      this.addBattleLog(`【黑市商人】金币不足！购买 ${count} 个需 ${totalCost.toLocaleString()} 金币！`, 'system');
-      return false;
-    }
-
-    const existing = this.inventory.find(i => i.defId === defId);
-    if (!existing && this.inventory.length >= this.getMaxInventorySlots()) {
-      this.addBattleLog('【黑市商人】背包空间已满，无法容纳新货物！', 'system');
-      return false;
-    }
-
-    this.player.stats.gold -= totalCost;
-    if (existing) {
-      existing.count += count;
-    } else {
-      const newItem = DropSystem.createItemInstance(defId, 2, count);
-      if (newItem) this.inventory.push(newItem);
-    }
-
-    this.onSound?.('coin');
-    const itemDef = ITEM_DEFINITIONS[defId];
-    this.addBattleLog(`【黑市行商】花费 ${totalCost.toLocaleString()} 金币购得 [${itemDef?.name || defId}] x${count}！`, 'system');
-    return true;
+    return this.economyManager.buyShopItem(defId, count);
   }
 
   equipItem(item: ItemInstance): boolean {
-    if (!item.slot) return false;
-    const check = this.canEquipItem(item);
-    if (!check.can) {
-      this.addBattleLog(`【穿戴限制】[${item.name}]：${check.reason}`, 'system');
-      return false;
-    }
-
-    let targetSlot = item.slot;
-
-    if (item.slot === 'bracelet_l' || item.slot === 'bracelet_r') {
-      if (!this.equipped['bracelet_l']) {
-        targetSlot = 'bracelet_l';
-      } else if (!this.equipped['bracelet_r']) {
-        targetSlot = 'bracelet_r';
-      } else {
-        const p1 = StatCalculator.getItemCombatPower(this.equipped['bracelet_l']);
-        const p2 = StatCalculator.getItemCombatPower(this.equipped['bracelet_r']);
-        targetSlot = p1 <= p2 ? 'bracelet_l' : 'bracelet_r';
-      }
-    } else if (item.slot === 'ring_l' || item.slot === 'ring_r') {
-      if (!this.equipped['ring_l']) {
-        targetSlot = 'ring_l';
-      } else if (!this.equipped['ring_r']) {
-        targetSlot = 'ring_r';
-      } else {
-        const p1 = StatCalculator.getItemCombatPower(this.equipped['ring_l']);
-        const p2 = StatCalculator.getItemCombatPower(this.equipped['ring_r']);
-        targetSlot = p1 <= p2 ? 'ring_l' : 'ring_r';
-      }
-    }
-
-    const oldEquip = this.equipped[targetSlot];
-    const invIdx = this.inventory.findIndex(i => i.instanceId === item.instanceId);
-    if (invIdx !== -1) this.inventory.splice(invIdx, 1);
-    if (oldEquip) this.addItemToInventory(oldEquip);
-
-    this.equipped[targetSlot] = item;
-
-    const oldCp = this.player.stats.combatPower;
-    this.recalculatePlayerStats();
-    const cpDiff = this.player.stats.combatPower - oldCp;
-
-    if (cpDiff > 0) {
-      this.addDamagePopup(this.player.gridPos, `战力 +${cpDiff}`, '#fbbf24', true);
-    }
-    return true;
+    return this.inventoryManager.equipItem(item);
   }
 
-  /**
-   * 一键穿戴同位置战力最优装备 (比对全身同部位战力评分，智能换装)
-   */
   oneKeyEquipBest(): number {
-    let replacedCount = 0;
-
-    // 1. 单槽位比对优化: weapon, armor, helmet, necklace 以及 6 大专属特戒
-    const singleSlots: EquipSlot[] = [
-      'weapon', 'armor', 'helmet', 'necklace',
-      'special_paralyze', 'special_revive', 'special_protect',
-      'special_wind', 'special_luck', 'special_greed'
-    ];
-    for (const slot of singleSlots) {
-      const current = this.equipped[slot];
-      const currentPower = current ? StatCalculator.getItemCombatPower(current) : -1;
-
-      let bestItemIdx = -1;
-      let bestPower = currentPower;
-
-      for (let i = 0; i < this.inventory.length; i++) {
-        const item = this.inventory[i];
-        if (item.type !== 'equipment' || item.slot !== slot) continue;
-        if (!this.canEquipItem(item).can) continue;
-
-        const power = StatCalculator.getItemCombatPower(item);
-        if (power > bestPower) {
-          bestPower = power;
-          bestItemIdx = i;
-        }
-      }
-
-      if (bestItemIdx !== -1) {
-        const bestItem = this.inventory.splice(bestItemIdx, 1)[0];
-        if (current) {
-          this.addItemToInventory(current);
-        }
-        this.equipped[slot] = bestItem;
-        replacedCount++;
-      }
-    }
-
-    // 2. 双槽位手镯比对优化 (bracelet_l, bracelet_r)
-    replacedCount += this.optimizeDualSlots(['bracelet_l', 'bracelet_r']);
-
-    // 3. 双槽位戒指比对优化 (ring_l, ring_r)
-    replacedCount += this.optimizeDualSlots(['ring_l', 'ring_r']);
-
-    // 重新计算全身属性与战力
-    const oldCp = this.player.stats.combatPower;
-    this.recalculatePlayerStats();
-    const cpDiff = this.player.stats.combatPower - oldCp;
-
-    if (replacedCount > 0) {
-      this.onSound?.('levelup');
-      if (cpDiff > 0) {
-        this.addDamagePopup(this.player.gridPos, `战力 +${cpDiff}`, '#fbbf24', true);
-      }
-      this.addBattleLog(
-        `【一键穿戴】成功更换了 ${replacedCount} 件更强同部位装备，战力提升至 ${this.player.stats.combatPower}！`,
-        'system'
-      );
-    } else {
-      // 检查背包中是否有更高评分但受限未穿戴的装备
-      const unequippedBetter = this.inventory.find(item => {
-        if (item.type !== 'equipment' || !item.slot) return false;
-        let currentPower = -1;
-        if (item.slot === 'bracelet_l' || item.slot === 'bracelet_r') {
-          const p1 = this.equipped['bracelet_l'] ? StatCalculator.getItemCombatPower(this.equipped['bracelet_l']) : -1;
-          const p2 = this.equipped['bracelet_r'] ? StatCalculator.getItemCombatPower(this.equipped['bracelet_r']) : -1;
-          currentPower = Math.min(p1, p2);
-        } else if (item.slot === 'ring_l' || item.slot === 'ring_r') {
-          const p1 = this.equipped['ring_l'] ? StatCalculator.getItemCombatPower(this.equipped['ring_l']) : -1;
-          const p2 = this.equipped['ring_r'] ? StatCalculator.getItemCombatPower(this.equipped['ring_r']) : -1;
-          currentPower = Math.min(p1, p2);
-        } else {
-          const current = this.equipped[item.slot];
-          currentPower = current ? StatCalculator.getItemCombatPower(current) : -1;
-        }
-        return StatCalculator.getItemCombatPower(item) > currentPower && !this.canEquipItem(item).can;
-      });
-
-      if (unequippedBetter) {
-        const check = this.canEquipItem(unequippedBetter);
-        this.addBattleLog(
-          `【一键穿戴】背包中有更高评分神装 [${unequippedBetter.name}]，但${check.reason}，暂无法穿戴！`,
-          'system'
-        );
-      } else {
-        this.addBattleLog('【一键穿戴】当前身上穿戴已是同部位最高战力搭配！', 'system');
-      }
-    }
-
-    return replacedCount;
-  }
-
-  private optimizeDualSlots(slots: [EquipSlot, EquipSlot]): number {
-    const [slot1, slot2] = slots;
-    const isMatchingSlot = (itemSlot?: EquipSlot) => itemSlot === slot1 || itemSlot === slot2;
-
-    interface Candidate {
-      item: ItemInstance;
-      power: number;
-    }
-
-    const candidates: Candidate[] = [];
-    const seenInstances = new Set<string>();
-
-    const addCandidate = (item?: ItemInstance) => {
-      if (!item || seenInstances.has(item.instanceId)) return;
-      seenInstances.add(item.instanceId);
-      candidates.push({
-        item,
-        power: StatCalculator.getItemCombatPower(item)
-      });
-    };
-
-    addCandidate(this.equipped[slot1]);
-    addCandidate(this.equipped[slot2]);
-
-    for (const it of this.inventory) {
-      if (it.type === 'equipment' && isMatchingSlot(it.slot)) {
-        if (this.canEquipItem(it).can) {
-          addCandidate(it);
-        }
-      }
-    }
-
-    // 按战力从高到低排序
-    candidates.sort((a, b) => b.power - a.power);
-
-    const desired1 = candidates[0]?.item;
-    const desired2 = candidates[1]?.item;
-
-    const current1 = this.equipped[slot1];
-    const current2 = this.equipped[slot2];
-
-    const currentIds = new Set([current1?.instanceId, current2?.instanceId].filter(Boolean));
-    const desiredIds = new Set([desired1?.instanceId, desired2?.instanceId].filter(Boolean));
-
-    // 如果目标组合与当前已穿戴组合完全一致，则无需替换
-    if (currentIds.size === desiredIds.size && [...desiredIds].every(id => id && currentIds.has(id))) {
-      return 0;
-    }
-
-    let replacedCount = 0;
-
-    // 找出需要从身上卸下的装备 (在 currentIds 但不在 desiredIds)
-    const toInventory: ItemInstance[] = [];
-    if (current1 && !desiredIds.has(current1.instanceId)) {
-      delete this.equipped[slot1];
-      toInventory.push(current1);
-    }
-    if (current2 && !desiredIds.has(current2.instanceId)) {
-      delete this.equipped[slot2];
-      toInventory.push(current2);
-    }
-
-    // 先从背包取出需换上的新装备，腾出背包空间 (若来自背包)
-    if (desired1) {
-      const idx = this.inventory.findIndex(i => i.instanceId === desired1.instanceId);
-      if (idx !== -1) this.inventory.splice(idx, 1);
-    }
-    if (desired2) {
-      const idx = this.inventory.findIndex(i => i.instanceId === desired2.instanceId);
-      if (idx !== -1) this.inventory.splice(idx, 1);
-    }
-
-    // 将卸下的旧装备安全存入背包 (由于先取出了新装备，背包容量恒定不溢出)
-    for (const old of toInventory) {
-      this.inventory.push(old);
-    }
-
-    // 装备 desired1 到 slot1
-    if (desired1 && this.equipped[slot1]?.instanceId !== desired1.instanceId) {
-      if (this.equipped[slot2]?.instanceId === desired1.instanceId) {
-        delete this.equipped[slot2];
-      }
-      this.equipped[slot1] = desired1;
-      replacedCount++;
-    }
-
-    // 装备 desired2 到 slot2
-    if (desired2 && this.equipped[slot2]?.instanceId !== desired2.instanceId) {
-      this.equipped[slot2] = desired2;
-      replacedCount++;
-    }
-
-    return replacedCount;
+    return this.inventoryManager.oneKeyEquipBest();
   }
 
   unequipItem(slot: EquipSlot): boolean {
-    const item = this.equipped[slot];
-    if (!item) return false;
-    const maxSlots = this.getMaxInventorySlots();
-    if (this.inventory.length >= maxSlots) {
-      this.addBattleLog(`【背包已满】随身包裹已达 ${maxSlots} 格上限，无法卸下装备！`, 'system');
-      return false;
-    }
-    delete this.equipped[slot];
-    this.addItemToInventory(item);
-
-    const base = StatCalculator.getBaseStatsForLevel(this.player.stats.level, this.player.stats.ascensionTier || 0);
-    this.player.stats = StatCalculator.applyEquipment(base, this.equipped, this.slotEnhancements, undefined, this.talentAllocations);
-    return true;
+    return this.inventoryManager.unequipItem(slot);
   }
 
   recycleLowQualityItems(maxQuality: number = 1): { gold: number; exp: number; count: number } {
-    // 熔炼前先穿戴背包中当前能穿的最强装备，避免误熔高战力提升件
-    this.oneKeyEquipBest();
-
-    let gainedGold = 0;
-    let gainedExp = 0;
-    let count = 0;
-
-    for (let i = this.inventory.length - 1; i >= 0; i--) {
-      const item = this.inventory[i];
-      if (item.type === 'equipment' && item.quality <= maxQuality) {
-        // 豁免保护：特戒绝对不可熔炼
-        if (item.specialEffect || (item.slot && item.slot.startsWith('special_'))) continue;
-
-        // 豁免保护：若该装备战力高于身上对应槽位(如未来升级后可穿的更强神装)，保留最高战力件
-        if (item.slot) {
-          const isDual = item.slot === 'bracelet_l' || item.slot === 'bracelet_r' || item.slot === 'ring_l' || item.slot === 'ring_r';
-          const itemPower = StatCalculator.getItemCombatPower(item);
-          if (isDual) {
-            const isBracelet = item.slot.startsWith('bracelet');
-            const eq1 = this.equipped[isBracelet ? 'bracelet_l' : 'ring_l'];
-            const eq2 = this.equipped[isBracelet ? 'bracelet_r' : 'ring_r'];
-            const p1 = eq1 ? StatCalculator.getItemCombatPower(eq1) : -1;
-            const p2 = eq2 ? StatCalculator.getItemCombatPower(eq2) : -1;
-            const weakerPower = Math.min(p1, p2);
-            if (itemPower > weakerPower) {
-              const betterInBagCount = this.inventory.filter(
-                other => other.instanceId !== item.instanceId && 
-                         other.type === 'equipment' && 
-                         (isBracelet ? (other.slot === 'bracelet_l' || other.slot === 'bracelet_r') : (other.slot === 'ring_l' || other.slot === 'ring_r')) && 
-                         StatCalculator.getItemCombatPower(other) > itemPower
-              ).length;
-              if (betterInBagCount < 2) {
-                continue; // 保留强力备选
-              }
-            }
-          } else {
-            const current = this.equipped[item.slot];
-            const currentPower = current ? StatCalculator.getItemCombatPower(current) : -1;
-            if (itemPower > currentPower) {
-              const hasBetterInBag = this.inventory.some(
-                other => other.instanceId !== item.instanceId && 
-                         other.type === 'equipment' && 
-                         other.slot === item.slot && 
-                         StatCalculator.getItemCombatPower(other) > itemPower
-              );
-              if (!hasBetterInBag) {
-                continue; // 属于未穿戴但强于身上的最高战力备选，保留
-              }
-            }
-          }
-        }
-
-        gainedGold += item.price;
-        gainedExp += Math.floor(item.price * 0.08);
-        count++;
-        this.inventory.splice(i, 1);
-      }
-    }
-
-    if (count > 0) {
-      this.player.stats.gold += gainedGold;
-      this.addExp(gainedExp);
-      this.onSound?.('coin');
-      const qualityName = maxQuality >= 3 ? '紫装及以下' : maxQuality >= 2 ? '蓝装及以下' : '白/绿';
-      this.addBattleLog(`【一键回收】回收 ${count} 件${qualityName}装备，金币 +${gainedGold}，经验 +${gainedExp}`, 'system');
-    }
-
-    return { gold: gainedGold, exp: gainedExp, count };
+    return this.inventoryManager.recycleLowQualityItems(maxQuality);
   }
 
-  /**
-   * 一键回收战力小于等于身上穿戴装备的同部位冗余装备
-   * (严格按同位置比对：先自动穿戴最强装备，再回收比身上弱的冗余件；严密保护特戒与当前阶备用神装，杜绝背包卡死)
-   */
   recycleWeakerOrEqualItems(autoEquipFirst: boolean = true): { gold: number; exp: number; count: number } {
-    if (autoEquipFirst) {
-      this.oneKeyEquipBest();
-    }
-
-    let gainedGold = 0;
-    let gainedExp = 0;
-    let count = 0;
-
-    const playerTier = this.player.stats.ascensionTier || 0;
-    const keepIndices = new Set<number>();
-
-    // 1. 全局豁免与特戒保护：
-    // 非装备直接保留
-    for (let i = 0; i < this.inventory.length; i++) {
-      const it = this.inventory[i];
-      if (it.type !== 'equipment' || !it.slot) {
-        keepIndices.add(i);
-        continue;
-      }
-    }
-
-    // 特戒保护：同种特戒在背包中最多保留 1 件备用（无论身上是否已佩戴）
-    const keptSpecialEffects = new Set<string>();
-    for (let i = 0; i < this.inventory.length; i++) {
-      const it = this.inventory[i];
-      if (it.type === 'equipment' && (it.specialEffect || (it.slot && it.slot.startsWith('special_')))) {
-        const key = it.specialEffect || it.slot || '';
-        if (!keptSpecialEffects.has(key)) {
-          keptSpecialEffects.add(key);
-          keepIndices.add(i);
-        }
-      }
-    }
-
-    // 2. 单槽位优化比对: weapon, armor, helmet, necklace
-    const singleSlots: EquipSlot[] = ['weapon', 'armor', 'helmet', 'necklace'];
-    for (const slot of singleSlots) {
-      const equippedItem = this.equipped[slot];
-      const benchmarkPower = equippedItem ? StatCalculator.getItemCombatPower(equippedItem) : -1;
-
-      const equippableCandidates: { index: number; power: number }[] = [];
-      const futureCandidates: { index: number; power: number }[] = [];
-
-      for (let i = 0; i < this.inventory.length; i++) {
-        if (keepIndices.has(i)) continue;
-        const it = this.inventory[i];
-        if (it.type === 'equipment' && it.slot === slot) {
-          const check = this.canEquipItem(it);
-          const power = StatCalculator.getItemCombatPower(it);
-          if (check.can) {
-            equippableCandidates.push({ index: i, power });
-          } else {
-            // 超出当前阶数 2 阶及以上且非橙装（如玩家 0 阶，掉落 2 阶及以上装备），背包格数有限不予保留避免爆仓；橙装极品神装予以保留评估
-            if (it.tier <= playerTier + 1 || it.quality >= 4) {
-              futureCandidates.push({ index: i, power });
-            }
-          }
-        }
-      }
-
-      // 当前可穿戴：按战力降序，仅保留高于身上装备的最高战力第 1 件
-      equippableCandidates.sort((a, b) => b.power - a.power);
-      if (equippableCandidates.length > 0 && equippableCandidates[0].power > benchmarkPower) {
-        keepIndices.add(equippableCandidates[0].index);
-      }
-
-      // 未来需求装备：全局仅保留最高战力的第 1 件
-      futureCandidates.sort((a, b) => b.power - a.power);
-      if (futureCandidates.length > 0) {
-        keepIndices.add(futureCandidates[0].index);
-      }
-    }
-
-    // 3. 双槽位手镯比对优化 (bracelet_l, bracelet_r)
-    this.markKeepForDualSlots(['bracelet_l', 'bracelet_r'], keepIndices, playerTier);
-
-    // 4. 双槽位戒指比对优化 (ring_l, ring_r)
-    this.markKeepForDualSlots(['ring_l', 'ring_r'], keepIndices, playerTier);
-
-    // 5. 执行回收：所有未被保留的装备全部熔炼！
-    for (let i = this.inventory.length - 1; i >= 0; i--) {
-      const item = this.inventory[i];
-      if (item.type !== 'equipment' || !item.slot) continue;
-
-      if (!keepIndices.has(i)) {
-        gainedGold += item.price;
-        gainedExp += Math.floor(item.price * 0.10);
-        count++;
-        this.inventory.splice(i, 1);
-      }
-    }
-
-    if (count > 0) {
-      this.player.stats.gold += gainedGold;
-      this.addExp(gainedExp);
-      this.onSound?.('coin');
-      this.addBattleLog(
-        `【智能回收】成功按同部位熔炼 ${count} 件弱于身上的冗余装备，获得金币 +${gainedGold}，经验 +${gainedExp}！`,
-        'system'
-      );
-    } else {
-      this.addBattleLog('【智能回收】背包中无弱于身上的同部位冗余装备，极品神装与特戒已妥善保留！', 'system');
-    }
-
-    return { gold: gainedGold, exp: gainedExp, count };
+    return this.inventoryManager.recycleWeakerOrEqualItems(autoEquipFirst);
   }
 
-  private markKeepForDualSlots(slots: [EquipSlot, EquipSlot], keepIndices: Set<number>, playerTier: number): void {
-    const [slot1, slot2] = slots;
-    const isMatchingSlot = (s?: EquipSlot) => s === slot1 || s === slot2;
-
-    const eq1 = this.equipped[slot1];
-    const eq2 = this.equipped[slot2];
-
-    const p1 = eq1 ? StatCalculator.getItemCombatPower(eq1) : -1;
-    const p2 = eq2 ? StatCalculator.getItemCombatPower(eq2) : -1;
-
-    // 身上两件战力从大到小
-    const equippedPowers = [Math.max(p1, p2), Math.min(p1, p2)];
-
-    const equippableCandidates: { index: number; power: number }[] = [];
-    const futureCandidates: { index: number; power: number }[] = [];
-
-    for (let i = 0; i < this.inventory.length; i++) {
-      if (keepIndices.has(i)) continue;
-      const it = this.inventory[i];
-      if (it.type === 'equipment' && isMatchingSlot(it.slot)) {
-        const check = this.canEquipItem(it);
-        const power = StatCalculator.getItemCombatPower(it);
-        if (check.can) {
-          equippableCandidates.push({ index: i, power });
-        } else {
-          if (it.tier <= playerTier + 1 || it.quality >= 4) {
-            futureCandidates.push({ index: i, power });
-          }
-        }
-      }
-    }
-
-    // 按战力从高到低排序
-    equippableCandidates.sort((a, b) => b.power - a.power);
-    if (equippableCandidates.length > 0 && equippableCandidates[0].power > equippedPowers[1]) {
-      keepIndices.add(equippableCandidates[0].index);
-      if (equippableCandidates.length > 1 && equippableCandidates[1].power > equippedPowers[0]) {
-        keepIndices.add(equippableCandidates[1].index);
-      }
-    }
-
-    // 未来装备：双槽位全局最多保留 2 件最强备选
-    futureCandidates.sort((a, b) => b.power - a.power);
-    if (futureCandidates[0]) keepIndices.add(futureCandidates[0].index);
-    if (futureCandidates[1]) keepIndices.add(futureCandidates[1].index);
-  }
-
-  /**
-   * 终极防爆仓腾挪：背包满时层层递进清理，确保绝对不卡死无法拾取
-   */
   emergencyPruneInventory(neededSlots: number = 2): number {
-    const maxSlots = this.getMaxInventorySlots();
-    let pruned = 0;
-    // 1. 先尝试一键穿戴与智能回收弱装
-    this.oneKeyEquipBest();
-    const res1 = this.recycleWeakerOrEqualItems(false);
-    pruned += res1.count;
-    if (this.inventory.length <= maxSlots - neededSlots) return pruned;
-
-    // 2. 尝试回收蓝装及以下 (带防裸奔保护)
-    const res2 = this.recycleLowQualityItems(2);
-    pruned += res2.count;
-    if (this.inventory.length <= maxSlots - neededSlots) return pruned;
-
-    // 3. 尝试回收紫装及以下 (带防裸奔保护)
-    const res3 = this.recycleLowQualityItems(3);
-    pruned += res3.count;
-    if (this.inventory.length <= maxSlots - neededSlots) return pruned;
-
-    // 4. 终极兜底：若依然满格，查找非特戒的未穿戴闲置装备，按战力从低到高强制熔炼
-    const candidates: { index: number; item: ItemInstance; power: number }[] = [];
-    for (let i = 0; i < this.inventory.length; i++) {
-      const it = this.inventory[i];
-      if (it.type === 'equipment' && !it.specialEffect && (!it.slot || !it.slot.startsWith('special_'))) {
-        candidates.push({
-          index: i,
-          item: it,
-          power: StatCalculator.getItemCombatPower(it)
-        });
-      }
-    }
-
-    candidates.sort((a, b) => a.power - b.power);
-
-    const neededToRemove = Math.min(candidates.length, this.inventory.length - (maxSlots - neededSlots));
-    if (neededToRemove > 0) {
-      const toRemoveIds = new Set(candidates.slice(0, neededToRemove).map(c => c.item.instanceId));
-      let gainedGold = 0;
-      let gainedExp = 0;
-      let count = 0;
-
-      for (let i = this.inventory.length - 1; i >= 0; i--) {
-        const it = this.inventory[i];
-        if (toRemoveIds.has(it.instanceId)) {
-          gainedGold += it.price;
-          gainedExp += Math.floor(it.price * 0.10);
-          count++;
-          this.inventory.splice(i, 1);
-        }
-      }
-
-      this.player.stats.gold += gainedGold;
-      this.addExp(gainedExp);
-      pruned += count;
-      this.addBattleLog(
-        `【包裹紧急腾挪】随身包裹严重爆满，自动熔炼 ${count} 件闲置低战力装备腾出空间，金币 +${gainedGold}，经验 +${gainedExp}！`,
-        'system'
-      );
-    }
-
-    return pruned;
+    return this.inventoryManager.emergencyPruneInventory(neededSlots);
   }
 
   addDamagePopup(gridPos: GridCoord, text: string, color: string, isCrit = false, isHeal = false): void {

@@ -1,0 +1,132 @@
+import { ItemDef } from "../../../types/game";
+
+export const DEFS: Record<string, ItemDef> = {
+  // ======= 药水类 (Potions) =======
+  'pot_hp_large': {
+    id: 'pot_hp_large',
+    name: '强效金创药',
+    type: 'potion',
+    tier: 0,
+    baseQuality: 1,
+    minDC: 0,
+    maxDC: 0,
+    minAC: 0,
+    maxAC: 0,
+    maxHp: 0,
+    maxMp: 0,
+    recoverHp: 1200,
+    levelReq: 1,
+    price: 150,
+    icon: '🍷',
+    desc: '强效秘药，快速恢复 1200 点生命值。'
+  },
+  'pot_mp_large': {
+    id: 'pot_mp_large',
+    name: '强效魔法药',
+    type: 'potion',
+    tier: 0,
+    baseQuality: 1,
+    minDC: 0,
+    maxDC: 0,
+    minAC: 0,
+    maxAC: 0,
+    maxHp: 0,
+    maxMp: 0,
+    recoverMp: 800,
+    levelReq: 1,
+    price: 150,
+    icon: '🍶',
+    desc: '强效蓝药，快速恢复 800 点法力值。'
+  },
+  'pot_sun': {
+    id: 'pot_sun',
+    name: '万年雪霜',
+    type: 'potion',
+    tier: 1,
+    baseQuality: 3,
+    minDC: 0,
+    maxDC: 0,
+    minAC: 0,
+    maxAC: 0,
+    maxHp: 0,
+    maxMp: 0,
+    recoverHp: 3500,
+    recoverMp: 2000,
+    levelReq: 15,
+    price: 800,
+    icon: '❄️',
+    desc: '天山雪霜圣品，瞬回 3500 生命与 2000 魔法，保命良药！'
+  },
+  'pot_liaoshang': {
+    id: 'pot_liaoshang',
+    name: '疗伤药',
+    type: 'potion',
+    tier: 2,
+    baseQuality: 4,
+    minDC: 0,
+    maxDC: 0,
+    minAC: 0,
+    maxAC: 0,
+    maxHp: 0,
+    maxMp: 0,
+    recoverHp: 8000,
+    recoverMp: 5000,
+    levelReq: 25,
+    price: 2500,
+    icon: '🧪',
+    desc: '传奇至尊神丹，瞬间恢复 8000 生命与 5000 法力，绝境逆转！'
+  },
+
+  // ======= 气运神油与洗炼奇石 (Blessing Oils & Reforge) =======
+  'pot_blessing_oil': {
+    id: 'pot_blessing_oil',
+    name: '祝福油',
+    type: 'potion',
+    tier: 1,
+    baseQuality: 2, // 精良(蓝)
+    minDC: 0,
+    maxDC: 0,
+    minAC: 0,
+    maxAC: 0,
+    maxHp: 0,
+    maxMp: 0,
+    levelReq: 1,
+    price: 8000,
+    icon: '🏺',
+    desc: '【玛法圣品】为当前佩戴的武器涂抹祝福，概率提升武器幸运 Luck +1 (最高 +7)！失败有小概率遭遇诅咒。'
+  },
+  'pot_super_blessing_oil': {
+    id: 'pot_super_blessing_oil',
+    name: '超级祝福油',
+    type: 'potion',
+    tier: 4,
+    baseQuality: 4, // 传说(橙)
+    minDC: 0,
+    maxDC: 0,
+    minAC: 0,
+    maxAC: 0,
+    maxHp: 0,
+    maxMp: 0,
+    levelReq: 1,
+    price: 150000,
+    icon: '⚱️',
+    desc: '【至尊气运神水】100% 必定成功将当前武器幸运提升至 +7 极境！绝无诅咒失败风险！'
+  },
+  'pot_luosha_water': {
+    id: 'pot_luosha_water',
+    name: '罗刹神水',
+    type: 'potion',
+    tier: 2,
+    baseQuality: 3, // 史诗(紫)
+    minDC: 0,
+    maxDC: 0,
+    minAC: 0,
+    maxAC: 0,
+    maxHp: 0,
+    maxMp: 0,
+    levelReq: 1,
+    price: 25000,
+    icon: '💧',
+    desc: '【驱煞净心灵泉】100% 涤净并洗去当前武器上所有的负面诅咒，使武器重获新生！'
+  }
+};
