@@ -19,6 +19,7 @@ import { DropSystem } from './DropSystem';
 import { AutoPilot } from './AutoPilot';
 import { MONSTER_TEMPLATES } from './definitions/monsters';
 import { SKILL_DEFINITIONS } from './definitions/skills';
+import { ITEM_DEFINITIONS } from './definitions/items';
 import { StorageManager } from './StorageManager';
 import { ASCENSION_DEFINITIONS } from './definitions/ascension';
 import { SET_DEFINITIONS } from './definitions/sets';
@@ -1099,6 +1100,14 @@ export class GameWorld {
       }
     }
 
+    // 护体神盾常驻被动：每秒自然回蓝 2.5% (最低 10 点)
+    if (this.currentTick % 10 === 0 && this.player.stats.hasAegisPassive && this.player.state !== 'dead') {
+      const passiveMp = Math.max(10, Math.floor(this.player.stats.maxMp * 0.025));
+      if (this.player.stats.mp < this.player.stats.maxMp) {
+        this.player.stats.mp = Math.min(this.player.stats.maxMp, this.player.stats.mp + passiveMp);
+      }
+    }
+
     // 玩家护体神盾、中毒与复活CD倒计时
     if (this.player.shieldAegisTicks && this.player.shieldAegisTicks > 0) {
       this.player.shieldAegisTicks--;
@@ -1515,14 +1524,18 @@ export class GameWorld {
     // 护体神盾 (自身玄金护盾，持续50 ticks = 5秒；太虚混元圣盾天赋延长至75 ticks = 7.5秒)
     if (skill?.id === 'shield_aegis') {
       attacker.stats.mp = Math.max(0, attacker.stats.mp - skill.manaCost);
-      skill.currentCdTicks = skill.cdTicks;
+      let cd = skill.cdTicks;
+      if (attacker.isPlayer && attacker.stats.hasteCdr && attacker.stats.hasteCdr > 0) {
+        cd = Math.max(50, Math.floor(cd * (1 - attacker.stats.hasteCdr)));
+      }
+      skill.currentCdTicks = cd;
       const isAegisMastery = attacker.isPlayer && this.hasTalentSpecial('aegis_mastery');
       attacker.shieldAegisTicks = isAegisMastery ? 75 : 50;
       this.onSound?.('crit');
       const isAwakenedShield = (attacker.stats.ascensionTier || 0) >= 4;
       const shieldText = isAegisMastery ? '🛡️太虚混元圣盾!' : (isAwakenedShield ? '🛡️太虚混元罡气!' : '🛡️护体神盾!');
       this.addDamagePopup(attacker.gridPos, shieldText, '#38bdf8', true);
-      this.addBattleLog(`【${shieldText}】玄金罡气护体！受到伤害大幅降低并反震受击伤害！`, 'system');
+      this.addBattleLog(`【${shieldText}】玄金罡气完全爆发！5秒内伤害减免提升至 45%，并反震 30% 伤害！`, 'system');
       this.gainSkillProficiency(skill, 20);
       return true;
     }
@@ -1534,8 +1547,13 @@ export class GameWorld {
     if (skill && skill.manaCost > 0) {
       attacker.stats.mp = Math.max(0, attacker.stats.mp - skill.manaCost);
       let cd = skill.cdTicks;
-      if (attacker.isPlayer && this.hasTalentSpecial('nuclear_slash') && (skill.id === 'fire_slash' || skill.id === 'sun_slash')) {
-        cd = Math.floor(cd * 0.70); // 天地同寿·核爆 CD -30%
+      if (attacker.isPlayer) {
+        if (attacker.stats.hasteCdr && attacker.stats.hasteCdr > 0) {
+          cd = Math.max(8, Math.floor(cd * (1 - attacker.stats.hasteCdr)));
+        }
+        if (this.hasTalentSpecial('nuclear_slash') && (skill.id === 'fire_slash' || skill.id === 'sun_slash')) {
+          cd = Math.floor(cd * 0.70); // 天地同寿·核爆 CD -30%
+        }
       }
       skill.currentCdTicks = cd;
     }
@@ -1761,6 +1779,14 @@ export class GameWorld {
       }
     }
 
+    // 装备法力窃取 (Manasteal)
+    if (attacker.isPlayer && attacker.stats.manastealRate && attacker.stats.manastealRate > 0 && phantomDamage > 0) {
+      const manaStolen = Math.max(1, Math.floor(phantomDamage * attacker.stats.manastealRate));
+      if (attacker.stats.mp < attacker.stats.maxMp) {
+        attacker.stats.mp = Math.min(attacker.stats.maxMp, attacker.stats.mp + manaStolen);
+      }
+    }
+
     // 积累连斩怒气
     this.comboCount++;
 
@@ -1983,6 +2009,35 @@ export class GameWorld {
         attacker.stats.hp = Math.min(attacker.stats.maxHp, attacker.stats.hp + heal);
         this.addDamagePopup(attacker.gridPos, `+${heal}`, '#22c55e', false, true);
       }
+    }
+
+    // 基础攻击回蓝引擎：每次普通平砍命中，回复 2% 最大法力 (保底 15 MP)
+    if (attacker.isPlayer && !skill) {
+      const baseMpRestore = Math.max(15, Math.floor(attacker.stats.maxMp * 0.02));
+      if (attacker.stats.mp < attacker.stats.maxMp) {
+        attacker.stats.mp = Math.min(attacker.stats.maxMp, attacker.stats.mp + baseMpRestore);
+        this.addDamagePopup(attacker.gridPos, `+${baseMpRestore}MP`, '#38bdf8', false, true);
+      }
+    }
+
+    // 装备法力窃取词缀 (Manasteal)
+    if (attacker.isPlayer && attacker.stats.manastealRate && attacker.stats.manastealRate > 0 && finalDamage > 0) {
+      const manaStolen = Math.max(1, Math.floor(finalDamage * attacker.stats.manastealRate));
+      if (attacker.stats.mp < attacker.stats.maxMp) {
+        attacker.stats.mp = Math.min(attacker.stats.maxMp, attacker.stats.mp + manaStolen);
+        this.addDamagePopup(attacker.gridPos, `+${manaStolen}MP`, '#38bdf8', false, true);
+      }
+    }
+
+    // 风雷真伤结算 (急速超 34 溢出转化的无视防御真伤)
+    if (result.extraTrueDamage && result.extraTrueDamage > 0 && !target.isPlayer) {
+      target.stats.hp = Math.max(0, target.stats.hp - result.extraTrueDamage);
+      this.addDamagePopup(target.gridPos, `⚡风雷真伤 -${result.extraTrueDamage}`, '#38bdf8', true);
+    }
+
+    // 护体神盾常驻被动：受击反哺 25 点法力
+    if (target.isPlayer && target.stats.hasAegisPassive) {
+      target.stats.mp = Math.min(target.stats.maxMp, target.stats.mp + 25);
     }
 
     if (target.stats.hp <= 0) {
@@ -2283,6 +2338,21 @@ export class GameWorld {
   }
 
   useItem(item: ItemInstance): boolean {
+    if (item.defId === 'pot_blessing_oil' || item.defId === 'pot_super_blessing_oil') {
+      return this.useBlessingOil(item.defId === 'pot_super_blessing_oil');
+    }
+    if (item.defId === 'pot_luosha_water') {
+      return this.useLuoshaWater();
+    }
+    if (item.defId === 'mat_reforge_stone') {
+      const target = this.equipped.weapon || this.inventory.find(i => i.type === 'equipment' && i.quality >= 2);
+      if (!target) {
+        this.addBattleLog('【洗炼提示】请在角色或装备详情中点击【乾坤洗炼】选择指定装备！', 'system');
+        return false;
+      }
+      return this.reforgeEquipment(target.instanceId);
+    }
+
     if (item.type === 'potion') {
       if (item.recoverHp) {
         this.player.stats.hp = Math.min(this.player.stats.maxHp, this.player.stats.hp + item.recoverHp);
@@ -2306,6 +2376,206 @@ export class GameWorld {
     }
 
     return false;
+  }
+
+  useBlessingOil(isSuper = false): boolean {
+    const weapon = this.equipped.weapon;
+    if (!weapon) {
+      this.addBattleLog('【祝福油】请先穿戴武器，方可使用祝福油进行开光涂抹！', 'system');
+      return false;
+    }
+
+    const oilDefId = isSuper ? 'pot_super_blessing_oil' : 'pot_blessing_oil';
+    const oilItem = this.inventory.find(i => i.defId === oilDefId);
+    if (!oilItem) {
+      this.addBattleLog(`【祝福油】背包中没有【${isSuper ? '超级祝福油' : '祝福油'}】！`, 'system');
+      return false;
+    }
+
+    oilItem.count--;
+    if (oilItem.count <= 0) {
+      const idx = this.inventory.indexOf(oilItem);
+      if (idx !== -1) this.inventory.splice(idx, 1);
+    }
+
+    this.onSound?.('potion');
+
+    if (isSuper) {
+      if (weapon.curse && weapon.curse > 0) {
+        weapon.curse = 0;
+        this.onSound?.('crit');
+        this.addDamagePopup(this.player.gridPos, '✨煞气消散·诅咒净化!', '#38bdf8', true);
+        this.addBattleLog(`【超级祝福油】金光灌注，[${weapon.name}] 所有的血煞诅咒尽数消散！`, 'system');
+      } else {
+        const curLuck = weapon.luck || 0;
+        if (curLuck < 7) {
+          weapon.luck = curLuck + 1;
+          this.onSound?.('crit');
+          this.addDamagePopup(this.player.gridPos, `🌟幸运+1 (当前运${weapon.luck})!`, '#facc15', true);
+          this.addBattleLog(`【超级祝福油】天道法则降临，[${weapon.name}] 幸运提升至 +${weapon.luck}！`, 'system');
+        } else {
+          this.addBattleLog(`【超级祝福油】[${weapon.name}] 幸运已达巅峰 +7，无需再饮用！`, 'system');
+        }
+      }
+    } else {
+      if (weapon.curse && weapon.curse > 0) {
+        if (Math.random() < 0.65) {
+          weapon.curse--;
+          this.addDamagePopup(this.player.gridPos, `✨诅咒减轻 (余${weapon.curse})`, '#38bdf8', true);
+          this.addBattleLog(`【祝福油】圣水微光闪烁，[${weapon.name}] 的诅咒减轻了！`, 'system');
+        } else {
+          this.addBattleLog(`【祝福油】[${weapon.name}] 煞气顽固，未能洗去诅咒。`, 'system');
+        }
+      } else {
+        const curLuck = weapon.luck || 0;
+        if (curLuck >= 7) {
+          this.addBattleLog(`【祝福油】[${weapon.name}] 幸运已达普通祝福油上限 +7，无法继续提升！`, 'system');
+        } else if (curLuck < 3) {
+          if (Math.random() < 0.70) {
+            weapon.luck = curLuck + 1;
+            this.onSound?.('crit');
+            this.addDamagePopup(this.player.gridPos, `🌟幸运+1 (当前运${weapon.luck})!`, '#facc15', true);
+            this.addBattleLog(`【祝福油】神油开光，[${weapon.name}] 幸运升至 +${weapon.luck}！`, 'system');
+          } else {
+            this.addBattleLog('【祝福油】神油挥发，没有任何事情发生。', 'system');
+          }
+        } else {
+          const successRate = (7 - curLuck) * 0.10;
+          const roll = Math.random();
+          if (roll < successRate) {
+            weapon.luck = curLuck + 1;
+            this.onSound?.('crit');
+            this.addDamagePopup(this.player.gridPos, `🌟幸运+1 (当前运${weapon.luck})!`, '#facc15', true);
+            this.addBattleLog(`【祝福油】极运眷顾！[${weapon.name}] 幸运升至 +${weapon.luck}！`, 'system');
+          } else if (roll < successRate + 0.35) {
+            if (curLuck > 0) {
+              weapon.luck = curLuck - 1;
+              this.addDamagePopup(this.player.gridPos, `⚠️幸运下降 (当前运${weapon.luck})`, '#ef4444', true);
+              this.addBattleLog(`【祝福油】厄运侵染！[${weapon.name}] 幸运降至 +${weapon.luck}！`, 'system');
+            } else {
+              weapon.curse = (weapon.curse || 0) + 1;
+              this.addDamagePopup(this.player.gridPos, `💀武器遭诅咒 (诅${weapon.curse})`, '#ef4444', true);
+              this.addBattleLog(`【祝福油】煞气反噬！[${weapon.name}] 被诅咒了！`, 'system');
+            }
+          } else {
+            this.addBattleLog('【祝福油】神油挥发，没有任何事情发生。', 'system');
+          }
+        }
+      }
+    }
+
+    this.recalculatePlayerStats();
+    return true;
+  }
+
+  useLuoshaWater(): boolean {
+    const weapon = this.equipped.weapon;
+    if (!weapon) {
+      this.addBattleLog('【罗刹神水】请先穿戴武器！', 'system');
+      return false;
+    }
+    const luosha = this.inventory.find(i => i.defId === 'pot_luosha_water');
+    if (!luosha) {
+      this.addBattleLog('【罗刹神水】背包中没有罗刹神水！', 'system');
+      return false;
+    }
+
+    luosha.count--;
+    if (luosha.count <= 0) {
+      const idx = this.inventory.indexOf(luosha);
+      if (idx !== -1) this.inventory.splice(idx, 1);
+    }
+
+    weapon.curse = 0;
+    this.onSound?.('crit');
+    this.addDamagePopup(this.player.gridPos, '🌊诅咒彻底净化!', '#38bdf8', true);
+    this.addBattleLog(`【罗刹神水】九幽神泉洗练，[${weapon.name}] 的诅咒完全消弭！`, 'system');
+    this.recalculatePlayerStats();
+    return true;
+  }
+
+  reforgeEquipment(instanceId: string): boolean {
+    let item: ItemInstance | undefined = Object.values(this.equipped).find(i => i?.instanceId === instanceId);
+    if (!item) {
+      item = this.inventory.find(i => i.instanceId === instanceId);
+    }
+    if (!item || item.type !== 'equipment') {
+      this.addBattleLog('【乾坤洗炼】未找到指定装备！', 'system');
+      return false;
+    }
+
+    const reforgeStone = this.inventory.find(i => i.defId === 'mat_reforge_stone');
+    if (!reforgeStone) {
+      this.addBattleLog('【乾坤洗炼】背包中缺少【乾坤洗炼石】！可击败Boss或在神秘黑市行商处购得！', 'system');
+      return false;
+    }
+
+    const costGold = 50000;
+    if (this.player.stats.gold < costGold) {
+      this.addBattleLog(`【乾坤洗炼】金币不足！每次洗炼需消耗 50,000 金币！`, 'system');
+      return false;
+    }
+
+    this.player.stats.gold -= costGold;
+    reforgeStone.count--;
+    if (reforgeStone.count <= 0) {
+      const idx = this.inventory.indexOf(reforgeStone);
+      if (idx !== -1) this.inventory.splice(idx, 1);
+    }
+
+    DropSystem.reforgeItem(item);
+    this.onSound?.('crit');
+    this.addDamagePopup(this.player.gridPos, '✨装备洗炼成功!', '#a855f7', true);
+    const affixSummary = item.affixes?.map(a => a.name).join('、') || '无特殊词缀';
+    this.addBattleLog(`【乾坤洗炼】[${item.name}] 洗炼重铸完毕！获得全新词缀：【${affixSummary}】！`, 'system');
+
+    this.recalculatePlayerStats();
+    return true;
+  }
+
+  buyShopItem(defId: string, count = 1): boolean {
+    const shopPrices: Record<string, number> = {
+      'mat_reforge_stone': 100000,
+      'pot_blessing_oil': 150000,
+      'pot_luosha_water': 500000,
+      'pot_sun': 5000,
+      'pot_liaoshang': 25000,
+      'mat_iron_ore': 50000,
+      'mat_pure_iron': 200000,
+      'mat_god_stone': 1000000,
+      'pot_super_blessing_oil': 10000000
+    };
+
+    const pricePerUnit = shopPrices[defId];
+    if (!pricePerUnit) {
+      this.addBattleLog('【黑市商人】行商货架上暂无此物！', 'system');
+      return false;
+    }
+
+    const totalCost = pricePerUnit * count;
+    if (this.player.stats.gold < totalCost) {
+      this.addBattleLog(`【黑市商人】金币不足！购买 ${count} 个需 ${totalCost.toLocaleString()} 金币！`, 'system');
+      return false;
+    }
+
+    const existing = this.inventory.find(i => i.defId === defId);
+    if (!existing && this.inventory.length >= this.getMaxInventorySlots()) {
+      this.addBattleLog('【黑市商人】背包空间已满，无法容纳新货物！', 'system');
+      return false;
+    }
+
+    this.player.stats.gold -= totalCost;
+    if (existing) {
+      existing.count += count;
+    } else {
+      const newItem = DropSystem.createItemInstance(defId, 2, count);
+      if (newItem) this.inventory.push(newItem);
+    }
+
+    this.onSound?.('coin');
+    const itemDef = ITEM_DEFINITIONS[defId];
+    this.addBattleLog(`【黑市行商】花费 ${totalCost.toLocaleString()} 金币购得 [${itemDef?.name || defId}] x${count}！`, 'system');
+    return true;
   }
 
   equipItem(item: ItemInstance): boolean {

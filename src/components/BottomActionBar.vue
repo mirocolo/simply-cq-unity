@@ -255,6 +255,14 @@
             <span>强化(U)</span>
           </button>
           <button 
+            @click="$emit('openModal', 'shop')"
+            class="w-16 py-1.5 bg-gradient-to-b from-[#3a2e1e] to-[#1e1509] hover:from-[#554025] hover:to-[#2e1f0e] text-[#fbbf24] border-2 border-[#b45309] rounded text-xs font-black transition-all shadow-[0_0_8px_rgba(251,191,36,0.25)] active:scale-95 flex items-center justify-center gap-0.5"
+            title="黑市行商与神药洗炼石购买 (按 P)"
+          >
+            <span>🏮</span>
+            <span>黑市(P)</span>
+          </button>
+          <button 
             @click="$emit('openModal', 'settings')"
             class="w-16 py-1.5 bg-gradient-to-b from-[#3a2f23] to-[#1e1710] hover:from-[#4d3e2d] hover:to-[#2c2217] text-[#f3c258] border-2 border-[#6d563a] rounded text-xs font-bold transition-all shadow-md active:scale-95"
           >

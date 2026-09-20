@@ -75,6 +75,7 @@
         @oneKeyRecycle="handleOneKeyRecycle"
         @oneKeyRecycleWeaker="handleOneKeyRecycleWeaker"
         @oneKeyRecycleBlue="handleOneKeyRecycleBlue"
+        @reforge="handleReforgeEquipment"
       />
     </Transition>
 
@@ -98,6 +99,16 @@
         @toggleSound="toggleSound"
         @setVolume="handleSetVolume"
         @reloadGame="handleReloadGame"
+      />
+    </Transition>
+
+    <!-- 模态弹窗：神秘黑市行商 (P) -->
+    <Transition name="modal">
+      <ShopModal 
+        v-if="activeModal === 'shop'"
+        :playerGold="world.player.stats.gold"
+        @close="activeModal = null"
+        @buy="handleBuyShopItem"
       />
     </Transition>
 
@@ -176,6 +187,7 @@ import WorldMapModal from './components/WorldMapModal.vue';
 import EnhanceModal from './components/EnhanceModal.vue';
 import MonsterCodexModal from './components/MonsterCodexModal.vue';
 import TalentModal from './components/TalentModal.vue';
+import ShopModal from './components/ShopModal.vue';
 
 // 核心性能架构改造：将底层游戏世界与渲染器通过 markRaw 剥离 Vue 深度响应式 Proxy 监听
 // 消除 48x48 矩阵与全图怪群高频 Tick 的无谓拦截，使用 shallowRef + triggerRef 维持原生速度
@@ -191,7 +203,7 @@ const syncUI = () => {
 };
 
 const selectedTargetId = ref<string | null>(null);
-const activeModal = ref<'character' | 'inventory' | 'autopilot' | 'settings' | 'special_ring' | 'world_map' | 'enhance' | 'codex' | 'talent' | null>(null);
+const activeModal = ref<'character' | 'inventory' | 'autopilot' | 'settings' | 'special_ring' | 'world_map' | 'enhance' | 'codex' | 'talent' | 'shop' | null>(null);
 const offlineReward = ref<OfflineReward | null>(null);
 
 const isSoundOn = ref(true);
@@ -401,6 +413,16 @@ const handleResetTalents = () => {
   syncUI();
 };
 
+const handleReforgeEquipment = (instanceId: string) => {
+  rawWorld.reforgeEquipment(instanceId);
+  syncUI();
+};
+
+const handleBuyShopItem = (defId: string, count: number) => {
+  rawWorld.buyShopItem(defId, count);
+  syncUI();
+};
+
 const handleKeyDown = (e: KeyboardEvent) => {
   if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
 
@@ -421,6 +443,8 @@ const handleKeyDown = (e: KeyboardEvent) => {
     openModal('codex');
   } else if (key === 'N') {
     openModal('talent');
+  } else if (key === 'P') {
+    openModal('shop');
   } else if (key === 'L') {
     openModal('autopilot');
   } else if (key === 'O' || e.key === 'Escape') {

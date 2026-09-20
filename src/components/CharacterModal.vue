@@ -43,6 +43,13 @@
                 >
                   {{ equipped[slotKey.key]?.name.slice(0, 2) }}
                 </span>
+                <span 
+                  v-if="slotKey.key === 'weapon' && (equipped.weapon?.luck || equipped.weapon?.curse)"
+                  class="absolute -top-1 -left-1 text-[8px] font-black px-1 rounded shadow z-10"
+                  :class="equipped.weapon?.curse ? 'bg-red-950 text-red-400 border border-red-600' : 'bg-amber-950 text-amber-300 border border-amber-500'"
+                >
+                  {{ equipped.weapon?.curse ? `诅${equipped.weapon?.curse}` : `运${equipped.weapon?.luck}` }}
+                </span>
               </div>
             </div>
 
@@ -243,6 +250,31 @@
               </span>
               <span class="font-black text-amber-400 font-mono">
                 {{ (player.stats.phantomStrikeRate * 100).toFixed(1) }}% <span class="text-[10px] text-zinc-400">(溢出+{{ player.stats.haste - 34 }})</span>
+              </span>
+            </div>
+            <!-- 技能极速冷却 CDR -->
+            <div v-if="player.stats.hasteCdr && player.stats.hasteCdr > 0" class="flex justify-between py-1 bg-cyan-950/30 px-1.5 rounded border border-cyan-600/40">
+              <span class="text-cyan-300 font-bold flex items-center gap-1">
+                <span>⏱️</span>
+                <span>技能极速冷却 (CDR):</span>
+              </span>
+              <span class="font-black text-cyan-300 font-mono">
+                +{{ ((player.stats.hasteCdr || 0) * 100).toFixed(0) }}% 冷却缩减
+              </span>
+            </div>
+            <!-- 法力窃取 -->
+            <div v-if="player.stats.manastealRate && player.stats.manastealRate > 0" class="flex justify-between py-1">
+              <span class="text-zinc-400">法力窃取 (Manasteal):</span>
+              <span class="font-bold text-sky-400">{{ ((player.stats.manastealRate || 0) * 100).toFixed(1) }}% (伤害回蓝)</span>
+            </div>
+            <!-- 护体神盾常驻玄金罡气 -->
+            <div v-if="player.stats.hasAegisPassive" class="flex justify-between py-1 bg-sky-950/40 px-1.5 rounded border border-sky-500/40">
+              <span class="text-sky-300 font-bold flex items-center gap-1">
+                <span>🛡️</span>
+                <span>护体神盾·常驻罡气:</span>
+              </span>
+              <span class="font-black text-sky-300 font-mono text-[11px]">
+                常驻减伤15% · 15%护盾 · 持续回蓝
               </span>
             </div>
           </div>

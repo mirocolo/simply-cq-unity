@@ -41,28 +41,28 @@ export const ASCENSION_DEFINITIONS: Record<number, AscensionDef> = {
     requiredLevel: 32,
     title: '金丹·破阵霸主',
     mapName: '【二阶·封魔殿堂】',
-    statMultiplier: 0.40,
+    statMultiplier: 0.45,
     luckBonus: 0,
     damageMultRatio: 0,
-    defenseIgnoreRate: 0.15, // 破防 15%
+    defenseIgnoreRate: 0.08, // 破防平抑至 8%
     phantomExtraHits: 0,
     lifestealBonus: 0.01,
     critRateBonus: 0.05,
     critMultBonus: 0.20,
-    desc: '金丹初成，刀罡破阵！获得 15% 物理破甲，攻杀剑术觉醒附带重伤撕裂！',
+    desc: '金丹初成，刀罡破阵！获得 8% 物理破甲，攻杀剑术觉醒附带重伤撕裂！',
     awakenedSkillId: 'power_slash',
     awakenedSkillName: '破天裂地斩',
-    awakenedSkillDesc: '强力破甲重击，降低目标 40% 防御并附加 5 秒重伤流血！'
+    awakenedSkillDesc: '强力破甲重击，降低目标 20% 防御并附加 5 秒重伤流血！'
   },
   3: {
     tier: 3,
     requiredLevel: 38,
     title: '元婴·通天战尊',
     mapName: '【三阶·沃玛魔窟】',
-    statMultiplier: 0.65,
+    statMultiplier: 0.75,
     luckBonus: 0,
     damageMultRatio: 0.15, // 首次解锁倍攻 +15%
-    defenseIgnoreRate: 0.25,
+    defenseIgnoreRate: 0.12, // 破防平抑至 12%
     phantomExtraHits: 0,
     lifestealBonus: 0.02,
     critRateBonus: 0.08,
@@ -70,17 +70,17 @@ export const ASCENSION_DEFINITIONS: Record<number, AscensionDef> = {
     desc: '元婴凝结，神力贯体！首次解锁稀有【倍攻 +15%】，刺杀剑术隔位必暴击！',
     awakenedSkillId: 'assassinate',
     awakenedSkillName: '幽冥绝影刺',
-    awakenedSkillDesc: '隔位刺杀必定暴击，剑气穿透延长至 2 格无视护甲防御！'
+    awakenedSkillDesc: '隔位刺杀必定暴击，剑气穿透延长至 2 格穿透护甲防御！'
   },
   4: {
     tier: 4,
     requiredLevel: 44,
     title: '化神·灭世修罗',
     mapName: '【四阶·赤月老巢】',
-    statMultiplier: 0.90,
+    statMultiplier: 1.05,
     luckBonus: 0,
     damageMultRatio: 0.25, // 倍攻 +25%
-    defenseIgnoreRate: 0.35,
+    defenseIgnoreRate: 0.16, // 破防平抑至 16%
     phantomExtraHits: 0,
     lifestealBonus: 0.02,
     critRateBonus: 0.10,
@@ -95,10 +95,10 @@ export const ASCENSION_DEFINITIONS: Record<number, AscensionDef> = {
     requiredLevel: 50,
     title: '合道·乾坤天尊',
     mapName: '【五阶·苍月秘境】',
-    statMultiplier: 1.20,
+    statMultiplier: 1.40,
     luckBonus: 2, // 累加幸运 +2 (总 Luck 达 3+)
     damageMultRatio: 0.35, // 倍攻 +35%
-    defenseIgnoreRate: 0.45,
+    defenseIgnoreRate: 0.20, // 破防平抑至 20%
     phantomExtraHits: 0,
     lifestealBonus: 0.03,
     critRateBonus: 0.12,
@@ -113,10 +113,10 @@ export const ASCENSION_DEFINITIONS: Record<number, AscensionDef> = {
     requiredLevel: 55,
     title: '地仙·九霄战狂',
     mapName: '【六阶·牛魔神庙】',
-    statMultiplier: 1.60,
+    statMultiplier: 1.85,
     luckBonus: 0,
     damageMultRatio: 0.45, // 倍攻 +45%
-    defenseIgnoreRate: 0.55,
+    defenseIgnoreRate: 0.25, // 破防平抑至 25%
     phantomExtraHits: 1, // 额外残影段数 +1！
     lifestealBonus: 0.03,
     critRateBonus: 0.15,
@@ -131,10 +131,10 @@ export const ASCENSION_DEFINITIONS: Record<number, AscensionDef> = {
     requiredLevel: 60,
     title: '玄仙·焚天圣皇',
     mapName: '【七阶·火龙魔窟】',
-    statMultiplier: 2.10,
+    statMultiplier: 2.40,
     luckBonus: 0,
     damageMultRatio: 0.60, // 倍攻 +60%
-    defenseIgnoreRate: 0.70,
+    defenseIgnoreRate: 0.30, // 破防平抑至 30%
     phantomExtraHits: 1,
     lifestealBonus: 0.04,
     critRateBonus: 0.18,
@@ -149,10 +149,10 @@ export const ASCENSION_DEFINITIONS: Record<number, AscensionDef> = {
     requiredLevel: 65,
     title: '金仙·万劫至尊',
     mapName: '【八阶·修罗神殿】',
-    statMultiplier: 2.70,
+    statMultiplier: 3.10,
     luckBonus: 3, // 累加幸运 +3 (天然运6+)
     damageMultRatio: 0.80, // 倍攻 +80%
-    defenseIgnoreRate: 0.85,
+    defenseIgnoreRate: 0.35, // 破防平抑至 35%
     phantomExtraHits: 2,
     lifestealBonus: 0.05,
     critRateBonus: 0.20,
@@ -164,14 +164,14 @@ export const ASCENSION_DEFINITIONS: Record<number, AscensionDef> = {
     requiredLevel: 70,
     title: '混元·无极天帝',
     mapName: '【九阶·鸿蒙仙境】',
-    statMultiplier: 3.50,
+    statMultiplier: 4.00,
     luckBonus: 3,
     damageMultRatio: 1.00, // 终极双倍伤害 (+100% 倍攻)
-    defenseIgnoreRate: 1.00, // 100% 真实无视防御
+    defenseIgnoreRate: 0.40, // 破防平抑至 40% (运10方可达成100%真破甲)
     phantomExtraHits: 2,
     lifestealBonus: 0.06,
     critRateBonus: 0.25,
     critMultBonus: 1.00,
-    desc: '至高混元天帝！终极【倍攻 +100%】伤害翻倍，100% 真实无视一切防御护甲！'
+    desc: '至高混元天帝！终极【倍攻 +100%】伤害翻倍，附带 40% 深度真实破甲！'
   }
 };

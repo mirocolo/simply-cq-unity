@@ -61,6 +61,28 @@ export interface ItemDef {
   desc: string;
 }
 
+export type EquipmentAffixType = 
+  | 'haste' 
+  | 'defense_ignore' 
+  | 'lifesteal' 
+  | 'manasteal'
+  | 'crit_mult' 
+  | 'damage_mult' 
+  | 'flat_hp' 
+  | 'flat_dc'
+  | 'flat_ac'
+  | 'luck';
+
+export interface EquipmentAffix {
+  id?: string;
+  type: EquipmentAffixType;
+  name: string;
+  value: number;
+  quality?: ItemQuality; // 0白, 1绿, 2蓝, 3紫, 4橙
+  tier?: number;
+  desc?: string;
+}
+
 export interface ItemInstance {
   instanceId: string;
   defId: string;
@@ -78,6 +100,7 @@ export interface ItemInstance {
   critBonus: number;
   hasteBonus: number;
   lifestealBonus?: number; // 稀有生命吸血百分比加成 (如 2 代表 +2%)
+  manastealBonus?: number; // 稀有法力吸魔百分比加成 (如 2 代表 +2%)
   luck?: number;
   damageMultRatio?: number;
   defenseIgnoreRate?: number;
@@ -90,6 +113,8 @@ export interface ItemInstance {
   icon: string;
   desc: string;
   count: number;
+  affixes?: EquipmentAffix[]; // 装备彩色随机词缀
+  curse?: number; // 武器诅咒值 (1~5)
 }
 
 export interface EntityStats {
@@ -110,15 +135,20 @@ export interface EntityStats {
   critRate: number;
   critMult: number;
   haste: number;
+  hasteCdr?: number; // 攻速转化冷却缩减 (0 ~ 0.40)
   dodgeRate: number;
   lifestealRate: number; // 稀有生命吸血率 (出厂 0.02 即 2%)
+  manastealRate?: number; // 稀有法力吸魔率 (如 0.02 代表 2%)
   baseAttackInterval: number; // 默认 4~5 ticks
   effectiveAttackInterval: number;
   phantomStrikeRate: number; // 攻速溢出转化的风雷残影连击率 (0 ~ 1.0+)
+  hasAegisPassive?: boolean; // 是否已激活护体神盾常驻玄金体 (15%常驻减伤+常驻护盾+挨打回蓝)
   combatPower: number;
   gold: number;
   exp: number;
   maxExp: number;
+  currentTitleId?: string;
+  unlockedTitleIds?: string[];
 }
 
 export interface Entity {

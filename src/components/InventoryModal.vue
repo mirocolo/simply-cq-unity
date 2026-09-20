@@ -150,6 +150,11 @@
                   <span class="font-bold text-amber-400">+{{ selectedItem.luck }} (气运极境)</span>
                 </div>
 
+                <div v-if="selectedItem.curse && selectedItem.curse > 0" class="flex justify-between">
+                  <span class="text-zinc-400">血煞诅咒加成:</span>
+                  <span class="font-bold text-red-500">💀 诅咒 +{{ selectedItem.curse }}</span>
+                </div>
+
                 <div v-if="selectedItem.damageMultRatio && selectedItem.damageMultRatio > 0" class="flex justify-between">
                   <span class="text-zinc-400">终极倍攻乘数:</span>
                   <span class="font-bold text-orange-400">+{{ (selectedItem.damageMultRatio * 100).toFixed(0) }}% 独立增伤</span>
@@ -158,6 +163,29 @@
                 <div v-if="selectedItem.defenseIgnoreRate && selectedItem.defenseIgnoreRate > 0" class="flex justify-between">
                   <span class="text-zinc-400">神圣破甲穿透:</span>
                   <span class="font-bold text-sky-400">{{ (selectedItem.defenseIgnoreRate * 100).toFixed(0) }}% 忽视防御</span>
+                </div>
+
+                <!-- 随机彩色词缀展示区 -->
+                <div v-if="selectedItem.type === 'equipment'" class="mt-1 flex flex-col gap-1 bg-amber-950/20 p-2 rounded border border-amber-600/30">
+                  <div class="text-[10px] text-amber-300 font-bold flex items-center justify-between">
+                    <span>✨ 随机彩色词缀 {{ selectedItem.affixes ? `(${selectedItem.affixes.length})` : '(未洗炼)' }}</span>
+                    <button 
+                      @click="$emit('reforge', selectedItem.instanceId)"
+                      class="px-2 py-0.5 bg-purple-900/80 hover:bg-purple-700 text-purple-200 border border-purple-500/50 rounded text-[10px] font-bold transition-all active:scale-95 cursor-pointer shadow"
+                      title="消耗 1 颗乾坤洗炼石与 50,000 金币重铸词缀"
+                    >
+                      🔮 乾坤洗炼
+                    </button>
+                  </div>
+                  <div v-if="selectedItem.affixes && selectedItem.affixes.length > 0" class="flex flex-col gap-0.5">
+                    <div v-for="(aff, idx) in selectedItem.affixes" :key="idx" class="flex items-center justify-between text-[11px]">
+                      <span class="text-amber-200 font-medium">• {{ aff.name }}</span>
+                      <span class="font-bold text-amber-400 font-mono">+{{ aff.value }}</span>
+                    </div>
+                  </div>
+                  <div v-else class="text-[10px] text-zinc-500 italic">
+                    暂无随机词缀，可使用乾坤洗炼石洗炼生成！
+                  </div>
                 </div>
               </template>
 
@@ -271,6 +299,7 @@ const emit = defineEmits<{
   (e: 'oneKeyRecycle'): void;
   (e: 'oneKeyRecycleWeaker'): void;
   (e: 'oneKeyRecycleBlue'): void;
+  (e: 'reforge', instanceId: string): void;
 }>();
 
 const maxSlots = computed(() => {
@@ -288,7 +317,9 @@ const getItemPower = (item?: ItemInstance | null) => {
 };
 
 const canEquip = (item?: ItemInstance | null): boolean => {
-  if (!item || item.type !== 'equipment' || !item.slot) return false;
+  if (!item) return false;
+  if (item.type === 'potion' || item.type === 'material') return true;
+  if (item.type !== 'equipment' || !item.slot) return false;
   if (!props.player) return true;
   const playerTier = props.player.stats.ascensionTier || 0;
   if (item.tier > playerTier) return false;
@@ -298,6 +329,9 @@ const canEquip = (item?: ItemInstance | null): boolean => {
 
 const getEquipBtnText = (item?: ItemInstance | null): string => {
   if (!item) return '';
+  if (item.defId === 'pot_blessing_oil' || item.defId === 'pot_super_blessing_oil') return '🏺 涂抹武器开光';
+  if (item.defId === 'pot_luosha_water') return '🧪 净化武器诅咒';
+  if (item.defId === 'mat_reforge_stone') return '🔮 乾坤洗炼装备';
   if (item.type === 'potion') return '使用药水';
   if (!props.player) return '穿戴装备';
   const playerTier = props.player.stats.ascensionTier || 0;

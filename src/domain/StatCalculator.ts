@@ -150,11 +150,14 @@ export class StatCalculator {
     let addCritBonus = (codexStats?.critRate || 0) * 100;
     let addHasteBonus = 0;
     let addLifestealBonus = 0;
+    let addManasteal = 0;
     let addLuck = 0;
     let addDamageMult = 0;
     let addDefenseIgnore = 0;
+    let addCritMult = 0;
+    let weaponCurse = 0;
 
-    for (const item of Object.values(equipped)) {
+    for (const [slot, item] of Object.entries(equipped)) {
       if (!item) continue;
       addMinDC += item.minDC;
       addMaxDC += item.maxDC;
@@ -168,6 +171,51 @@ export class StatCalculator {
       addLuck += item.luck || 0;
       addDamageMult += item.damageMultRatio || 0;
       addDefenseIgnore += item.defenseIgnoreRate || 0;
+
+      // 武器诅咒扣减幸运
+      if (slot === 'weapon' && item.curse) {
+        weaponCurse += item.curse;
+      }
+
+      // 随机词缀解析
+      if (item.affixes && Array.isArray(item.affixes)) {
+        for (const affix of item.affixes) {
+          switch (affix.type) {
+            case 'haste':
+              addHasteBonus += affix.value;
+              break;
+            case 'defense_ignore':
+              addDefenseIgnore += affix.value / 100;
+              break;
+            case 'lifesteal':
+              addLifestealBonus += affix.value;
+              break;
+            case 'manasteal':
+              addManasteal += affix.value;
+              break;
+            case 'crit_mult':
+              addCritMult += affix.value / 100;
+              break;
+            case 'damage_mult':
+              addDamageMult += affix.value / 100;
+              break;
+            case 'flat_hp':
+              addHp += affix.value;
+              break;
+            case 'flat_dc':
+              addMinDC += affix.value;
+              addMaxDC += affix.value;
+              break;
+            case 'flat_ac':
+              addMinAC += affix.value;
+              addMaxAC += affix.value;
+              break;
+            case 'luck':
+              addLuck += affix.value;
+              break;
+          }
+        }
+      }
 
       // 幸运特戒直接增加幸运
       if (item.specialEffect === 'luck') {
@@ -271,7 +319,11 @@ export class StatCalculator {
     const totalDcMult = setDcMult + talentDcMult;
     const totalAcMult = setAcMult + talentAcMult;
 
-    let maxHp = Math.floor((baseStats.maxHp + addHp + talentFlatHp) * (1 + totalHpMult));
+    // 护体神盾常驻被动 (达到 15 级自动解锁激活)
+    const hasAegisPassive = baseStats.level >= 15;
+    const aegisHpBonus = hasAegisPassive ? 0.15 : 0; // 罡气护盾 +15% 最大HP
+
+    let maxHp = Math.floor((baseStats.maxHp + addHp + talentFlatHp) * (1 + totalHpMult + aegisHpBonus));
     let maxMp = baseStats.maxMp + addMp;
     let minDC = Math.floor((baseStats.minDC + addMinDC + talentMinDC) * (1 + totalDcMult));
     let maxDC = Math.floor((baseStats.maxDC + addMaxDC + talentMaxDC) * (1 + totalDcMult));
@@ -281,11 +333,22 @@ export class StatCalculator {
     const critRate = Math.min(0.95, baseStats.critRate + addCritBonus / 100 + setCritRate + talentCritRate);
     const haste = baseStats.haste + addHasteBonus + setHaste + talentHaste;
     const dodgeRate = Math.min(0.50, baseStats.dodgeRate + setDodgeRate);
-    const critMult = Number((baseStats.critMult + talentCritMult).toFixed(2));
+    const critMult = Number((baseStats.critMult + addCritMult + talentCritMult).toFixed(2));
     const lifestealRate = Number((baseStats.lifestealRate + addLifestealBonus / 100 + setLifestealRate + talentLifesteal).toFixed(3));
-    const luck = baseStats.luck + addLuck;
+    const manastealRate = Number((addManasteal / 100).toFixed(3));
+    const luck = Math.max(-10, baseStats.luck + addLuck - weaponCurse);
     const damageMultRatio = Number((baseStats.damageMultRatio + setDamageMultRatio + addDamageMult + talentDamageMult).toFixed(2));
-    const defenseIgnoreRate = Number((baseStats.defenseIgnoreRate + addDefenseIgnore + talentDefenseIgnore).toFixed(2));
+    
+    // 减防破甲削弱与运10破甲机制：
+    // 常规来源（飞升/词缀/天赋）破甲上限软上限为 50%，防止 Boss 防御完全形同虚设；
+    // 唯有武器幸运达成 10 (运10神圣破甲) 时，方可突破上限达到 100% 绝对真伤破甲！
+    let defenseIgnoreRate = Number((baseStats.defenseIgnoreRate + addDefenseIgnore + talentDefenseIgnore).toFixed(2));
+    if (luck < 10) {
+      defenseIgnoreRate = Math.min(0.50, defenseIgnoreRate);
+    } else {
+      defenseIgnoreRate = 1.0;
+    }
+
     const thornsRate = Number(talentThorns.toFixed(2));
 
     // 有效出手间隔：最低 2 ticks (200ms 一刀，极速如风)
@@ -297,6 +360,9 @@ export class StatCalculator {
     // 攻速溢出转化机制 (方案 A: 风雷残影·连击斩)
     const overflowHaste = Math.max(0, haste - 34);
     const phantomStrikeRate = overflowHaste > 0 ? Number((overflowHaste * 0.015).toFixed(3)) : 0;
+
+    // 急速转化技能极速冷却 CDR (至多 40% CDR)
+    const hasteCdr = Math.min(0.40, Number((Math.max(0, haste - 30) * 0.005).toFixed(3)));
 
     let enhancementScore = 0;
     if (slotEnhancements) {
@@ -316,9 +382,11 @@ export class StatCalculator {
       (critMult - 1) * 200 +
       dodgeRate * 1400 +
       lifestealRate * 2500 +
+      manastealRate * 2000 +
       thornsRate * 1800 +
-      haste * 12 +
-      phantomStrikeRate * 2000 +
+      haste * 15 +
+      phantomStrikeRate * 2500 +
+      hasteCdr * 3000 +
       luck * 1500 +
       enhancementScore +
       baseStats.level * 35) * (1 + damageMultRatio)
@@ -342,6 +410,9 @@ export class StatCalculator {
       critRate,
       critMult,
       haste,
+      hasteCdr,
+      manastealRate,
+      hasAegisPassive,
       dodgeRate,
       lifestealRate,
       effectiveAttackInterval,
@@ -361,10 +432,18 @@ export class StatCalculator {
     const specialBonus = item.specialEffect ? 2500 : 0;
     const setBonus = item.setName ? 600 : 0;
     const luckBonus = (item.luck || 0) * 800 + (item.specialEffect === 'luck' ? 2400 : 0);
+    const cursePenalty = (item.curse || 0) * 600;
     const damageMultBonus = (item.damageMultRatio || 0) * 5000;
     const defenseIgnoreBonus = (item.defenseIgnoreRate || 0) * 3000;
 
-    return Math.floor(
+    let affixScore = 0;
+    if (item.affixes && Array.isArray(item.affixes)) {
+      for (const af of item.affixes) {
+        affixScore += af.value * (af.tier || 1) * 120;
+      }
+    }
+
+    return Math.max(1, Math.floor(
       midDC * 3.8 +
       midAC * 2.8 +
       (item.maxHp || 0) * 0.45 +
@@ -376,9 +455,11 @@ export class StatCalculator {
       tierBonus +
       specialBonus +
       setBonus +
-      luckBonus +
+      luckBonus -
+      cursePenalty +
       damageMultBonus +
-      defenseIgnoreBonus
-    );
+      defenseIgnoreBonus +
+      affixScore
+    ));
   }
 }

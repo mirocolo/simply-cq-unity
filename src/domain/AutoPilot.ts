@@ -174,17 +174,34 @@ export class AutoPilot {
     if (closest.dist <= 1) {
       let selectedSkill: SkillDef | undefined;
       if (config.autoSkill) {
-        // 1. 若受到威胁且护体神盾可用，优先开启护体神盾
+        // 智能护体神盾释放判定：
+        // 仅在真实受到威胁时开启，绝不无脑浪费在单只弱小怪上：
+        // 1) 自身生命低于 75%
+        // 2) 面对或逼近 Boss/精英怪 (3格以内)
+        // 3) 被 2 只及以上怪物近身围殴
+        // 4) 身处首领危险红圈 AOE 内
         const shield = skills.find(s => 
           s.id === 'shield_aegis' && 
           s.currentCdTicks === 0 && 
           player.stats.mp >= s.manaCost && 
           player.stats.level >= s.unlockLevel && 
-          (!player.shieldAegisTicks || player.shieldAegisTicks <= 0) && 
-          player.stats.hp < player.stats.maxHp * 0.85
+          (!player.shieldAegisTicks || player.shieldAegisTicks <= 0)
         );
 
-        // 2. 挑选最高伤害倍率的可用攻击技能 (逐日 > 烈火 > 开天 > 刺杀 > 攻杀)
+        let shouldCastShield = false;
+        if (shield) {
+          const hpRatio = player.stats.hp / player.stats.maxHp;
+          const isNearBossOrElite = aliveMonsters.some(m => (m.monster.isBoss || m.monster.isElite) && m.dist <= 3);
+          const isSurrounded = aliveMonsters.filter(m => m.dist <= 1).length >= 2;
+          const isHpLow = hpRatio < 0.75;
+          const hasDangerAoe = !!(aoeWarnings && aoeWarnings.some(aoe => PathFinder.chebyshevDistance(player.gridPos, aoe.center) <= aoe.radius + 1));
+
+          if (isHpLow || isNearBossOrElite || isSurrounded || hasDangerAoe) {
+            shouldCastShield = true;
+          }
+        }
+
+        // 挑选最高伤害倍率的可用攻击技能 (逐日 > 烈火 > 开天 > 刺杀 > 攻杀)
         const attackSkills = skills
           .filter(s => 
             s.id !== 'basic_slash' && 
@@ -195,7 +212,7 @@ export class AutoPilot {
           )
           .sort((a, b) => b.damageMult - a.damageMult);
 
-        selectedSkill = shield || attackSkills[0];
+        selectedSkill = shouldCastShield ? shield : attackSkills[0];
       }
 
       return {

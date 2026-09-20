@@ -1819,5 +1819,75 @@ export const ITEM_DEFINITIONS: Record<string, ItemDef> = {
     price: 8000,
     icon: '🔮',
     desc: '九天陨落的上古神工造化之石，可沟通造化引雷粹火，用于装备部位 +11~+15 极境强化！'
+  },
+
+  // ======= 气运神油与洗炼奇石 (Blessing Oils & Reforge) =======
+  'pot_blessing_oil': {
+    id: 'pot_blessing_oil',
+    name: '祝福油',
+    type: 'potion',
+    tier: 1,
+    baseQuality: 2, // 精良(蓝)
+    minDC: 0,
+    maxDC: 0,
+    minAC: 0,
+    maxAC: 0,
+    maxHp: 0,
+    maxMp: 0,
+    levelReq: 1,
+    price: 8000,
+    icon: '🏺',
+    desc: '【玛法圣品】为当前佩戴的武器涂抹祝福，概率提升武器幸运 Luck +1 (最高 +7)！失败有小概率遭遇诅咒。'
+  },
+  'pot_super_blessing_oil': {
+    id: 'pot_super_blessing_oil',
+    name: '超级祝福油',
+    type: 'potion',
+    tier: 4,
+    baseQuality: 4, // 传说(橙)
+    minDC: 0,
+    maxDC: 0,
+    minAC: 0,
+    maxAC: 0,
+    maxHp: 0,
+    maxMp: 0,
+    levelReq: 1,
+    price: 150000,
+    icon: '⚱️',
+    desc: '【至尊气运神水】100% 必定成功将当前武器幸运提升至 +7 极境！绝无诅咒失败风险！'
+  },
+  'pot_luosha_water': {
+    id: 'pot_luosha_water',
+    name: '罗刹神水',
+    type: 'potion',
+    tier: 2,
+    baseQuality: 3, // 史诗(紫)
+    minDC: 0,
+    maxDC: 0,
+    minAC: 0,
+    maxAC: 0,
+    maxHp: 0,
+    maxMp: 0,
+    levelReq: 1,
+    price: 25000,
+    icon: '💧',
+    desc: '【驱煞净心灵泉】100% 涤净并洗去当前武器上所有的负面诅咒，使武器重获新生！'
+  },
+  'mat_reforge_stone': {
+    id: 'mat_reforge_stone',
+    name: '乾坤洗炼石',
+    type: 'material',
+    tier: 2,
+    baseQuality: 3, // 史诗(紫)
+    minDC: 0,
+    maxDC: 0,
+    minAC: 0,
+    maxAC: 0,
+    maxHp: 0,
+    maxMp: 0,
+    levelReq: 1,
+    price: 12000,
+    icon: '💠',
+    desc: '【夺天地造化奇石】用于重构与洗炼装备附带的彩色随机词条，追求极致攻击、致命暴伤与神圣破甲！'
   }
 };

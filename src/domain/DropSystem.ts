@@ -1,4 +1,4 @@
-import { GroundItem, ItemInstance, ItemQuality } from '../types/game';
+import { GroundItem, ItemInstance, ItemQuality, EquipmentAffix, EquipmentAffixType } from '../types/game';
 import { ITEM_DEFINITIONS } from './definitions/items';
 import { MonsterTemplate } from './definitions/monsters';
 
@@ -28,6 +28,64 @@ export class DropSystem {
     return 0; // 70% 普通白
   }
 
+  static rollAffixes(quality: ItemQuality): EquipmentAffix[] {
+    if (quality <= 0) return [];
+    const count = quality === 1 ? 1 : quality === 2 ? (Math.random() < 0.6 ? 1 : 2) : quality === 3 ? (Math.random() < 0.5 ? 2 : 3) : 3;
+    const pool: EquipmentAffixType[] = ['haste', 'defense_ignore', 'lifesteal', 'manasteal', 'crit_mult', 'damage_mult', 'flat_hp', 'flat_dc', 'flat_ac'];
+    if (quality >= 3 && Math.random() < 0.15) {
+      pool.push('luck');
+    }
+
+    const affixNames: Record<EquipmentAffixType, string> = {
+      haste: '迅捷',
+      defense_ignore: '破甲',
+      lifesteal: '嗜血',
+      manasteal: '摄魂',
+      crit_mult: '残暴',
+      damage_mult: '狂暴',
+      flat_hp: '天罡',
+      flat_dc: '神力',
+      flat_ac: '不动',
+      luck: '鸿运'
+    };
+
+    const chosenTypes: EquipmentAffixType[] = [];
+    while (chosenTypes.length < count) {
+      const t = pool[Math.floor(Math.random() * pool.length)];
+      if (!chosenTypes.includes(t)) chosenTypes.push(t);
+    }
+
+    return chosenTypes.map(type => {
+      // 词缀阶数 1~5 对应品质
+      const tier = Math.min(5, Math.max(1, quality + (Math.random() < 0.3 ? 1 : 0)));
+      let value = 0;
+      switch (type) {
+        case 'haste': value = [2, 4, 6, 9, 14][tier - 1]; break;
+        case 'defense_ignore': value = [3, 5, 8, 12, 16][tier - 1]; break;
+        case 'lifesteal': value = [1, 2, 3, 4, 5][tier - 1]; break;
+        case 'manasteal': value = [1, 2, 3, 5, 8][tier - 1]; break;
+        case 'crit_mult': value = [10, 20, 35, 55, 80][tier - 1]; break;
+        case 'damage_mult': value = [3, 5, 8, 12, 18][tier - 1]; break;
+        case 'flat_hp': value = [60, 150, 320, 650, 1200][tier - 1]; break;
+        case 'flat_dc': value = [6, 14, 25, 42, 68][tier - 1]; break;
+        case 'flat_ac': value = [4, 10, 18, 30, 48][tier - 1]; break;
+        case 'luck': value = 1; break;
+      }
+      return {
+        type,
+        name: `${affixNames[type]} Lv.${tier}`,
+        value,
+        tier
+      };
+    });
+  }
+
+  static reforgeItem(item: ItemInstance): ItemInstance {
+    if (item.type !== 'equipment') return item;
+    item.affixes = this.rollAffixes(item.quality);
+    return item;
+  }
+
   static createItemInstance(defId: string, forcedQuality?: ItemQuality, count = 1): ItemInstance | null {
     const def = ITEM_DEFINITIONS[defId];
     if (!def) return null;
@@ -45,6 +103,8 @@ export class DropSystem {
     const maxAC = Math.floor(def.maxAC * qualityScale);
     const maxHp = Math.floor(def.maxHp * qualityScale);
     const maxMp = Math.floor(def.maxMp * qualityScale);
+
+    const affixes = def.type === 'equipment' && quality > 0 ? this.rollAffixes(quality) : undefined;
 
     return {
       instanceId: this.generateId(),
@@ -74,7 +134,8 @@ export class DropSystem {
       price: Math.floor(def.price * qualityScale),
       icon: def.icon,
       desc: def.desc,
-      count
+      count,
+      affixes
     };
   }
 
