@@ -53,7 +53,8 @@
 - **UI 响应流**：顶层 `uiTick` 心跳版本号局部按需更新，兼顾原生高效 100ms 逻辑主循环与毫秒级精确 UI 渲染。
 - **音效系统**：Web Audio API 纯合成打击、烈火、升级音效，零音频文件依赖。
 
-> 📖 **深入了解架构细节与完整设计**：请参阅 [docs/DEVELOPMENT_OVERVIEW.md](docs/DEVELOPMENT_OVERVIEW.md)。
+> 📖 **深入了解架构细节与完整设计**：请参阅 [docs/DEVELOPMENT_OVERVIEW.md](docs/DEVELOPMENT_OVERVIEW.md)。  
+> 🎮 **后续玩法设计与版本路线**：请参阅 [docs/GAMEPLAY_DESIGN_ROADMAP.md](docs/GAMEPLAY_DESIGN_ROADMAP.md)。
 
 ---
 
