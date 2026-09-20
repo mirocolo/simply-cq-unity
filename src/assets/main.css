@@ -2,7 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
-/* 传奇经典滚动条 */
+/* W3C 现代标准滚动条 (兼容 Firefox 等现代全系浏览器) */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #3c3226 #151318;
+}
+
+/* 传奇经典 Webkit 滚动条 */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -16,6 +22,18 @@
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #c49a45;
+}
+
+/* 现代模态弹窗平滑渐变与微缩放过渡动效 */
+.modal-enter-active,
+.modal-leave-active {
+  transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.modal-enter-from,
+.modal-leave-to {
+  opacity: 0;
+  transform: scale(0.96);
 }
 
 /* 经典页游金色文字渐变 */

@@ -1,20 +1,49 @@
 export class SoundEffects {
   private ctx: AudioContext | null = null;
+  private masterGain: GainNode | null = null;
+  private compressor: DynamicsCompressorNode | null = null;
   private enabled = true;
   private volume = 0.55;
   private noiseBuffer: AudioBuffer | null = null;
+  private lastPlayTime: Record<string, number> = {};
 
   private getContext(): AudioContext | null {
     if (!this.ctx && typeof window !== 'undefined') {
       const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
       if (AudioCtx) {
         this.ctx = new AudioCtx();
+
+        // 建立主输出动态压限器链路：节点 -> masterGain -> compressor -> destination
+        this.compressor = this.ctx.createDynamicsCompressor();
+        this.compressor.threshold.setValueAtTime(-18, this.ctx.currentTime);
+        this.compressor.knee.setValueAtTime(12, this.ctx.currentTime);
+        this.compressor.ratio.setValueAtTime(8, this.ctx.currentTime);
+        this.compressor.attack.setValueAtTime(0.003, this.ctx.currentTime);
+        this.compressor.release.setValueAtTime(0.15, this.ctx.currentTime);
+
+        this.masterGain = this.ctx.createGain();
+        this.masterGain.gain.setValueAtTime(this.volume, this.ctx.currentTime);
+
+        this.masterGain.connect(this.compressor);
+        this.compressor.connect(this.ctx.destination);
       }
     }
     if (this.ctx && this.ctx.state === 'suspended') {
       this.ctx.resume();
     }
     return this.ctx;
+  }
+
+  private getMasterOutput(ctx: AudioContext): AudioNode {
+    return this.masterGain || ctx.destination;
+  }
+
+  private shouldThrottle(soundKey: string, intervalMs = 40): boolean {
+    const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    const last = this.lastPlayTime[soundKey] || 0;
+    if (now - last < intervalMs) return true;
+    this.lastPlayTime[soundKey] = now;
+    return false;
   }
 
   private getNoiseBuffer(ctx: AudioContext): AudioBuffer {
@@ -32,6 +61,9 @@ export class SoundEffects {
 
   setVolume(vol: number): void {
     this.volume = Math.max(0, Math.min(1, vol));
+    if (this.masterGain && this.ctx) {
+      this.masterGain.gain.setValueAtTime(this.volume, this.ctx.currentTime);
+    }
   }
 
   toggleSound(enable?: boolean): boolean {
@@ -43,11 +75,24 @@ export class SoundEffects {
     return this.enabled;
   }
 
+  dispose(): void {
+    if (this.ctx) {
+      if (this.ctx.state !== 'closed') {
+        this.ctx.close().catch(() => {});
+      }
+      this.ctx = null;
+    }
+    this.masterGain = null;
+    this.compressor = null;
+    this.noiseBuffer = null;
+    this.lastPlayTime = {};
+  }
+
   /**
    * 极速挥刀破空声 (清脆金属刀刃划破空气的呼啸感)
    */
   playSwing(): void {
-    if (!this.enabled) return;
+    if (!this.enabled || this.shouldThrottle('swing', 35)) return;
     const ctx = this.getContext();
     if (!ctx) return;
 
@@ -69,7 +114,7 @@ export class SoundEffects {
 
     noise.connect(filter);
     filter.connect(noiseGain);
-    noiseGain.connect(ctx.destination);
+    noiseGain.connect(this.getMasterOutput(ctx));
 
     // 2. 气流微鸣滑音
     const osc = ctx.createOscillator();
@@ -82,7 +127,7 @@ export class SoundEffects {
     oscGain.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
 
     osc.connect(oscGain);
-    oscGain.connect(ctx.destination);
+    oscGain.connect(this.getMasterOutput(ctx));
 
     noise.start(t);
     noise.stop(t + 0.085);
@@ -94,7 +139,7 @@ export class SoundEffects {
    * 刀刀入肉重击声 (金属劈砍 + 肉体受击 + 刀鸣余音)
    */
   playHit(): void {
-    if (!this.enabled) return;
+    if (!this.enabled || this.shouldThrottle('hit', 35)) return;
     const ctx = this.getContext();
     if (!ctx) return;
 
@@ -115,7 +160,7 @@ export class SoundEffects {
 
     noise.connect(noiseFilter);
     noiseFilter.connect(noiseGain);
-    noiseGain.connect(ctx.destination);
+    noiseGain.connect(this.getMasterOutput(ctx));
 
     // 2. 肉身沉闷重击 (190Hz -> 45Hz 强力低频冲击)
     const bodyOsc = ctx.createOscillator();
@@ -128,7 +173,7 @@ export class SoundEffects {
     bodyGain.gain.exponentialRampToValueAtTime(0.001, t + 0.09);
 
     bodyOsc.connect(bodyGain);
-    bodyGain.connect(ctx.destination);
+    bodyGain.connect(this.getMasterOutput(ctx));
 
     // 3. 刀身钢鸣微谐波 (清脆金属刀鸣)
     const ringOsc = ctx.createOscillator();
@@ -141,7 +186,7 @@ export class SoundEffects {
     ringGain.gain.exponentialRampToValueAtTime(0.001, t + 0.06);
 
     ringOsc.connect(ringGain);
-    ringGain.connect(ctx.destination);
+      ringGain.connect(this.getMasterOutput(ctx));
 
     noise.start(t);
     noise.stop(t + 0.045);
@@ -176,7 +221,7 @@ export class SoundEffects {
 
     noise.connect(noiseFilter);
     noiseFilter.connect(noiseGain);
-    noiseGain.connect(ctx.destination);
+    noiseGain.connect(this.getMasterOutput(ctx));
 
     // 2. 超低频震波 (80Hz -> 28Hz 战神斩轰击)
     const subOsc = ctx.createOscillator();
@@ -189,7 +234,7 @@ export class SoundEffects {
     subGain.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
 
     subOsc.connect(subGain);
-    subGain.connect(ctx.destination);
+    subGain.connect(this.getMasterOutput(ctx));
 
     // 3. 破甲双刀鸣谐波
     [1650, 2480].forEach(freq => {
@@ -203,7 +248,7 @@ export class SoundEffects {
       ringGain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
 
       ring.connect(ringGain);
-      ringGain.connect(ctx.destination);
+        ringGain.connect(this.getMasterOutput(ctx));
 
       ring.start(t);
       ring.stop(t + 0.13);
@@ -239,7 +284,7 @@ export class SoundEffects {
 
     noise.connect(noiseFilter);
     noiseFilter.connect(noiseGain);
-    noiseGain.connect(ctx.destination);
+    noiseGain.connect(this.getMasterOutput(ctx));
 
     // 烈火重斩低频
     const osc = ctx.createOscillator();
@@ -252,7 +297,7 @@ export class SoundEffects {
     oscGain.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
 
     osc.connect(oscGain);
-    oscGain.connect(ctx.destination);
+    oscGain.connect(this.getMasterOutput(ctx));
 
     noise.start(t);
     noise.stop(t + 0.36);
@@ -280,7 +325,7 @@ export class SoundEffects {
       gain.gain.exponentialRampToValueAtTime(0.001, t + delay + 0.07);
 
       osc.connect(gain);
-      gain.connect(ctx.destination);
+      gain.connect(this.getMasterOutput(ctx));
 
       osc.start(t + delay);
       osc.stop(t + delay + 0.075);
@@ -307,7 +352,7 @@ export class SoundEffects {
     gain.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
 
     osc.connect(gain);
-    gain.connect(ctx.destination);
+    gain.connect(this.getMasterOutput(ctx));
 
     osc.start(t);
     osc.stop(t + 0.17);
@@ -333,7 +378,7 @@ export class SoundEffects {
       gain.gain.exponentialRampToValueAtTime(0.001, t + idx * 0.06 + 0.4);
 
       osc.connect(gain);
-      gain.connect(ctx.destination);
+      gain.connect(this.getMasterOutput(ctx));
 
       osc.start(t + idx * 0.06);
       osc.stop(t + idx * 0.06 + 0.42);
@@ -344,7 +389,7 @@ export class SoundEffects {
    * 金币大爆叮当清脆响
    */
   playCoin(): void {
-    if (!this.enabled) return;
+    if (!this.enabled || this.shouldThrottle('coin', 45)) return;
     const ctx = this.getContext();
     if (!ctx) return;
 
@@ -360,7 +405,7 @@ export class SoundEffects {
       gain.gain.exponentialRampToValueAtTime(0.001, t + idx * 0.03 + 0.16);
 
       osc.connect(gain);
-      gain.connect(ctx.destination);
+      gain.connect(this.getMasterOutput(ctx));
 
       osc.start(t + idx * 0.03);
       osc.stop(t + idx * 0.03 + 0.18);
@@ -385,7 +430,7 @@ export class SoundEffects {
     gain.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
 
     osc.connect(gain);
-    gain.connect(ctx.destination);
+    gain.connect(this.getMasterOutput(ctx));
 
     osc.start(t);
     osc.stop(t + 0.23);
@@ -409,7 +454,7 @@ export class SoundEffects {
       gain.gain.exponentialRampToValueAtTime(0.001, t + idx * 0.07 + 0.38);
 
       osc.connect(gain);
-      gain.connect(ctx.destination);
+      gain.connect(this.getMasterOutput(ctx));
 
       osc.start(t + idx * 0.07);
       osc.stop(t + idx * 0.07 + 0.42);

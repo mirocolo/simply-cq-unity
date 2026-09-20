@@ -1,5 +1,5 @@
 <template>
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 select-none">
+  <div @click.self="$emit('close')" role="dialog" aria-modal="true" class="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 select-none">
     <!-- 特戒神殿主面板 -->
     <div class="relative w-full max-w-3xl max-h-[92vh] overflow-y-auto legend-box p-5 rounded-lg flex flex-col gap-4 animate-fadeIn text-zinc-200 custom-scrollbar border-2 border-[#8c6d3b] bg-gradient-to-b from-[#181410] to-[#0d0a08] shadow-[0_0_35px_rgba(0,0,0,0.9)]">
       

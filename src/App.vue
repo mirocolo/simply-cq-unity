@@ -13,6 +13,7 @@
       :monsters="world.monsters"
       :selectedMonster="selectedMonster"
       :isAutoEnabled="world.autoConfig.enabled"
+      :currentMapName="world.currentMap.name"
       @toggleAuto="toggleAutoPilot"
     />
 
@@ -31,107 +32,127 @@
     />
 
     <!-- 模态弹窗：人物与装备纸娃娃 (C) -->
-    <CharacterModal 
-      v-if="activeModal === 'character'"
-      :player="world.player"
-      :equipped="world.equipped"
-      @close="activeModal = null"
-      @unequip="handleUnequip"
-      @ascend="handleAscend"
-      @openSpecialRing="openModal('special_ring')"
-      @oneKeyEquip="handleOneKeyEquip"
-    />
+    <Transition name="modal">
+      <CharacterModal 
+        v-if="activeModal === 'character'"
+        :player="world.player"
+        :equipped="world.equipped"
+        @close="activeModal = null"
+        @unequip="handleUnequip"
+        @ascend="handleAscend"
+        @openSpecialRing="openModal('special_ring')"
+        @oneKeyEquip="handleOneKeyEquip"
+      />
+    </Transition>
 
     <!-- 模态弹窗：至尊六大特戒神殿 (R) -->
-    <SpecialRingModal 
-      v-if="activeModal === 'special_ring'"
-      :player="world.player"
-      :equipped="world.equipped"
-      :inventory="world.inventory"
-      @close="activeModal = null"
-      @equip="handleEquipSpecialRing"
-      @unequip="handleUnequip"
-      @oneKeyEquip="handleOneKeyEquip"
-    />
+    <Transition name="modal">
+      <SpecialRingModal 
+        v-if="activeModal === 'special_ring'"
+        :player="world.player"
+        :equipped="world.equipped"
+        :inventory="world.inventory"
+        @close="activeModal = null"
+        @equip="handleEquipSpecialRing"
+        @unequip="handleUnequip"
+        @oneKeyEquip="handleOneKeyEquip"
+      />
+    </Transition>
 
     <!-- 模态弹窗：40格随身包裹 (B) -->
-    <InventoryModal 
-      v-if="activeModal === 'inventory'"
-      :player="world.player"
-      :inventory="world.inventory"
-      :equipped="world.equipped"
-      @close="activeModal = null"
-      @useItem="handleUseItem"
-      @dropItem="handleDropItem"
-      @oneKeyEquip="handleOneKeyEquip"
-      @oneKeyRecycle="handleOneKeyRecycle"
-      @oneKeyRecycleWeaker="handleOneKeyRecycleWeaker"
-      @oneKeyRecycleBlue="handleOneKeyRecycleBlue"
-    />
+    <Transition name="modal">
+      <InventoryModal 
+        v-if="activeModal === 'inventory'"
+        :player="world.player"
+        :inventory="world.inventory"
+        :equipped="world.equipped"
+        @close="activeModal = null"
+        @useItem="handleUseItem"
+        @dropItem="handleDropItem"
+        @oneKeyEquip="handleOneKeyEquip"
+        @oneKeyRecycle="handleOneKeyRecycle"
+        @oneKeyRecycleWeaker="handleOneKeyRecycleWeaker"
+        @oneKeyRecycleBlue="handleOneKeyRecycleBlue"
+      />
+    </Transition>
 
     <!-- 模态弹窗：智能挂机与收益看板 (L) -->
-    <AutoPilotModal 
-      v-if="activeModal === 'autopilot'"
-      :config="world.autoConfig"
-      :stats="world.autoStats"
-      @close="activeModal = null"
-    />
+    <Transition name="modal">
+      <AutoPilotModal 
+        v-if="activeModal === 'autopilot'"
+        :config="world.autoConfig"
+        :stats="world.autoStats"
+        @close="activeModal = null"
+      />
+    </Transition>
 
     <!-- 模态弹窗：系统设置与存档 (O) -->
-    <SettingsModal 
-      v-if="activeModal === 'settings'"
-      :isSoundOn="isSoundOn"
-      :volume="soundVolume"
-      @close="activeModal = null"
-      @toggleSound="toggleSound"
-      @setVolume="handleSetVolume"
-      @reloadGame="handleReloadGame"
-    />
+    <Transition name="modal">
+      <SettingsModal 
+        v-if="activeModal === 'settings'"
+        :isSoundOn="isSoundOn"
+        :volume="soundVolume"
+        @close="activeModal = null"
+        @toggleSound="toggleSound"
+        @setVolume="handleSetVolume"
+        @reloadGame="handleReloadGame"
+      />
+    </Transition>
 
     <!-- 模态弹窗：九州十界万象星图 (M) -->
-    <WorldMapModal 
-      v-if="activeModal === 'world_map'"
-      :world="world"
-      :currentTick="world.currentTick"
-      @close="activeModal = null"
-      @fastTravel="handleFastTravel"
-    />
+    <Transition name="modal">
+      <WorldMapModal 
+        v-if="activeModal === 'world_map'"
+        :world="world"
+        :currentTick="world.currentTick"
+        @close="activeModal = null"
+        @fastTravel="handleFastTravel"
+      />
+    </Transition>
 
     <!-- 模态弹窗：装备部位强化 (U) -->
-    <EnhanceModal 
-      v-if="activeModal === 'enhance'"
-      :world="world"
-      @close="activeModal = null"
-    />
+    <Transition name="modal">
+      <EnhanceModal 
+        v-if="activeModal === 'enhance'"
+        :world="world"
+        @close="activeModal = null"
+      />
+    </Transition>
 
     <!-- 模态弹窗：百妖封魔录与万象悬赏令 (K) -->
-    <MonsterCodexModal 
-      v-if="activeModal === 'codex'"
-      :world="world"
-      @close="activeModal = null"
-    />
+    <Transition name="modal">
+      <MonsterCodexModal 
+        v-if="activeModal === 'codex'"
+        :world="world"
+        @close="activeModal = null"
+      />
+    </Transition>
 
     <!-- 模态弹窗：战士天赋星盘 (N) -->
-    <TalentModal 
-      v-if="activeModal === 'talent'"
-      :talentAllocations="world.talentAllocations"
-      :playerLevel="world.player.stats.level"
-      @close="activeModal = null"
-      @allocate="handleAllocateTalent"
-      @reset="handleResetTalents"
-    />
+    <Transition name="modal">
+      <TalentModal 
+        v-if="activeModal === 'talent'"
+        :talentAllocations="world.talentAllocations"
+        :playerLevel="world.player.stats.level"
+        @close="activeModal = null"
+        @allocate="handleAllocateTalent"
+        @reset="handleResetTalents"
+      />
+    </Transition>
 
     <!-- 模态弹窗：离线挂机收益结算 -->
-    <OfflineRewardModal 
-      v-if="offlineReward"
-      :reward="offlineReward"
-      @claim="handleClaimOfflineReward"
-    />
+    <Transition name="modal">
+      <OfflineRewardModal 
+        v-if="offlineReward"
+        :reward="offlineReward"
+        @claim="handleClaimOfflineReward"
+      />
+    </Transition>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, onUnmounted } from 'vue';
+import { ref, shallowRef, triggerRef, markRaw, computed, onMounted, onUnmounted } from 'vue';
 import { GameWorld } from './domain/GameWorld';
 import { IsometricRenderer } from './renderer/IsometricRenderer';
 import { SoundEffects } from './renderer/SoundEffects';
@@ -152,9 +173,14 @@ import EnhanceModal from './components/EnhanceModal.vue';
 import MonsterCodexModal from './components/MonsterCodexModal.vue';
 import TalentModal from './components/TalentModal.vue';
 
-const world = reactive(new GameWorld()) as GameWorld;
-const renderer = new IsometricRenderer();
-const sound = new SoundEffects();
+// 核心性能架构改造：将底层游戏世界与渲染器通过 markRaw 剥离 Vue 深度响应式 Proxy 监听
+// 消除 48x48 矩阵与全图怪群高频 Tick 的无谓拦截，使用 shallowRef + triggerRef 维持原生速度
+const rawWorld = markRaw(new GameWorld());
+const world = shallowRef(rawWorld);
+const renderer = markRaw(new IsometricRenderer());
+const sound = markRaw(new SoundEffects());
+
+const syncUI = () => triggerRef(world);
 
 const selectedTargetId = ref<string | null>(null);
 const activeModal = ref<'character' | 'inventory' | 'autopilot' | 'settings' | 'special_ring' | 'world_map' | 'enhance' | 'codex' | 'talent' | null>(null);
@@ -166,7 +192,7 @@ const soundVolume = ref(0.4);
 let tickTimer: number | null = null;
 let saveTimer: number | null = null;
 
-world.onSound = (name) => {
+rawWorld.onSound = (name) => {
   switch (name) {
     case 'swing': sound.playSwing(); break;
     case 'hit': sound.playHit(); break;
@@ -181,22 +207,24 @@ world.onSound = (name) => {
   }
 };
 
-world.onSlashVFX = (gridPos, dir, isFire, haste, isPhantom) => {
+rawWorld.onSlashVFX = (gridPos, dir, isFire, haste, isPhantom) => {
   renderer.addSlashVFX(gridPos, dir, isFire, haste, isPhantom);
 };
 
 const selectedMonster = computed(() => {
+  const w = world.value;
   if (!selectedTargetId.value) return null;
-  const m = world.monsters.find(it => it.id === selectedTargetId.value && it.state !== 'dead');
+  const m = w.monsters.find(it => it.id === selectedTargetId.value && it.state !== 'dead');
   return m || null;
 });
 
 const toggleAutoPilot = () => {
-  world.autoConfig.enabled = !world.autoConfig.enabled;
-  world.addBattleLog(
-    world.autoConfig.enabled ? '【挂机】开启自动寻路打怪、顺劈割草与自动喝药' : '【挂机】暂停自动挂机，交由手动控制',
+  rawWorld.autoConfig.enabled = !rawWorld.autoConfig.enabled;
+  rawWorld.addBattleLog(
+    rawWorld.autoConfig.enabled ? '【挂机】开启自动寻路打怪、顺劈割草与自动喝药' : '【挂机】暂停自动挂机，交由手动控制',
     'system'
   );
+  syncUI();
 };
 
 const openModal = (name: string) => {
@@ -204,79 +232,91 @@ const openModal = (name: string) => {
 };
 
 const handleUnequip = (slot: EquipSlot) => {
-  world.unequipItem(slot);
+  rawWorld.unequipItem(slot);
+  syncUI();
 };
 
 const handleEquipSpecialRing = (item: ItemInstance) => {
-  world.equipItem(item);
+  rawWorld.equipItem(item);
   sound.playLevelUp();
+  syncUI();
 };
 
 const handleAscend = () => {
-  world.ascend();
+  rawWorld.ascend();
+  syncUI();
 };
 
 const handleUseItem = (item: ItemInstance) => {
-  world.useItem(item);
+  rawWorld.useItem(item);
+  syncUI();
 };
 
 const handleDropItem = (item: ItemInstance) => {
-  const idx = world.inventory.indexOf(item);
+  const idx = rawWorld.inventory.indexOf(item);
   if (idx !== -1) {
-    world.inventory.splice(idx, 1);
-    world.addBattleLog(`丢弃了物品 [${item.name}]`, 'system');
+    rawWorld.inventory.splice(idx, 1);
+    rawWorld.addBattleLog(`丢弃了物品 [${item.name}]`, 'system');
+    syncUI();
   }
 };
 
 const handleOneKeyEquip = () => {
-  world.oneKeyEquipBest();
+  rawWorld.oneKeyEquipBest();
+  syncUI();
 };
 
 const handleOneKeyRecycle = () => {
-  world.recycleLowQualityItems();
+  rawWorld.recycleLowQualityItems();
+  syncUI();
 };
 
 const handleOneKeyRecycleWeaker = () => {
-  world.recycleWeakerOrEqualItems();
+  rawWorld.recycleWeakerOrEqualItems();
+  syncUI();
 };
 
 const handleOneKeyRecycleBlue = () => {
-  world.recycleLowQualityItems(2);
+  rawWorld.recycleLowQualityItems(2);
+  syncUI();
 };
 
 const handleUseHpPotion = () => {
-  const pot = world.inventory.find(i => i.type === 'potion' && (i.recoverHp || 0) > 0);
+  const pot = rawWorld.inventory.find(i => i.type === 'potion' && (i.recoverHp || 0) > 0);
   if (pot) {
-    world.useItem(pot);
+    rawWorld.useItem(pot);
+    syncUI();
   } else {
-    world.addBattleLog('【提示】包裹中已无金创药！击杀怪物可快速获取。', 'system');
+    rawWorld.addBattleLog('【提示】包裹中已无金创药！击杀怪物可快速获取。', 'system');
   }
 };
 
 const handleUseMpPotion = () => {
-  const pot = world.inventory.find(i => i.type === 'potion' && (i.recoverMp || 0) > 0);
+  const pot = rawWorld.inventory.find(i => i.type === 'potion' && (i.recoverMp || 0) > 0);
   if (pot) {
-    world.useItem(pot);
+    rawWorld.useItem(pot);
+    syncUI();
   } else {
-    world.addBattleLog('【提示】包裹中已无魔法药！', 'system');
+    rawWorld.addBattleLog('【提示】包裹中已无魔法药！', 'system');
   }
 };
 
 const handleCastSkill = (skill: SkillDef) => {
-  if (world.player.stats.level < skill.unlockLevel) {
-    world.addBattleLog(`【技能未解锁】需要人物等级达到 Lv.${skill.unlockLevel}！`, 'system');
+  if (rawWorld.player.stats.level < skill.unlockLevel) {
+    rawWorld.addBattleLog(`【技能未解锁】需要人物等级达到 Lv.${skill.unlockLevel}！`, 'system');
     return;
   }
   if (skill.currentCdTicks > 0) return;
-  if (world.player.stats.mp < skill.manaCost) {
-    world.addBattleLog('【法力不足】无法施展技能！', 'system');
+  if (rawWorld.player.stats.mp < skill.manaCost) {
+    rawWorld.addBattleLog('【法力不足】无法施展技能！', 'system');
     return;
   }
 
   // 护体神盾为自身增益罡气，无需选中目标即可施展
   if (skill.id === 'shield_aegis') {
-    world.autoPilot.recordManualAction();
-    world.executeAttack(world.player, world.player, skill);
+    rawWorld.autoPilot.recordManualAction();
+    rawWorld.executeAttack(rawWorld.player, rawWorld.player, skill);
+    syncUI();
     return;
   }
 
@@ -284,9 +324,9 @@ const handleCastSkill = (skill: SkillDef) => {
   if (!target) {
     const searchRange = skill.id === 'sun_slash' ? 5 : (skill.id === 'heaven_splitter' ? 4 : 3);
     let minDist = searchRange;
-    for (const m of world.monsters) {
+    for (const m of rawWorld.monsters) {
       if (m.state === 'dead') continue;
-      const d = Math.max(Math.abs(m.gridPos.x - world.player.gridPos.x), Math.abs(m.gridPos.y - world.player.gridPos.y));
+      const d = Math.max(Math.abs(m.gridPos.x - rawWorld.player.gridPos.x), Math.abs(m.gridPos.y - rawWorld.player.gridPos.y));
       if (d < minDist) {
         minDist = d;
         target = m;
@@ -295,10 +335,11 @@ const handleCastSkill = (skill: SkillDef) => {
   }
 
   if (target) {
-    world.autoPilot.recordManualAction();
-    world.executeAttack(world.player, target, skill);
+    rawWorld.autoPilot.recordManualAction();
+    rawWorld.executeAttack(rawWorld.player, target, skill);
+    syncUI();
   } else {
-    world.addBattleLog('【提示】前方暂无有效攻击目标！', 'system');
+    rawWorld.addBattleLog('【提示】前方暂无有效攻击目标！', 'system');
   }
 };
 
@@ -312,39 +353,44 @@ const handleSetVolume = (vol: number) => {
 };
 
 const handleReloadGame = () => {
-  world.load();
+  rawWorld.load();
   activeModal.value = null;
+  syncUI();
 };
 
 const handleClaimOfflineReward = () => {
   if (offlineReward.value) {
-    world.addExp(offlineReward.value.expGained);
-    world.player.stats.gold += offlineReward.value.goldGained;
+    rawWorld.addExp(offlineReward.value.expGained);
+    rawWorld.player.stats.gold += offlineReward.value.goldGained;
     for (const it of offlineReward.value.itemsGained) {
-      world.addItemToInventory(it);
+      rawWorld.addItemToInventory(it);
     }
     sound.playLevelUp();
-    world.addBattleLog(
+    rawWorld.addBattleLog(
       `【离线结算】获得挂机经验 +${offlineReward.value.expGained}，金币 +${offlineReward.value.goldGained}`,
       'system'
     );
     offlineReward.value = null;
+    syncUI();
   }
 };
 
 const handleFastTravel = (mapId: string) => {
-  const res = world.fastTravelToMap(mapId);
+  const res = rawWorld.fastTravelToMap(mapId);
   if (res.success) {
     activeModal.value = null;
   }
+  syncUI();
 };
 
 const handleAllocateTalent = (talentId: string) => {
-  world.allocateTalent(talentId);
+  rawWorld.allocateTalent(talentId);
+  syncUI();
 };
 
 const handleResetTalents = () => {
-  world.resetTalents();
+  rawWorld.resetTalents();
+  syncUI();
 };
 
 const handleKeyDown = (e: KeyboardEvent) => {
@@ -381,22 +427,22 @@ const handleKeyDown = (e: KeyboardEvent) => {
     handleUseMpPotion();
   } else if (e.key >= '1' && e.key <= '7') {
     const idx = parseInt(e.key) - 1;
-    if (world.skills[idx]) {
-      handleCastSkill(world.skills[idx]);
+    if (rawWorld.skills[idx]) {
+      handleCastSkill(rawWorld.skills[idx]);
     }
   } else if (e.code === 'Space') {
-    if (world.skills[0]) {
-      handleCastSkill(world.skills[0]);
+    if (rawWorld.skills[0]) {
+      handleCastSkill(rawWorld.skills[0]);
     }
   }
 };
 
 onMounted(() => {
-  const hasLoaded = world.load();
+  const hasLoaded = rawWorld.load();
   if (hasLoaded) {
     const saved = StorageManager.loadGame();
     if (saved) {
-      const reward = StorageManager.calculateOfflineReward(saved.savedAt, world.player.stats.level);
+      const reward = StorageManager.calculateOfflineReward(saved.savedAt, rawWorld.player.stats.level);
       if (reward) {
         offlineReward.value = reward;
       }
@@ -404,11 +450,12 @@ onMounted(() => {
   }
 
   tickTimer = window.setInterval(() => {
-    world.tick();
+    rawWorld.tick();
+    triggerRef(world);
   }, 100);
 
   saveTimer = window.setInterval(() => {
-    world.save();
+    rawWorld.save();
   }, 10000);
 
   window.addEventListener('keydown', handleKeyDown);
@@ -418,6 +465,7 @@ onUnmounted(() => {
   if (tickTimer) clearInterval(tickTimer);
   if (saveTimer) clearInterval(saveTimer);
   window.removeEventListener('keydown', handleKeyDown);
-  world.save();
+  rawWorld.save();
+  sound.dispose();
 });
 </script>

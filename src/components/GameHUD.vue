@@ -105,7 +105,7 @@
 
         <!-- 坐标与地图名牌 -->
         <div class="bg-black/80 px-2.5 py-0.5 rounded border border-[#5c4a34] text-[10px] text-amber-200 font-mono text-center shadow">
-          比奇野外 [{{ player.gridPos.x }}, {{ player.gridPos.y }}]
+          {{ currentMapName || '比奇荒原' }} [{{ player.gridPos.x }}, {{ player.gridPos.y }}]
         </div>
       </div>
 
@@ -122,6 +122,7 @@ const props = defineProps<{
   monsters?: Entity[];
   selectedMonster: Entity | null;
   isAutoEnabled: boolean;
+  currentMapName?: string;
 }>();
 
 defineEmits<{

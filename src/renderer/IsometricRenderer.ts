@@ -23,12 +23,18 @@ interface BloodParticle {
   size: number;
 }
 
+type RenderItem = 
+  | { type: 'ground_item'; depthY: number; item: GroundItem; renderPos: { x: number; y: number } }
+  | { type: 'entity'; depthY: number; entity: Entity; posX: number; posY: number; isSelected: boolean }
+  | { type: 'slash'; depthY: number; slash: SlashAnimation; pos: { x: number; y: number } };
+
 export class IsometricRenderer {
   readonly TILE_WIDTH = 72;
   readonly TILE_HEIGHT = 36;
 
   private slashes: SlashAnimation[] = [];
   private bloods: BloodParticle[] = [];
+  private renderList: RenderItem[] = [];
   private animFrame = 0;
 
   gridToScreen(gx: number, gy: number): { x: number; y: number } {
@@ -113,15 +119,13 @@ export class IsometricRenderer {
     this.renderTiles(ctx, world, camX, camY, width, height);
     this.renderAOEWarnings(ctx, world.aoeWarnings);
 
-    const renderList: Array<{
-      depthY: number;
-      draw: () => void;
-    }> = [];
+    // 零分配渲染管线：复用 renderList 数组容器
+    this.renderList.length = 0;
 
     // 地面战利品 (带喷泉抛物线动画)
     for (const item of world.groundItems) {
-      let finalPos = this.gridToScreen(item.gridPos.x, item.gridPos.y);
-      let renderPos = { ...finalPos };
+      const finalPos = this.gridToScreen(item.gridPos.x, item.gridPos.y);
+      const renderPos = { ...finalPos };
 
       if (item.burstProgress !== undefined && item.burstProgress < 1.0 && item.burstOrigin) {
         const originPos = this.gridToScreen(item.burstOrigin.x, item.burstOrigin.y);
@@ -130,9 +134,11 @@ export class IsometricRenderer {
         renderPos.y = originPos.y + (finalPos.y - originPos.y) * t - Math.sin(t * Math.PI) * 45;
       }
 
-      renderList.push({
+      this.renderList.push({
+        type: 'ground_item',
         depthY: finalPos.y,
-        draw: () => this.renderGroundItem(ctx, item, renderPos)
+        item,
+        renderPos
       });
     }
 
@@ -146,7 +152,7 @@ export class IsometricRenderer {
         gx += (ent.targetGridPos.x - ent.gridPos.x) * ent.moveProgress;
         gy += (ent.targetGridPos.y - ent.gridPos.y) * ent.moveProgress;
       }
-      let pos = this.gridToScreen(gx, gy);
+      const pos = this.gridToScreen(gx, gy);
 
       // 受击击退位移
       if (ent.knockbackOffset && ent.hitStunTicks && ent.hitStunTicks > 0) {
@@ -154,9 +160,13 @@ export class IsometricRenderer {
         pos.y += ent.knockbackOffset.y;
       }
 
-      renderList.push({
+      this.renderList.push({
+        type: 'entity',
         depthY: pos.y,
-        draw: () => this.renderEntity(ctx, ent, pos.x, pos.y, selectedTargetId === ent.id, world)
+        entity: ent,
+        posX: pos.x,
+        posY: pos.y,
+        isSelected: selectedTargetId === ent.id
       });
     }
 
@@ -165,9 +175,11 @@ export class IsometricRenderer {
       const slash = this.slashes[i];
       slash.progress++;
       const pos = this.gridToScreen(slash.gridX, slash.gridY);
-      renderList.push({
+      this.renderList.push({
+        type: 'slash',
         depthY: pos.y + 6,
-        draw: () => this.renderSlash(ctx, slash, pos)
+        slash,
+        pos
       });
       if (slash.progress >= slash.maxTicks) {
         this.slashes.splice(i, 1);
@@ -190,9 +202,15 @@ export class IsometricRenderer {
       }
     }
 
-    renderList.sort((a, b) => a.depthY - b.depthY);
-    for (const obj of renderList) {
-      obj.draw();
+    this.renderList.sort((a, b) => a.depthY - b.depthY);
+    for (const obj of this.renderList) {
+      if (obj.type === 'ground_item') {
+        this.renderGroundItem(ctx, obj.item, obj.renderPos);
+      } else if (obj.type === 'entity') {
+        this.renderEntity(ctx, obj.entity, obj.posX, obj.posY, obj.isSelected, world);
+      } else if (obj.type === 'slash') {
+        this.renderSlash(ctx, obj.slash, obj.pos);
+      }
     }
 
     this.renderDamagePopups(ctx, world.damagePopups);
@@ -225,8 +243,33 @@ export class IsometricRenderer {
     const hh = this.TILE_HEIGHT / 2;
     const theme = world.currentMap.theme;
 
-    for (let y = 0; y < world.MAP_HEIGHT; y++) {
-      for (let x = 0; x < world.MAP_WIDTH; x++) {
+    // 视锥数学反推（Frustum Culling）: 计算屏幕 4 角对应的世界坐标网格范围
+    const pad = 100;
+    const c1x = camX - pad;
+    const c1y = camY - pad;
+    const c2x = camX + w + pad;
+    const c2y = camY - pad;
+    const c3x = camX - pad;
+    const c3y = camY + h + pad;
+    const c4x = camX + w + pad;
+    const c4y = camY + h + pad;
+
+    const g1x = (c1x / hw + c1y / hh) / 2;
+    const g1y = (c1y / hh - c1x / hw) / 2;
+    const g2x = (c2x / hw + c2y / hh) / 2;
+    const g2y = (c2y / hh - c2x / hw) / 2;
+    const g3x = (c3x / hw + c3y / hh) / 2;
+    const g3y = (c3y / hh - c3x / hw) / 2;
+    const g4x = (c4x / hw + c4y / hh) / 2;
+    const g4y = (c4y / hh - c4x / hw) / 2;
+
+    const minGx = Math.max(0, Math.floor(Math.min(g1x, g2x, g3x, g4x)) - 1);
+    const maxGx = Math.min(world.MAP_WIDTH - 1, Math.ceil(Math.max(g1x, g2x, g3x, g4x)) + 1);
+    const minGy = Math.max(0, Math.floor(Math.min(g1y, g2y, g3y, g4y)) - 1);
+    const maxGy = Math.min(world.MAP_HEIGHT - 1, Math.ceil(Math.max(g1y, g2y, g3y, g4y)) + 1);
+
+    for (let y = minGy; y <= maxGy; y++) {
+      for (let x = minGx; x <= maxGx; x++) {
         const scr = this.gridToScreen(x, y);
 
         if (scr.x + hw < camX - 60 || scr.x - hw > camX + w + 60 ||

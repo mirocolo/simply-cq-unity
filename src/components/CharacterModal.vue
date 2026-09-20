@@ -1,5 +1,5 @@
 <template>
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 select-none">
+  <div @click.self="$emit('close')" role="dialog" aria-modal="true" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 select-none">
     <!-- 人物主面板容器 -->
     <div class="relative w-full max-w-2xl max-h-[92vh] overflow-y-auto legend-box p-4 rounded-lg flex flex-col gap-3 animate-fadeIn text-zinc-200 custom-scrollbar">
       <!-- 弹窗标题 -->
