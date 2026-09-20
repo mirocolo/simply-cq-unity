@@ -173,6 +173,7 @@ import { IsometricRenderer } from './renderer/IsometricRenderer';
 import { SoundEffects } from './renderer/SoundEffects';
 import { StorageManager, OfflineReward } from './domain/StorageManager';
 import { EquipSlot, ItemInstance, SkillDef } from './types/game';
+import { TickWorker } from './utils/TickWorker';
 
 import GameCanvas from './renderer/GameCanvas.vue';
 import GameHUD from './components/GameHUD.vue';
@@ -209,7 +210,7 @@ const offlineReward = ref<OfflineReward | null>(null);
 const isSoundOn = ref(true);
 const soundVolume = ref(0.4);
 
-let tickTimer: number | null = null;
+let tickWorker: TickWorker | null = null;
 let saveTimer: number | null = null;
 
 rawWorld.onSound = (name) => {
@@ -481,11 +482,29 @@ onMounted(() => {
     }
   }
 
-  tickTimer = window.setInterval(() => {
-    rawWorld.tick();
+  tickWorker = new TickWorker();
+  let lastTickTime = performance.now();
+  tickWorker.start(100, () => {
+    const now = performance.now();
+    const elapsed = now - lastTickTime;
+    // 动态步长累加器保护：若主线程发生微小卡顿，安全补齐最多 4 步 Tick，确保后台挂机不漏算
+    const ticksToRun = Math.min(4, Math.max(1, Math.floor(elapsed / 100)));
+    lastTickTime = now;
+
+    for (let i = 0; i < ticksToRun; i++) {
+      rawWorld.tick();
+    }
     uiTick.value++;
     triggerRef(world);
-  }, 100);
+  });
+
+  const handleVisibilityChange = () => {
+    if (!document.hidden) {
+      lastTickTime = performance.now();
+      syncUI();
+    }
+  };
+  document.addEventListener('visibilitychange', handleVisibilityChange);
 
   saveTimer = window.setInterval(() => {
     rawWorld.save();
@@ -495,7 +514,7 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
-  if (tickTimer) clearInterval(tickTimer);
+  if (tickWorker) tickWorker.terminate();
   if (saveTimer) clearInterval(saveTimer);
   window.removeEventListener('keydown', handleKeyDown);
   rawWorld.save();

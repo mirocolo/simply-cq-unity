@@ -3,60 +3,50 @@ import { PortalDef } from '../../types/map';
 import { TelegraphedAOE } from '../../types/affix';
 
 export class EnvironmentRenderer {
-  renderTiles(
-    ctx: CanvasRenderingContext2D,
+  private cachedMapId: string | null = null;
+  private cachedCanvas: HTMLCanvasElement | null = null;
+  private cachedOffsetX = 0;
+  private cachedOffsetY = 0;
+
+  /**
+   * 构建离屏静态瓦片与高墙烘焙缓存，消除每帧近万次矢量路径绘制开销
+   */
+  private buildTileCache(
     world: GameWorld,
-    camX: number,
-    camY: number,
-    w: number,
-    h: number,
-    animFrame: number,
-    tileWidth: number,
-    tileHeight: number,
+    hw: number,
+    hh: number,
     gridToScreen: (gx: number, gy: number) => { x: number; y: number }
   ): void {
-    const hw = tileWidth / 2;
-    const hh = tileHeight / 2;
+    if (typeof document === 'undefined') return;
+
     const theme = world.currentMap.theme;
+    const mw = world.MAP_WIDTH;
+    const mh = world.MAP_HEIGHT;
 
-    // 视锥数学反推（Frustum Culling）: 计算屏幕 4 角对应的世界坐标网格范围
-    const pad = 100;
-    const c1x = camX - pad;
-    const c1y = camY - pad;
-    const c2x = camX + w + pad;
-    const c2y = camY - pad;
-    const c3x = camX - pad;
-    const c3y = camY + h + pad;
-    const c4x = camX + w + pad;
-    const c4y = camY + h + pad;
+    // 计算整张地图的屏幕外接矩形范围
+    const minX = -mh * hw - 80;
+    const maxX = mw * hw + 80;
+    const minY = -60;
+    const maxY = (mw + mh) * hh + 60;
 
-    const g1x = (c1x / hw + c1y / hh) / 2;
-    const g1y = (c1y / hh - c1x / hw) / 2;
-    const g2x = (c2x / hw + c2y / hh) / 2;
-    const g2y = (c2y / hh - c2x / hw) / 2;
-    const g3x = (c3x / hw + c3y / hh) / 2;
-    const g3y = (c3y / hh - c3x / hw) / 2;
-    const g4x = (c4x / hw + c4y / hh) / 2;
-    const g4y = (c4y / hh - c4x / hw) / 2;
+    const width = Math.ceil(maxX - minX);
+    const height = Math.ceil(maxY - minY);
 
-    const minGx = Math.max(0, Math.floor(Math.min(g1x, g2x, g3x, g4x)) - 1);
-    const maxGx = Math.min(world.MAP_WIDTH - 1, Math.ceil(Math.max(g1x, g2x, g3x, g4x)) + 1);
-    const minGy = Math.max(0, Math.floor(Math.min(g1y, g2y, g3y, g4y)) - 1);
-    const maxGy = Math.min(world.MAP_HEIGHT - 1, Math.ceil(Math.max(g1y, g2y, g3y, g4y)) + 1);
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
 
-    for (let y = minGy; y <= maxGy; y++) {
-      for (let x = minGx; x <= maxGx; x++) {
+    this.cachedOffsetX = -minX;
+    this.cachedOffsetY = -minY;
+
+    ctx.save();
+    ctx.translate(this.cachedOffsetX, this.cachedOffsetY);
+
+    for (let y = 0; y < mh; y++) {
+      for (let x = 0; x < mw; x++) {
         const scr = gridToScreen(x, y);
-
-        if (
-          scr.x + hw < camX - 60 ||
-          scr.x - hw > camX + w + 60 ||
-          scr.y + hh < camY - 60 ||
-          scr.y - hh > camY + h + 60
-        ) {
-          continue;
-        }
-
         const isWall = !world.isWalkable(x, y);
 
         ctx.beginPath();
@@ -84,7 +74,7 @@ export class EnvironmentRenderer {
 
           ctx.fillStyle = theme.wallTopColor;
           ctx.beginPath();
-          ctx.moveTo(scr.x, scr.y - hh);
+          ctx.moveTo(scr.x - hh, scr.y);
           ctx.lineTo(scr.x + hw, scr.y);
           ctx.lineTo(scr.x + hw, scr.y - 24);
           ctx.lineTo(scr.x, scr.y - hh - 24);
@@ -102,7 +92,37 @@ export class EnvironmentRenderer {
       }
     }
 
-    // 渲染位面传送门 (光涡与冲天接引光柱)
+    ctx.restore();
+    this.cachedCanvas = canvas;
+    this.cachedMapId = world.currentMap.id;
+  }
+
+  renderTiles(
+    ctx: CanvasRenderingContext2D,
+    world: GameWorld,
+    camX: number,
+    camY: number,
+    w: number,
+    h: number,
+    animFrame: number,
+    tileWidth: number,
+    tileHeight: number,
+    gridToScreen: (gx: number, gy: number) => { x: number; y: number }
+  ): void {
+    const hw = tileWidth / 2;
+    const hh = tileHeight / 2;
+
+    // 检查并自动更新离屏地砖瓦片烘焙缓存 (Map Cache)
+    if (world.currentMap.id !== this.cachedMapId || !this.cachedCanvas) {
+      this.buildTileCache(world, hw, hh, gridToScreen);
+    }
+
+    if (this.cachedCanvas) {
+      // 一次 GPU 贴图直冲绘制，彻底替代数千次循环几何绘制
+      ctx.drawImage(this.cachedCanvas, -this.cachedOffsetX, -this.cachedOffsetY);
+    }
+
+    // 渲染位面传送门 (带动态奥术光涡与冲天接引光柱)
     for (const portal of world.currentMap.portals) {
       const pScr = gridToScreen(portal.pos.x, portal.pos.y);
       if (

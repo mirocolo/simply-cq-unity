@@ -114,14 +114,14 @@ const handleExport = () => {
 };
 
 const handleImport = () => {
-  const code = prompt('请粘贴存档 JSON 代码：');
+  const code = prompt('请粘贴存档代码（支持 Base64 或 JSON 文本）：');
   if (code) {
-    const success = StorageManager.importSave(code);
-    if (success) {
-      alert('导入成功，正在刷新游戏！');
+    const res = StorageManager.importSave(code);
+    if (res.success) {
+      alert(res.message);
       emit('reloadGame');
     } else {
-      alert('存档格式无效，导入失败！');
+      alert(res.message);
     }
   }
 };
